@@ -4,6 +4,7 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
@@ -49,6 +50,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -303,7 +307,7 @@ private fun BentoGrid(vm: BudsViewModel) {
 
 @Composable
 private fun SquareToggle(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, modifier: Modifier = Modifier) {
-    var active by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    var active by remember { mutableStateOf(false) }
     BentoTile(modifier, active = active, minHeight = 96.dp, onClick = { active = !active }) { primary, _ ->
         Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
             MorphIcon(active = active, icon = icon, tint = primary)
@@ -314,10 +318,10 @@ private fun SquareToggle(icon: androidx.compose.ui.graphics.vector.ImageVector, 
 /** Иконка, которая при активации мягко подрастает и доворачивается. */
 @Composable
 private fun MorphIcon(active: Boolean, icon: androidx.compose.ui.graphics.vector.ImageVector, tint: Color) {
-    val scale by androidx.compose.animation.core.animateFloatAsState(
+    val scale by animateFloatAsState(
         if (active) 1.14f else 1f, Motion.spatial(), label = "iconScale",
     )
-    val rotation by androidx.compose.animation.core.animateFloatAsState(
+    val rotation by animateFloatAsState(
         if (active) -8f else 0f, Motion.spatial(), label = "iconRot",
     )
     Icon(

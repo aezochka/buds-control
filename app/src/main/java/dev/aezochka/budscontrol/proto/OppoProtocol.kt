@@ -74,6 +74,8 @@ object OppoProtocol {
     // ---- Конкретные команды ----
 
     fun batteryReq() = encode(Cmd.BATTERY_REQ)
+    fun statusReq() = encode(Cmd.STATUS_REQ)
+    fun equalizerReq() = encode(Cmd.EQUALIZER_REQ)
     fun firmwareReq() = encode(Cmd.FIRMWARE_GET)
     fun findDevice(start: Boolean) =
         encode(Cmd.FIND_DEVICE_REQ, byteArrayOf(if (start) 1 else 0))
@@ -126,6 +128,11 @@ object OppoProtocol {
 enum class Cmd(val code: Short) {
     BATTERY_REQ(0x0106),
     BATTERY_RET(0x8106.toShort()),
+    STATUS_REQ(0x0109),
+    STATUS_RET(0x8109.toShort()),
+    EQUALIZER_REQ(0x010F),
+    EQUALIZER_SET(0x0406),
+    EQUALIZER_RET(0x810F.toShort()),
     SUBSCRIPTION_SET(0x0205),
     SUBSCRIPTION_ACK(0x8205.toShort()),
     SUBSCRIPTION_RET(0x0204),
@@ -169,6 +176,7 @@ enum class MiscType(val code: Int) {
     GAME_MODE(0x06),
     MULTIPOINT(0x11),
     LDAC(0x18),
+    SPATIAL_AUDIO(0x1B),
     FIND_PHONE(0x26);
 
     companion object {

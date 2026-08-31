@@ -1,201 +1,130 @@
 package dev.aezochka.budscontrol.ui
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.outlined.Bluetooth
+import androidx.compose.material.icons.outlined.GraphicEq
 import androidx.compose.material.icons.outlined.Headphones
-import androidx.compose.material.icons.outlined.Info
-import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.material.icons.outlined.TouchApp
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material.icons.outlined.History
+import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationRail
-import androidx.compose.material3.NavigationRailItem
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import dev.aezochka.budscontrol.BudsViewModel
-import dev.aezochka.budscontrol.device.ConnectionState
+import kotlinx.coroutines.launch
 
 private enum class Tab(val label: String, val icon: ImageVector) {
-    STATUS("Наушники", Icons.Outlined.Headphones),
-    GESTURES("Жесты", Icons.Outlined.TouchApp),
-    SETTINGS("Настройки", Icons.Outlined.Settings),
-    ABOUT("О девайсе", Icons.Outlined.Info),
+    Buds("Наушники", Icons.Outlined.Headphones),
+    History("История", Icons.Outlined.History),
+    Sound("Звук", Icons.Outlined.GraphicEq),
+    Settings("Настройки", Icons.Outlined.Tune),
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+/**
+ * Каркас приложения. Ровно четыре вкладки и четыре кнопки — никаких
+ * дублирующих переходов, как было в WebView-версии с пятой кнопкой.
+ * Между вкладками работает настоящий свайп через HorizontalPager.
+ */
 @Composable
-fun BudsApp(
-    vm: BudsViewModel,
-    permissionsGranted: Boolean,
-    onRequestPermissions: () -> Unit,
-) {
-    val state by vm.state.collectAsState()
-    var tab by rememberSaveable { mutableStateOf(Tab.STATUS) }
-    val snackbar = remember { SnackbarHostState() }
+fun BudsApp(vm: BudsViewModel) {
+    val pager = rememberPagerState(pageCount = { Tab.entries.size })
+    val scope = rememberCoroutineScope()
 
-    LaunchedEffect(state.error) {
-        state.error?.let { snackbar.showSnackbar(it) }
-    }
-
-    BoxWithConstraints(Modifier.fillMaxSize()) {
-    val wide = maxWidth >= 720.dp
-
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(
-                            if (state.connection == ConnectionState.DISCONNECTED) "Buds Control"
-                            else state.deviceName,
-                            style = MaterialTheme.typography.titleLarge,
-                        )
-                        if (state.connection == ConnectionState.PROBING) {
-                            Text("Определяю возможности…", style = MaterialTheme.typography.bodySmall)
-                        } else if (state.connection == ConnectionState.CONNECTED) {
-                            Text(
-                                "Поддерживается ${state.caps.confirmedCount} из ${state.caps.totalCount} функций",
-                                style = MaterialTheme.typography.bodySmall,
-                            )
-                        }
-                    }
-                },
-                actions = {
-                    if (state.connection == ConnectionState.CONNECTED) {
-                        IconButton(onClick = vm::refresh) {
-                            Icon(Icons.Filled.Refresh, contentDescription = "Обновить")
-                        }
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                ),
-            )
-        },
-        bottomBar = {
-            if (!wide && state.connection == ConnectionState.CONNECTED) {
-                NavigationBar {
-                    Tab.entries.forEach { t ->
-                        NavigationBarItem(
-                            selected = tab == t,
-                            onClick = { tab = t },
-                            icon = { Icon(t.icon, contentDescription = t.label) },
-                            label = { Text(t.label) },
-                        )
-                    }
-                }
-            }
-        },
-        snackbarHost = { SnackbarHost(snackbar) },
-    ) { padding ->
-        Row(Modifier.padding(padding).fillMaxSize()) {
-            if (wide && state.connection == ConnectionState.CONNECTED) {
-                NavigationRail {
-                    Tab.entries.forEach { t ->
-                        NavigationRailItem(
-                            selected = tab == t,
-                            onClick = { tab = t },
-                            icon = { Icon(t.icon, contentDescription = t.label) },
-                            label = { Text(t.label) },
-                        )
-                    }
-                }
-            }
-
-            when (state.connection) {
-                ConnectionState.DISCONNECTED, ConnectionState.ERROR ->
-                    DeviceListScreen(
-                        vm = vm,
-                        permissionsGranted = permissionsGranted,
-                        onRequestPermissions = onRequestPermissions,
-                        error = state.error,
-                    )
-
-                ConnectionState.CONNECTING, ConnectionState.PROBING ->
-                    ConnectingScreen(
-                        probing = state.connection == ConnectionState.PROBING,
-                        onCancel = vm::disconnect,
-                    )
-
-                ConnectionState.CONNECTED -> Column(
-                    Modifier
-                        .fillMaxSize()
-                        .verticalScroll(rememberScrollState())
-                        .padding(horizontal = 16.dp),
-                ) {
-                    when (tab) {
-                        Tab.STATUS -> StatusScreen(state, vm)
-                        Tab.GESTURES -> GesturesScreen(state, vm)
-                        Tab.SETTINGS -> SettingsScreen(state, vm)
-                        Tab.ABOUT -> AboutScreen(state, vm)
-                    }
-                    Spacer(Modifier.height(112.dp))
-                }
+    Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+        HorizontalPager(
+            state = pager,
+            modifier = Modifier.fillMaxSize(),
+            pageSpacing = 0.dp,
+        ) { page ->
+            when (Tab.entries[page]) {
+                Tab.Buds -> BudsTab(vm)
+                Tab.History -> HistoryTab(vm)
+                Tab.Sound -> SoundTab(vm)
+                Tab.Settings -> SettingsTab(vm)
             }
         }
-    }
+
+        FloatingTabBar(
+            current = pager.currentPage,
+            onSelect = { index -> scope.launch { pager.animateScrollToPage(index) } },
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 18.dp + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()),
+        )
     }
 }
 
 @Composable
-private fun ConnectingScreen(probing: Boolean, onCancel: () -> Unit) {
-    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            CircularProgressIndicator()
-            Text(
-                if (probing) "Спрашиваю наушники, что они умеют" else "Подключаюсь",
-                style = MaterialTheme.typography.titleMedium,
+private fun FloatingTabBar(current: Int, onSelect: (Int) -> Unit, modifier: Modifier = Modifier) {
+    val scheme = MaterialTheme.colorScheme
+    Row(
+        modifier
+            .clip(CircleShape)
+            .background(scheme.surfaceContainer)
+            .padding(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Tab.entries.forEachIndexed { index, tab ->
+            val selected = index == current
+            val bg by animateColorAsState(
+                if (selected) scheme.primary else scheme.surfaceContainer,
+                Motion.effects(), label = "tabBg",
             )
-            Text(
-                if (probing) "Проверяю каждую функцию по очереди — это пара секунд"
-                else "Открываю канал управления",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.padding(horizontal = 48.dp),
+            val tint by animateColorAsState(
+                if (selected) scheme.onPrimary else scheme.onSurfaceVariant,
+                Motion.effects(), label = "tabTint",
             )
-            Button(onClick = onCancel) { Text("Отмена") }
+            val corner by animateDpAsState(if (selected) 17.dp else 28.dp, Motion.spatialFast(), label = "tabCorner")
+            Box(
+                Modifier
+                    .size(56.dp)
+                    .clip(RoundedCornerShape(corner))
+                    .background(bg)
+                    .pressBounce(scaleDown = 0.9f) { onSelect(index) },
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(tab.icon, contentDescription = tab.label, tint = tint, modifier = Modifier.size(24.dp))
+            }
         }
     }
 }
+
+/** Общий контейнер вкладки: контент уезжает под плавающий таб-бар. */
+@Composable
+fun TabScaffold(content: @Composable () -> Unit) {
+    Box(Modifier.fillMaxSize()) {
+        content()
+    }
+}
+
+@Composable
+fun BottomSpacer() = Spacer(Modifier.height(120.dp))

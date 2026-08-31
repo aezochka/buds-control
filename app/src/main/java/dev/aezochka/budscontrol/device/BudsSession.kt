@@ -15,6 +15,7 @@ import dev.aezochka.budscontrol.proto.TouchType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -55,6 +56,9 @@ class BudsSession(private val context: Context) {
 
     @SuppressLint("MissingPermission")
     fun connect(address: String, name: String) {
+        val s = _state.value
+        // Защита от вечного реконнекта: если уже работаем с этим адресом — выходим.
+        if (s.address == address && (s.connected || s.connecting)) return
         disconnect()
         _state.value = LiveState(connecting = true, deviceName = name, address = address)
         scope.launch {
@@ -68,6 +72,7 @@ class BudsSession(private val context: Context) {
             val c = SppConnection(device, scope)
             conn = c
             observe(c)
+            observeClose(c)
             c.connect().onFailure { e ->
                 _state.update {
                     it.copy(
@@ -83,6 +88,16 @@ class BudsSession(private val context: Context) {
             _state.update { it.copy(connecting = false, connected = true) }
             c.send(OppoProtocol.subscribe(setOf(SubType.BATTERY, SubType.STATUS, SubType.ANC_SELECTOR, SubType.GAME_MODE)))
             probe(c)
+            // Часть моделей игнорирует первый запрос — повторяем, как в Gadgetbridge.
+            repeat(3) { attempt ->
+                delay(1400L * (attempt + 1))
+                val st = _state.value
+                if (!st.connected) return@repeat
+                if (st.batteryLeft == null && st.batteryRight == null) c.send(OppoProtocol.batteryReq())
+                if (st.firmware == null) c.send(OppoProtocol.firmwareReq())
+                if (st.touch.isEmpty()) c.send(OppoProtocol.touchConfigReq())
+                if (st.inEarLeft == null) c.send(OppoProtocol.statusReq())
+            }
         }
     }
 
@@ -95,6 +110,14 @@ class BudsSession(private val context: Context) {
         c.send(OppoProtocol.touchConfigReq())
         c.send(OppoProtocol.ancConfigReq())
         _state.update { it.copy(supported = supported, probed = true) }
+    }
+
+    private fun observeClose(c: SppConnection) = scope.launch {
+        c.closed.collect {
+            _state.update {
+                if (it.connected) it.copy(connected = false, error = "Соединение разорвано") else it
+            }
+        }
     }
 
     private fun observe(c: SppConnection) = scope.launch {

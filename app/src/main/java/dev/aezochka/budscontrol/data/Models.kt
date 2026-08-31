@@ -52,9 +52,26 @@ data class UserSettings(
     val language: String = "system",
     val historyEnabled: Boolean = false,
     val pauseOnRemoval: Boolean = false,
-    val tileOrder: List<String> = listOf("eq", "game", "case", "find", "latency", "remaining", "sleep", "limit", "autopause", "custom_eq"),
+    val accent: String = "lime",
+    val tileOrder: List<String> = defaultTileOrder,
     val tileSpans: Map<String, Int> = emptyMap(),
+    val hiddenTiles: Set<String> = emptySet(),
 )
+
+val defaultTileOrder = listOf("eq", "game", "case", "find", "firmware", "inear", "sleep", "volume", "spatial", "multipoint")
+
+/** Акценты темы — выбираются пользователем, сохраняются локально. */
+enum class Accent(val key: String, val title: String, val seed: Long) {
+    Lime("lime", "Лаймовый", 0xFFB8E86B),
+    Rose("rose", "Розовый", 0xFFFFB0C8),
+    Amber("amber", "Янтарный", 0xFFF2BE8C),
+    Ice("ice", "Ледяной", 0xFF9CD8FF),
+    Violet("violet", "Фиолетовый", 0xFFD0BCFF);
+
+    companion object {
+        fun from(key: String): Accent = entries.firstOrNull { it.key == key } ?: Lime
+    }
+}
 
 data class RealHistorySummary(
     val distanceMeters: Double = 0.0,

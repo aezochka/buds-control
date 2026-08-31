@@ -1,60 +1,22 @@
 package dev.aezochka.budscontrol.ui.theme
 
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
-
-// Палитра ровно как в согласованном макете: лаймовый акцент на почти чёрном.
-val Lime = Color(0xFFB8E86B)
-val OnLime = Color(0xFF1F3000)
-val LimeContainer = Color(0xFF395200)
-val OnLimeContainer = Color(0xFFD3FF87)
-val Rose = Color(0xFFFFB0C8)
-val OnRose = Color(0xFF5C1133)
-val Surface = Color(0xFF0C0C0B)
-val OnSurface = Color(0xFFEAEAE5)
-val ScLow = Color(0xFF151614)
-val Sc = Color(0xFF1B1C19)
-val ScHigh = Color(0xFF242520)
-val ScHighest = Color(0xFF30312B)
-val OnSurfaceVariant = Color(0xFFC8C9C0)
-val Outline = Color(0xFF93948A)
-val OutlineVariant = Color(0xFF474840)
-
-private val Dark = darkColorScheme(
-    primary = Lime, onPrimary = OnLime,
-    primaryContainer = LimeContainer, onPrimaryContainer = OnLimeContainer,
-    secondary = Rose, onSecondary = OnRose,
-    secondaryContainer = Color(0xFF57404A), onSecondaryContainer = Color(0xFFFFD9E3),
-    tertiary = Color(0xFFF2BE8C), onTertiary = Color(0xFF4A2800),
-    background = Surface, onBackground = OnSurface,
-    surface = Surface, onSurface = OnSurface,
-    surfaceVariant = ScHighest, onSurfaceVariant = OnSurfaceVariant,
-    surfaceContainerLowest = Color(0xFF080807),
-    surfaceContainerLow = ScLow,
-    surfaceContainer = Sc,
-    surfaceContainerHigh = ScHigh,
-    surfaceContainerHighest = ScHighest,
-    outline = Outline, outlineVariant = OutlineVariant,
-)
-
-// Светлая нужна только чтобы система не подсунула дефолт; приложение тёмное.
-private val Light = lightColorScheme(primary = Color(0xFF4C6600), onPrimary = Color.White)
+import dev.aezochka.budscontrol.data.Accent
 
 private fun w(size: Int, line: Int, weight: FontWeight, tracking: Double = 0.0) = TextStyle(
     fontFamily = FontFamily.Default, fontWeight = weight,
     fontSize = size.sp, lineHeight = line.sp, letterSpacing = tracking.sp,
 )
 
-// Expressive-шкала: акцент на весе, а не только на кегле.
 val BudsType = Typography(
     displayLarge = w(46, 50, FontWeight.Bold, -0.7),
     displayMedium = w(40, 44, FontWeight.Bold, -0.6),
@@ -71,7 +33,47 @@ val BudsType = Typography(
     labelSmall = w(11, 15, FontWeight.Bold, 1.1),
 )
 
+/**
+ * Тёмная схема с выбираемым акцентом. onPrimary считается из яркости акцента,
+ * поэтому подписи на активных плитках читаются при любом цвете.
+ */
+private fun schemeFor(accent: Accent) = run {
+    val primary = Color(accent.seed)
+    val onPrimary = if (primary.luminance() > 0.45f) Color(0xFF16210A) else Color(0xFFFFFFFF)
+    darkColorScheme(
+        primary = primary,
+        onPrimary = onPrimary,
+        primaryContainer = primary.copy(alpha = 0.28f).compositeOverDark(),
+        onPrimaryContainer = primary,
+        secondary = Color(0xFFFFB0C8), onSecondary = Color(0xFF5C1133),
+        tertiary = Color(0xFFF2BE8C), onTertiary = Color(0xFF4A2800),
+        background = Color(0xFF0C0C0B), onBackground = Color(0xFFEAEAE5),
+        surface = Color(0xFF0C0C0B), onSurface = Color(0xFFEAEAE5),
+        surfaceVariant = Color(0xFF30312B), onSurfaceVariant = Color(0xFFC8C9C0),
+        surfaceContainerLowest = Color(0xFF080807),
+        surfaceContainerLow = Color(0xFF151614),
+        surfaceContainer = Color(0xFF1B1C19),
+        surfaceContainerHigh = Color(0xFF242520),
+        surfaceContainerHighest = Color(0xFF30312B),
+        outline = Color(0xFF93948A), outlineVariant = Color(0xFF474840),
+        error = Color(0xFFFFB4AB), onError = Color(0xFF690005),
+    )
+}
+
+private fun Color.compositeOverDark(): Color {
+    val bg = Color(0xFF0C0C0B)
+    return Color(
+        red = red * alpha + bg.red * (1 - alpha),
+        green = green * alpha + bg.green * (1 - alpha),
+        blue = blue * alpha + bg.blue * (1 - alpha),
+    )
+}
+
 @Composable
-fun BudsControlTheme(dark: Boolean = isSystemInDarkTheme(), content: @Composable () -> Unit) {
-    MaterialTheme(colorScheme = if (dark) Dark else Dark, typography = BudsType, content = content)
+fun BudsControlTheme(accentKey: String = "lime", content: @Composable () -> Unit) {
+    MaterialTheme(
+        colorScheme = schemeFor(Accent.from(accentKey)),
+        typography = BudsType,
+        content = content,
+    )
 }

@@ -38,6 +38,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -187,6 +190,24 @@ fun SettingsTab(vm: BudsViewModel) {
     val settings by vm.settings.collectAsState()
     val profiles by vm.profiles.collectAsState()
     val live by vm.live.collectAsState()
+    var showTiles by remember { mutableStateOf(false) }
+    var showTheme by remember { mutableStateOf(false) }
+
+    if (showTiles) {
+        CustomizeTilesSheet(
+            settings = settings,
+            onMove = vm::moveTile,
+            onToggle = vm::toggleTile,
+            onDismiss = { showTiles = false },
+        )
+    }
+    if (showTheme) {
+        ThemeSheet(
+            current = settings.accent,
+            onPick = { vm.setAccent(it) },
+            onDismiss = { showTheme = false },
+        )
+    }
 
     LazyColumn(Modifier.fillMaxSize()) {
         item {
@@ -208,17 +229,33 @@ fun SettingsTab(vm: BudsViewModel) {
                     checked = settings.historyEnabled,
                     onToggle = { vm.setHistoryEnabled(it) },
                 )
-                SettingsRow(Icons.Outlined.DashboardCustomize, "Настроить плитки", "Порядок и размер на главной")
+                SettingsRow(
+                    Icons.Outlined.DashboardCustomize, "Настроить плитки",
+                    "Порядок и что показывать",
+                    onClick = { showTiles = true },
+                )
                 SettingsRow(
                     Icons.Outlined.Terminal, "Результат опроса",
                     if (live.supported.isEmpty()) "Гарнитура не отвечала" else "Подтверждено: ${live.supported.size}",
                 )
-                SettingsRow(Icons.Outlined.Palette, "Тема", "Тёмная, лаймовый акцент")
+                SettingsRow(
+                    Icons.Outlined.Palette, "Тема",
+                    "Акцент: ${dev.aezochka.budscontrol.data.Accent.from(settings.accent).title}",
+                    onClick = { showTheme = true },
+                )
+                SettingsToggle(
+                    icon = Icons.Outlined.TouchApp,
+                    title = "Пауза при снятии",
+                    subtitle = "Останавливать музыку, когда снял наушник",
+                    checked = settings.pauseOnRemoval,
+                    onToggle = { vm.setPauseOnRemoval(it) },
+                )
                 profiles.forEach { profile ->
                     SettingsRow(
                         Icons.Outlined.DashboardCustomize,
                         profile.displayName,
-                        "${profile.vendor} · ${profile.address}",
+                        "${profile.vendor} · ${profile.address}" + if (profile.isSelected) " · активный" else "",
+                        onClick = { vm.selectProfile(profile.id) },
                     )
                 }
             }
@@ -228,14 +265,15 @@ fun SettingsTab(vm: BudsViewModel) {
 }
 
 @Composable
-private fun SettingsRow(icon: ImageVector, title: String, subtitle: String) {
+private fun SettingsRow(icon: ImageVector, title: String, subtitle: String, onClick: (() -> Unit)? = null) {
     val scheme = MaterialTheme.colorScheme
+    var base = Modifier
+        .fillMaxWidth()
+        .clip(RoundedCornerShape(24.dp))
+        .background(scheme.surfaceContainer)
+    if (onClick != null) base = base.pressBounce(onClick = onClick)
     Row(
-        Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(24.dp))
-            .background(scheme.surfaceContainer)
-            .padding(17.dp),
+        base.padding(17.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(15.dp),
     ) {

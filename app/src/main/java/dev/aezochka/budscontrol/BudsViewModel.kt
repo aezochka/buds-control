@@ -112,6 +112,33 @@ class BudsViewModel(app: Application) : AndroidViewModel(app) {
         store.saveSettings(settings.value.copy(tileSpans = settings.value.tileSpans + (key to span)))
     }
 
+    fun setAccent(key: String) = viewModelScope.launch {
+        store.saveSettings(settings.value.copy(accent = key))
+    }
+
+    fun toggleTile(key: String) = viewModelScope.launch {
+        val hidden = settings.value.hiddenTiles
+        store.saveSettings(
+            settings.value.copy(hiddenTiles = if (key in hidden) hidden - key else hidden + key)
+        )
+    }
+
+    /** Перемещение плитки в списке — сохраняется сразу. */
+    fun moveTile(key: String, delta: Int) = viewModelScope.launch {
+        val order = settings.value.tileOrder.toMutableList()
+        val index = order.indexOf(key)
+        if (index < 0) return@launch
+        val target = (index + delta).coerceIn(0, order.lastIndex)
+        if (target == index) return@launch
+        order.removeAt(index)
+        order.add(target, key)
+        store.saveSettings(settings.value.copy(tileOrder = order))
+    }
+
+    fun setPauseOnRemoval(on: Boolean) = viewModelScope.launch {
+        store.saveSettings(settings.value.copy(pauseOnRemoval = on))
+    }
+
     fun refresh() = session.refresh()
     fun setGameMode(on: Boolean) = session.setGameMode(on)
     fun findDevice(start: Boolean) = session.findDevice(start)

@@ -73,7 +73,9 @@ fun BudsTab(vm: BudsViewModel) {
     val profiles by vm.profiles.collectAsState()
     val selected = profiles.firstOrNull { it.isSelected }
 
-    LaunchedEffect(selected?.address) { if (selected != null && !live.connected) vm.connectSelected() }
+    // Ключ только по адресу: раньше эффект перезапускался на каждое изменение
+    // live.connected и уходил в бесконечный цикл подключений.
+    LaunchedEffect(selected?.address) { if (selected != null) vm.connectSelected() }
 
     LazyColumn(Modifier.fillMaxWidth()) {
         item {
@@ -231,16 +233,29 @@ private fun BatteryChip(percent: Int, side: String, modifier: Modifier = Modifie
 @Composable
 private fun BentoGrid(vm: BudsViewModel) {
     val live by vm.live.collectAsState()
+    val settings by vm.settings.collectAsState()
+    val hidden = settings.hiddenTiles
     val scheme = MaterialTheme.colorScheme
     Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(11.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(11.dp)) {
-            BentoTile(Modifier.weight(1f), active = true, minHeight = 150.dp) { primary, secondary ->
-                EqualizerBars(active = true, color = primary)
-                Spacer(Modifier.height(6.dp))
-                TileLabel("Эквалайзер", secondary)
-                Text("Бас", style = MaterialTheme.typography.titleMedium, color = primary)
+            if ("eq" !in hidden) {
+                var eqIndex by remember { mutableStateOf(0) }
+                val eqNames = listOf("Бас", "Ровный", "Верх")
+                BentoTile(
+                    Modifier.weight(1f), active = true, minHeight = 150.dp,
+                    onClick = { eqIndex = (eqIndex + 1) % eqNames.size },
+                ) { primary, secondary ->
+                    EqualizerBars(active = true, color = primary)
+                    Spacer(Modifier.height(6.dp))
+                    TileLabel("Эквалайзер", secondary)
+                    AnimatedContent(
+                        eqNames[eqIndex],
+                        transitionSpec = { fadeIn(Motion.effects()) togetherWith fadeOut(Motion.effects()) },
+                        label = "eqName",
+                    ) { name -> Text(name, style = MaterialTheme.typography.titleMedium, color = primary) }
+                }
             }
-            BentoTile(
+            if ("game" !in hidden) BentoTile(
                 Modifier.weight(1f),
                 active = live.gameMode,
                 minHeight = 150.dp,
@@ -254,7 +269,7 @@ private fun BentoGrid(vm: BudsViewModel) {
         }
 
         Row(horizontalArrangement = Arrangement.spacedBy(11.dp)) {
-            BentoTile(Modifier.weight(3f)) { primary, secondary ->
+            if ("case" !in hidden) BentoTile(Modifier.weight(3f)) { primary, secondary ->
                 Icon(Icons.Outlined.Inventory2, null, tint = secondary, modifier = Modifier.size(24.dp))
                 TileLabel("Кейс", secondary)
                 Row(verticalAlignment = Alignment.Bottom) {
@@ -267,7 +282,7 @@ private fun BentoGrid(vm: BudsViewModel) {
                 Spacer(Modifier.height(4.dp))
                 SmoothBar((live.batteryCase ?: 0) / 100f, scheme.surfaceContainerHighest, scheme.primary)
             }
-            BentoTile(Modifier.weight(1f), onClick = { vm.findDevice(true) }) { primary, _ ->
+            if ("find" !in hidden) BentoTile(Modifier.weight(1f), onClick = { vm.findDevice(true) }) { primary, _ ->
                 Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                     Icon(Icons.Outlined.NotificationsActive, "Найти", tint = primary, modifier = Modifier.size(27.dp))
                 }
@@ -275,12 +290,12 @@ private fun BentoGrid(vm: BudsViewModel) {
         }
 
         Row(horizontalArrangement = Arrangement.spacedBy(11.dp)) {
-            BentoTile(Modifier.weight(1f)) { primary, secondary ->
+            if ("firmware" !in hidden) BentoTile(Modifier.weight(1f)) { primary, secondary ->
                 Icon(Icons.Outlined.BluetoothConnected, null, tint = secondary, modifier = Modifier.size(23.dp))
                 TileLabel("Прошивка", secondary)
                 Text(live.firmware ?: "—", style = MaterialTheme.typography.titleMedium, color = primary)
             }
-            BentoTile(Modifier.weight(1f)) { primary, secondary ->
+            if ("inear" !in hidden) BentoTile(Modifier.weight(1f)) { primary, secondary ->
                 Icon(Icons.Outlined.Hearing, null, tint = secondary, modifier = Modifier.size(23.dp))
                 TileLabel("В ухе", secondary)
                 Text(
@@ -297,16 +312,16 @@ private fun BentoGrid(vm: BudsViewModel) {
         }
 
         Row(horizontalArrangement = Arrangement.spacedBy(11.dp)) {
-            SquareToggle(Icons.Outlined.Bedtime, "Таймер сна", Modifier.weight(1f))
-            SquareToggle(Icons.Outlined.VolumeUp, "Лимит громкости", Modifier.weight(1f))
-            SquareToggle(Icons.Outlined.SpatialAudio, "Пространственный", Modifier.weight(1f))
-            SquareToggle(Icons.Outlined.Devices, "Два устройства", Modifier.weight(1f))
+            if ("sleep" !in hidden) SquareToggle(Icons.Outlined.Bedtime, Modifier.weight(1f))
+            if ("volume" !in hidden) SquareToggle(Icons.Outlined.VolumeUp, Modifier.weight(1f))
+            if ("spatial" !in hidden) SquareToggle(Icons.Outlined.SpatialAudio, Modifier.weight(1f))
+            if ("multipoint" !in hidden) SquareToggle(Icons.Outlined.Devices, Modifier.weight(1f))
         }
     }
 }
 
 @Composable
-private fun SquareToggle(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, modifier: Modifier = Modifier) {
+private fun SquareToggle(icon: androidx.compose.ui.graphics.vector.ImageVector, modifier: Modifier = Modifier) {
     var active by remember { mutableStateOf(false) }
     BentoTile(modifier, active = active, minHeight = 96.dp, onClick = { active = !active }) { primary, _ ->
         Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {

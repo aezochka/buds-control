@@ -28,10 +28,15 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
@@ -56,9 +61,34 @@ fun BentoTile(
         targetValue = if (active) scheme.primary else scheme.surfaceContainer,
         animationSpec = Motion.effects(), label = "tileBg",
     )
-    val corner by animateDpAsState(if (active) 34.dp else 28.dp, Motion.spatial(), label = "tileCorner")
+    val corner by animateDpAsState(if (active) 36.dp else 28.dp, Motion.spatial(), label = "tileCorner")
+
+    // Появление плитки: короткий пружинный «влёт», а не резкая отрисовка.
+    var appeared by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { appeared = true }
+    val enter by animateFloatAsState(
+        targetValue = if (appeared) 1f else 0.86f,
+        animationSpec = Motion.spatial(), label = "tileEnter",
+    )
+    val alpha by animateFloatAsState(
+        targetValue = if (appeared) 1f else 0f,
+        animationSpec = Motion.effects(), label = "tileAlpha",
+    )
+
+    // Активная плитка мягко «дышит» — заметно, но не раздражает.
+    val breathe = rememberInfiniteTransition(label = "breathe")
+    val pulse by breathe.animateFloat(
+        initialValue = 1f, targetValue = if (active) 1.012f else 1f,
+        animationSpec = infiniteRepeatable(tween(1800, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+        label = "tilePulse",
+    )
 
     var base = modifier
+        .graphicsLayer {
+            scaleX = enter * pulse
+            scaleY = enter * pulse
+            this.alpha = alpha
+        }
         .defaultMinSize(minHeight = minHeight)
         .clip(RoundedCornerShape(corner))
         .background(container)

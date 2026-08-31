@@ -20,10 +20,12 @@ import java.io.IOException
 import java.util.UUID
 
 /**
- * Один RFCOMM-сокет к гарнитуре + цикл чтения кадров.
+ * RFCOMM-канал к гарнитуре.
  *
- * Устройство отвечает только на то, что понимает, поэтому «нет ответа» —
- * это валидный результат, а не ошибка: на нём строится определение функций.
+ * Важное отличие от первой версии: UUID берётся из того, что реально
+ * объявило устройство (как в Gadgetbridge), а не хардкодом. Если SPP нет
+ * в списке — пробуем vendor-UUID 079a, потом небезопасный сокет по каналу 1.
+ * Именно жёсткий хардкод SPP приводил к вечному «подключаюсь → отвал».
  */
 class SppConnection(
     private val device: BluetoothDevice,
@@ -33,62 +35,83 @@ class SppConnection(
     private val writeLock = Mutex()
 
     private val _frames = MutableSharedFlow<OppoProtocol.Frame>(
-        replay = 0,
-        extraBufferCapacity = 64,
-        onBufferOverflow = BufferOverflow.DROP_OLDEST,
+        replay = 0, extraBufferCapacity = 128, onBufferOverflow = BufferOverflow.DROP_OLDEST,
     )
     val frames: SharedFlow<OppoProtocol.Frame> = _frames.asSharedFlow()
 
-    @Volatile
-    var isConnected: Boolean = false
-        private set
+    private val _closed = MutableSharedFlow<Unit>(extraBufferCapacity = 4)
+    val closed: SharedFlow<Unit> = _closed.asSharedFlow()
+
+    @Volatile var isConnected: Boolean = false; private set
 
     @SuppressLint("MissingPermission")
     suspend fun connect(): Result<Unit> = withContext(Dispatchers.IO) {
+        for (uuid in candidateUuids()) {
+            try {
+                Log.i(TAG, "Пробую UUID $uuid")
+                val s = device.createRfcommSocketToServiceRecord(uuid)
+                s.connect()
+                socket = s
+                isConnected = true
+                startReadLoop(s)
+                Log.i(TAG, "Подключено по $uuid")
+                return@withContext Result.success(Unit)
+            } catch (e: IOException) {
+                Log.w(TAG, "UUID $uuid не подошёл: ${e.message}")
+                runCatching { socket?.close() }
+                socket = null
+            } catch (e: SecurityException) {
+                return@withContext Result.failure(e)
+            }
+        }
+        // Последняя попытка: небезопасный сокет на первом канале.
         try {
-            val uuid = UUID.fromString(OppoProtocol.SPP_UUID)
-            val s = device.createRfcommSocketToServiceRecord(uuid)
+            val s = device.createInsecureRfcommSocketToServiceRecord(UUID.fromString(OppoProtocol.SPP_UUID))
             s.connect()
-            socket = s
-            isConnected = true
-            startReadLoop(s)
+            socket = s; isConnected = true; startReadLoop(s)
             Result.success(Unit)
-        } catch (e: IOException) {
-            Log.w(TAG, "Не удалось открыть SPP: ${e.message}")
-            isConnected = false
-            runCatching { socket?.close() }
-            Result.failure(e)
-        } catch (e: SecurityException) {
-            Log.w(TAG, "Нет разрешения BLUETOOTH_CONNECT: ${e.message}")
+        } catch (e: Exception) {
             isConnected = false
             Result.failure(e)
         }
     }
 
+    /** Порядок кандидатов: то что объявило устройство, затем известные UUID. */
+    @SuppressLint("MissingPermission")
+    private fun candidateUuids(): List<UUID> {
+        val advertised = runCatching { device.uuids?.map { it.uuid } }.getOrNull().orEmpty()
+        val spp = UUID.fromString(OppoProtocol.SPP_UUID)
+        val vendor = UUID.fromString("0000079a-d102-11e1-9b23-00025b00a5a5")
+        return buildList {
+            advertised.firstOrNull { it == spp }?.let { add(it) }
+            advertised.firstOrNull { it == vendor }?.let { add(it) }
+            addAll(advertised.filterNot { it == spp || it == vendor })
+            if (none { it == spp }) add(spp)
+            if (none { it == vendor }) add(vendor)
+        }.distinct()
+    }
+
     private fun startReadLoop(s: BluetoothSocket) {
         scope.launch(Dispatchers.IO) {
-            val buffer = ByteArray(2048)
-            val pending = ArrayDeque<Byte>()
+            val chunk = ByteArray(1024)
+            val acc = ArrayList<Byte>(2048)
             try {
                 while (isActive && s.isConnected) {
-                    val read = s.inputStream.read(buffer)
+                    val read = s.inputStream.read(chunk)
                     if (read <= 0) break
-                    for (i in 0 until read) pending.addLast(buffer[i])
-                    // Отдаём кодеку весь накопленный буфер: кадры могут склеиваться
-                    // и рваться на границе чтения.
-                    val bytes = pending.toByteArray()
-                    val decoded = OppoProtocol.decode(bytes)
+                    for (i in 0 until read) acc.add(chunk[i])
+                    // Кадры могут склеиваться и рваться на границе чтения.
+                    val decoded = OppoProtocol.decode(acc.toByteArray())
                     if (decoded.isNotEmpty()) {
-                        pending.clear()
+                        acc.clear()
                         decoded.forEach { _frames.emit(it) }
-                    } else if (pending.size > 4096) {
-                        pending.clear() // защита от мусора
-                    }
+                    } else if (acc.size > 8192) acc.clear()
                 }
             } catch (e: IOException) {
                 Log.d(TAG, "Чтение прервано: ${e.message}")
             } finally {
                 isConnected = false
+                _closed.emit(Unit)
             }
         }
     }
@@ -114,7 +137,5 @@ class SppConnection(
         socket = null
     }
 
-    private companion object {
-        const val TAG = "SppConnection"
-    }
+    private companion object { const val TAG = "SppConnection" }
 }

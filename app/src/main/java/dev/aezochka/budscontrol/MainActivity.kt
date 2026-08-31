@@ -34,9 +34,9 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            BudsControlTheme {
-                val vm: BudsViewModel = viewModel(factory = BudsViewModel.Factory)
-                val settings by vm.settings.collectAsState()
+            val vm: BudsViewModel = viewModel(factory = BudsViewModel.Factory)
+            val settings by vm.settings.collectAsState()
+            BudsControlTheme(accentKey = settings.accent) {
 
                 AnimatedContent(
                     targetState = settings.onboardingFinished,

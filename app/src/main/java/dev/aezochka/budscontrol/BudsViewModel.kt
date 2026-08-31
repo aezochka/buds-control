@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 class BudsViewModel(app: Application) : AndroidViewModel(app) {
@@ -49,6 +50,8 @@ class BudsViewModel(app: Application) : AndroidViewModel(app) {
         _scanning.value = true
         _found.value = scanner.bonded()
         viewModelScope.launch {
+            // Discovery itself can run until the platform stops it. UI never blocks on it.
+            launch { delay(12_000); _scanning.value = false }
             runCatching {
                 scanner.discover().collect { device ->
                     _found.update { list ->
@@ -80,7 +83,10 @@ class BudsViewModel(app: Application) : AndroidViewModel(app) {
             lastSeenMillis = System.currentTimeMillis(),
             isSelected = existing.isEmpty(),
         )
-        store.saveProfiles(existing + profile)
+        val newList = (existing + profile).map { it.copy(isSelected = it.id == profile.id) }
+        store.saveProfiles(newList)
+        // User explicitly tapped this device: connect once, not in a loop.
+        session.connect(profile.address, profile.displayName)
     }
 
     fun selectProfile(id: String) = viewModelScope.launch {

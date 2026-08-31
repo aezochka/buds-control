@@ -124,7 +124,11 @@ fun OnboardingScreen(
                 PillButton("Назад", filled = false, modifier = Modifier.weight(1f)) { step-- }
             }
             PillButton(
-                text = if (step == 2) "Поехали" else "Далее",
+                text = when (step) {
+                    0 -> "Далее"
+                    1 -> "Далее без ожидания"
+                    else -> "Поехали"
+                },
                 filled = true,
                 modifier = Modifier.weight(1f),
             ) {
@@ -283,20 +287,19 @@ private fun DeviceRow(device: BluetoothScanner.Found, added: Boolean, onAdd: () 
             )
             Text(
                 buildString {
-                    append(device.address)
-                    if (device.bonded) append(" · сопряжено")
-                    device.rssi?.let { append(" · $it dBm") }
+                    if (device.bonded) append("Уже сопряжены с телефоном")
+                    else append("Найдено рядом")
+                    device.rssi?.let { append(" · сигнал ${if (it > -60) "сильный" else "средний"}") }
                 },
                 style = MaterialTheme.typography.bodySmall,
                 color = if (added) scheme.onPrimary.copy(alpha = 0.8f) else scheme.onSurfaceVariant,
                 maxLines = 1, overflow = TextOverflow.Ellipsis,
             )
         }
-        Icon(
-            if (added) Icons.Filled.CheckCircle else Icons.Outlined.Circle,
-            null,
-            tint = if (added) scheme.onPrimary else scheme.outline,
-            modifier = Modifier.size(22.dp),
+        Text(
+            if (added) "Добавлен" else "Добавить",
+            style = MaterialTheme.typography.labelMedium,
+            color = if (added) scheme.onPrimary else scheme.primary,
         )
     }
 }

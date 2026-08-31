@@ -273,7 +273,7 @@ private fun BentoGrid(vm: BudsViewModel) {
                 Icon(Icons.Outlined.Inventory2, null, tint = secondary, modifier = Modifier.size(24.dp))
                 TileLabel("Кейс", secondary)
                 Row(verticalAlignment = Alignment.Bottom) {
-                    TileValue(live.batteryCase?.let { "$it" } ?: "—", "%", primary, secondary)
+                    TileValue(live.batteryCase?.let { "$it" } ?: "…", if (live.batteryCase != null) "%" else null, primary, secondary)
                     if (live.chargingCase) {
                         Spacer(Modifier.width(6.dp))
                         Icon(Icons.Filled.Bolt, null, tint = scheme.tertiary, modifier = Modifier.size(17.dp))
@@ -303,8 +303,8 @@ private fun BentoGrid(vm: BudsViewModel) {
                         live.inEarLeft == true && live.inEarRight == true -> "Оба"
                         live.inEarLeft == true -> "Левый"
                         live.inEarRight == true -> "Правый"
-                        live.connected -> "Сняты"
-                        else -> "—"
+                        live.inEarLeft == false && live.inEarRight == false -> "Сняты"
+                        else -> "Нет данных"
                     },
                     style = MaterialTheme.typography.titleMedium, color = primary,
                 )

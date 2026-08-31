@@ -1,0 +1,216 @@
+<!doctype html><html lang="ru"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0..1,0&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+<title>Hero immersive</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0E0B0C; --surf:#191315; --surf2:#221A1D; --surf3:#2C2226;
+  --fg:#F5E9EC; --dim:#C6B2B7; --accent:#FF9EB5; --accent2:#FFD0A8;
+  --ok:#8FE3A8;
+}
+body{font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--fg);
+  -webkit-font-smoothing:antialiased;padding-bottom:96px}
+.material-symbols-rounded{font-family:'Material Symbols Rounded';font-weight:400;font-style:normal;
+  line-height:1;letter-spacing:normal;text-transform:none;display:inline-block;white-space:nowrap;
+  direction:ltr;-webkit-font-feature-settings:'liga';-webkit-font-smoothing:antialiased}
+[hidden]{display:none!important}
+
+/* --- hero --- */
+.hero{position:relative;padding:20px 20px 28px;overflow:hidden}
+.hero::before{content:"";position:absolute;inset:-40% -20% auto;height:420px;
+  background:radial-gradient(60% 60% at 50% 30%, rgba(255,158,181,.28), transparent 70%);
+  filter:blur(6px)}
+.topbar{position:relative;display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.topbar .name{font-size:13px;font-weight:500;letter-spacing:.3px;color:var(--dim)}
+.iconbtn{width:40px;height:40px;border:0;border-radius:999px;background:rgba(255,255,255,.06);
+  color:var(--fg);display:grid;place-items:center;cursor:pointer;transition:background .2s}
+.iconbtn:hover{background:rgba(255,255,255,.12)}
+.iconbtn .material-symbols-rounded{font-size:20px}
+
+.device{position:relative;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 0 18px}
+.device h1{font-size:26px;font-weight:600;letter-spacing:-.4px}
+.device .sub{font-size:13px;color:var(--dim);display:flex;align-items:center;gap:6px}
+.dot{width:6px;height:6px;border-radius:99px;background:var(--ok);box-shadow:0 0 8px var(--ok)}
+
+.buds{position:relative;height:150px;width:100%;display:flex;justify-content:center;
+  align-items:flex-end;gap:26px;margin:6px 0 2px}
+.bud{position:relative;width:78px;display:flex;flex-direction:column;align-items:center;gap:10px}
+.bud .shape{width:56px;height:96px;border-radius:28px 28px 22px 22px;
+  background:linear-gradient(160deg,#6E585F,#33272C 65%);
+  box-shadow:inset 0 2px 0 rgba(255,255,255,.14), 0 18px 30px -18px #000;
+  position:relative}
+.bud .shape::after{content:"";position:absolute;left:50%;top:14px;transform:translateX(-50%);
+  width:22px;height:22px;border-radius:99px;background:#171114;
+  box-shadow:inset 0 1px 3px rgba(0,0,0,.8)}
+.bud .stem{position:absolute;bottom:-2px;left:50%;transform:translateX(-50%);
+  width:16px;height:34px;border-radius:0 0 8px 8px;background:linear-gradient(180deg,#3A2E32,#241C1F)}
+.bud .lvl{font-size:13px;font-weight:600;letter-spacing:.2px}
+.bud .lvl small{color:var(--dim);font-weight:400}
+
+/* battery ring row */
+.rings{display:flex;gap:10px;padding:0 20px;margin-top:-6px}
+.ring{flex:1;background:var(--surf);border-radius:22px;padding:14px 12px;display:flex;
+  flex-direction:column;align-items:center;gap:8px}
+.ring .arc{position:relative;width:60px;height:60px;display:grid;place-items:center}
+.ring svg{position:absolute;inset:0;transform:rotate(-90deg)}
+.ring .num{font-size:16px;font-weight:600}
+.ring .cap{font-size:11px;color:var(--dim);letter-spacing:.4px;text-transform:uppercase}
+.chg{color:var(--accent2);font-size:14px}
+
+/* section */
+.sec{padding:22px 20px 0}
+.sec h2{font-size:12px;font-weight:600;letter-spacing:1.2px;color:var(--dim);
+  text-transform:uppercase;margin-bottom:12px}
+
+/* big action tiles */
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.tile{background:var(--surf);border:0;border-radius:26px;padding:18px 16px;text-align:left;
+  color:var(--fg);cursor:pointer;position:relative;overflow:hidden;
+  transition:transform .18s cubic-bezier(.2,0,0,1),background .2s}
+.tile:hover{background:var(--surf2)}
+.tile:active{transform:scale(.97)}
+.tile .material-symbols-rounded{font-size:26px;color:var(--accent)}
+.tile .t{display:block;margin-top:26px;font-size:15px;font-weight:600}
+.tile .d{display:block;margin-top:3px;font-size:12px;color:var(--dim);line-height:1.35}
+.tile.on .d{color:#F3D3DB}
+.tile.on{background:linear-gradient(150deg,#5A2A3A,#3A1E28);}
+.tile.on .material-symbols-rounded{color:#FFC9D6}
+.tile .pill{position:absolute;top:16px;right:16px;font-size:10px;font-weight:600;letter-spacing:.6px;
+  padding:4px 8px;border-radius:99px;background:rgba(255,255,255,.1);color:var(--fg)}
+.tile.wide{grid-column:1/-1;display:flex;align-items:center;gap:14px}
+.tile.wide .t{margin:0}
+.tile.wide .col{flex:1}
+
+/* unsupported note */
+.note{margin-top:12px;background:rgba(255,255,255,.04);border-radius:22px;padding:16px;
+  display:flex;gap:12px;align-items:flex-start}
+.note .material-symbols-rounded{font-size:20px;color:var(--dim);flex:none}
+.note p{font-size:12.5px;line-height:1.5;color:var(--dim)}
+.note b{color:var(--fg);font-weight:600}
+
+/* caps list */
+.caps{background:var(--surf);border-radius:26px;overflow:hidden}
+.caps.dim{background:rgba(255,255,255,.035)}
+.caps.dim .n{color:var(--dim)}
+.subh{font-size:12px;color:var(--dim);margin:16px 4px 8px;letter-spacing:.3px}
+.cap-row{display:flex;align-items:center;gap:12px;padding:14px 16px;position:relative}
+.cap-row+.cap-row::before{content:'';position:absolute;left:47px;right:0;top:0;height:1px;background:rgba(255,255,255,.06)}
+.cap-row .material-symbols-rounded{font-size:19px;color:var(--dim)}
+.cap-row .n{flex:1;font-size:14px}
+.cap-row .v{font-size:12px;font-weight:600;letter-spacing:.3px}
+.v.yes{color:var(--ok)} .v.no{color:#7E6A70}
+
+/* bottom nav */
+nav{position:fixed;left:0;right:0;bottom:0;display:flex;background:rgba(25,19,21,.92);
+  backdrop-filter:blur(18px);border-top:1px solid rgba(255,255,255,.06);
+  padding:10px 8px calc(14px + env(safe-area-inset-bottom))}
+nav button{flex:1;border:0;background:none;color:var(--dim);display:flex;flex-direction:column;
+  align-items:center;gap:5px;font:inherit;font-size:11px;cursor:pointer;padding:4px 0}
+nav button .ic{width:60px;height:32px;border-radius:99px;display:grid;place-items:center;transition:background .2s}
+nav button .material-symbols-rounded{font-size:22px}
+nav button.sel{color:var(--fg)}
+nav button.sel .ic{background:rgba(255,158,181,.2)}
+nav button.sel .material-symbols-rounded{font-variation-settings:'FILL' 1;color:var(--accent)}
+</style></head><body>
+
+<div class="hero">
+  <div class="topbar">
+    <span class="name">BUDS CONTROL</span>
+    <button class="iconbtn" title="Обновить"><span class="material-symbols-rounded">refresh</span></button>
+  </div>
+  <div class="device">
+    <h1>realme Buds T110</h1>
+    <div class="sub"><span class="dot"></span> подключены</div>
+    <div class="buds">
+      <div class="bud"><div class="shape"><div class="stem"></div></div><div class="lvl">L</div></div>
+      <div class="bud"><div class="shape"><div class="stem"></div></div><div class="lvl">R</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="rings">
+  <div class="ring">
+    <div class="arc">
+      <svg viewBox="0 0 60 60"><circle cx="30" cy="30" r="26" fill="none" stroke="#2C2226" stroke-width="5"/>
+      <circle cx="30" cy="30" r="26" fill="none" stroke="#FF9EB5" stroke-width="5" stroke-linecap="round"
+      stroke-dasharray="163" stroke-dashoffset="29"/></svg>
+      <span class="num">82%</span>
+    </div>
+    <span class="cap">Левый</span>
+  </div>
+  <div class="ring">
+    <div class="arc">
+      <svg viewBox="0 0 60 60"><circle cx="30" cy="30" r="26" fill="none" stroke="#2C2226" stroke-width="5"/>
+      <circle cx="30" cy="30" r="26" fill="none" stroke="#FF9EB5" stroke-width="5" stroke-linecap="round"
+      stroke-dasharray="163" stroke-dashoffset="34"/></svg>
+      <span class="num">79%</span>
+    </div>
+    <span class="cap">Правый</span>
+  </div>
+  <div class="ring">
+    <div class="arc">
+      <svg viewBox="0 0 60 60"><circle cx="30" cy="30" r="26" fill="none" stroke="#2C2226" stroke-width="5"/>
+      <circle cx="30" cy="30" r="26" fill="none" stroke="#FF9EB5" stroke-width="5" stroke-linecap="round"
+      stroke-dasharray="163" stroke-dashoffset="82"/></svg>
+      <span class="num">50%</span>
+    </div>
+    <span class="cap">Кейс <span class="chg material-symbols-rounded" style="font-size:13px">bolt</span></span>
+  </div>
+</div>
+
+<div class="sec">
+  <h2>Управление</h2>
+  <div class="tiles">
+    <button class="tile on">
+      <span class="pill">ВКЛ</span>
+      <span class="material-symbols-rounded">sports_esports</span>
+      <span class="t">Игровой режим</span>
+      <span class="d">Задержка 88 мс</span>
+    </button>
+    <button class="tile">
+      <span class="material-symbols-rounded">notifications_active</span>
+      <span class="t">Найти</span>
+      <span class="d">Наушники запищат</span>
+    </button>
+    <button class="tile wide">
+      <span class="material-symbols-rounded">touch_app</span>
+      <span class="col">
+        <span class="t">Жесты</span>
+        <span class="d">Двойное касание · Тройное · Долгое нажатие</span>
+      </span>
+      <span class="material-symbols-rounded" style="color:var(--dim);font-size:20px">chevron_right</span>
+    </button>
+  </div>
+
+  <div class="note">
+    <span class="material-symbols-rounded">hearing_disabled</span>
+    <p><b>Шумоподавления здесь нет.</b> Гарнитура не ответила на запрос ANC — у T110 только ENC для микрофона в звонках, он работает всегда и не настраивается.</p>
+  </div>
+</div>
+
+<div class="sec">
+  <h2>Подтверждено опросом</h2>
+  <div class="caps">
+    <div class="cap-row"><span class="material-symbols-rounded">battery_full</span><span class="n">Заряд, 3 ячейки</span><span class="v yes">ЕСТЬ</span></div>
+    <div class="cap-row"><span class="material-symbols-rounded">memory</span><span class="n">Прошивка</span><span class="v yes">ЕСТЬ</span></div>
+    <div class="cap-row"><span class="material-symbols-rounded">sports_esports</span><span class="n">Игровой режим</span><span class="v yes">ЕСТЬ</span></div>
+    <div class="cap-row"><span class="material-symbols-rounded">touch_app</span><span class="n">Настройка жестов</span><span class="v yes">ЕСТЬ</span></div>
+    </div>
+  <div class="subh">Недоступно на этой модели</div>
+  <div class="caps dim">
+    <div class="cap-row"><span class="material-symbols-rounded">noise_control_off</span><span class="n">Активное шумоподавление</span><span class="v no">НЕТ</span></div>
+    <div class="cap-row"><span class="material-symbols-rounded">devices</span><span class="n">Два устройства сразу</span><span class="v no">НЕТ</span></div>
+    <div class="cap-row"><span class="material-symbols-rounded">graphic_eq</span><span class="n">LDAC</span><span class="v no">НЕТ</span></div>
+  </div>
+</div>
+
+<nav>
+  <button class="sel"><span class="ic"><span class="material-symbols-rounded">headphones</span></span>Наушники</button>
+  <button><span class="ic"><span class="material-symbols-rounded">touch_app</span></span>Жесты</button>
+  <button><span class="ic"><span class="material-symbols-rounded">tune</span></span>Настройки</button>
+  <button><span class="ic"><span class="material-symbols-rounded">info</span></span>О девайсе</button>
+</nav>
+</body></html>

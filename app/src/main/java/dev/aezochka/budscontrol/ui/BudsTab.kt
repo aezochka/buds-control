@@ -1,6 +1,7 @@
 package dev.aezochka.budscontrol.ui
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -36,6 +37,7 @@ import androidx.compose.material.icons.outlined.Bedtime
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.DashboardCustomize
 import androidx.compose.material.icons.outlined.BluetoothConnected
+import androidx.compose.material.icons.outlined.DashboardCustomize
 import androidx.compose.material.icons.outlined.Devices
 import androidx.compose.material.icons.outlined.Headphones
 import androidx.compose.material.icons.outlined.Hearing
@@ -88,11 +90,21 @@ fun BudsTab(vm: BudsViewModel) {
 
     var showEq by remember { mutableStateOf(false) }
     var showAddDevice by remember { mutableStateOf(false) }
+    var showTiles by remember { mutableStateOf(false) }
     var showSleep by remember { mutableStateOf(false) }
     var showVolume by remember { mutableStateOf(false) }
 
     if (showAddDevice) {
         AddDeviceSheet(vm) { showAddDevice = false }
+    }
+    if (showTiles) {
+        CustomizeTilesSheet(
+            settings = settings,
+            onReorder = vm::setTileOrderList,
+            onSpan = vm::setTileSpan,
+            onToggle = vm::toggleTile,
+            onDismiss = { showTiles = false },
+        )
     }
     if (showEq) {
         EqualizerSheet(
@@ -149,6 +161,7 @@ fun BudsTab(vm: BudsViewModel) {
                     connecting = live.connecting,
                     connected = live.connected,
                     onRefresh = vm::refresh,
+                    onCustomize = { showTiles = true },
                 )
             }
         }
@@ -174,6 +187,7 @@ private fun ProductHero(
     inCaseLeft: Boolean,
     inCaseRight: Boolean,
     foundPhoto: String?,
+    onCustomize: () -> Unit,
     connecting: Boolean,
     connected: Boolean,
     onRefresh: () -> Unit,
@@ -186,13 +200,13 @@ private fun ProductHero(
         label = "floatY",
     )
 
-    // Состояния кейса: оба внутри — фото «спит» и сжимается,
-    // достали один — выезжает вверх и разворачивается.
-    val bothInCase = inCaseLeft && inCaseRight
-    val oneOut = inCaseLeft != inCaseRight
+    // Наушники в кейсе физически отключаются от телефона, поэтому
+    // отсутствие связи == кейс закрыт. Раньше это состояние не учитывалось.
+    val bothInCase = !connected || (inCaseLeft && inCaseRight)
+    val oneOut = connected && (inCaseLeft != inCaseRight)
     val restScale by animateFloatAsState(
         targetValue = when {
-            bothInCase -> 0.84f
+            bothInCase -> 0.8f
             oneOut -> 1.06f
             else -> 1f
         },
@@ -212,6 +226,12 @@ private fun ProductHero(
         targetValue = if (oneOut) -4.5f else 0f,
         animationSpec = Motion.spatial(),
         label = "restTilt",
+    )
+    // Закрытый кейс — приглушённая картинка: видно, что связи нет.
+    val restAlpha by animateFloatAsState(
+        targetValue = if (bothInCase) 0.55f else 1f,
+        animationSpec = Motion.spatial(),
+        label = "restAlpha",
     )
 
     // Пульсирующее свечение, когда кейс на зарядке.
@@ -258,6 +278,7 @@ private fun ProductHero(
                                 scaleX = restScale
                                 scaleY = restScale
                                 rotationZ = restTilt
+                                alpha = restAlpha
                             },
                     )
                 } else {
@@ -271,11 +292,22 @@ private fun ProductHero(
                                 scaleX = restScale
                                 scaleY = restScale
                                 rotationZ = restTilt
+                                alpha = restAlpha
                             },
                     )
                 }
-                BatteryChip(left, "L", inCase = inCaseLeft, modifier = Modifier.align(Alignment.CenterStart))
-                BatteryChip(right, "R", inCase = inCaseRight, modifier = Modifier.align(Alignment.TopEnd))
+                BatteryChip(
+                    percent = if (connected) left else null,
+                    side = "L",
+                    inCase = inCaseLeft || !connected,
+                    modifier = Modifier.align(Alignment.CenterStart),
+                )
+                BatteryChip(
+                    percent = if (connected) right else null,
+                    side = "R",
+                    inCase = inCaseRight || !connected,
+                    modifier = Modifier.align(Alignment.TopEnd),
+                )
             }
 
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(9.dp)) {
@@ -305,10 +337,28 @@ private fun ProductHero(
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     Box(
-                        Modifier.size(38.dp).clip(CircleShape).pressBounce(onClick = onRefresh),
+                        Modifier
+                            .size(38.dp)
+                            .clip(CircleShape)
+                            .background(scheme.surfaceContainer)
+                            .pressBounce(onClick = onRefresh),
                         contentAlignment = Alignment.Center,
                     ) {
                         Icon(Icons.Outlined.Refresh, "Обновить", tint = scheme.onSurfaceVariant, modifier = Modifier.size(19.dp))
+                    }
+                    // Настройка плиток — прямо здесь, чтобы не искать в «Ещё».
+                    Box(
+                        Modifier
+                            .size(38.dp)
+                            .clip(CircleShape)
+                            .background(scheme.surfaceContainer)
+                            .pressBounce(onClick = onCustomize),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            Icons.Outlined.DashboardCustomize, "Настроить плитки",
+                            tint = scheme.onSurfaceVariant, modifier = Modifier.size(19.dp),
+                        )
                     }
                 }
             }
@@ -320,10 +370,19 @@ private fun ProductHero(
 private fun BatteryChip(percent: Int?, side: String, inCase: Boolean, modifier: Modifier = Modifier) {
     val scheme = MaterialTheme.colorScheme
     if (percent == null && !inCase) return
+    // В кейсе — приглушённая «пимба»: сразу видно, что наушник не на связи.
+    val container by animateColorAsState(
+        if (inCase) scheme.surfaceContainerLow else scheme.surfaceContainerHigh,
+        Motion.effects(), label = "chipBg",
+    )
+    val labelColor by animateColorAsState(
+        if (inCase) scheme.outline else scheme.onSurface,
+        Motion.effects(), label = "chipFg",
+    )
     Row(
         modifier
             .clip(CircleShape)
-            .background(scheme.surfaceContainerHigh)
+            .background(container)
             .padding(horizontal = 14.dp, vertical = 9.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -336,10 +395,14 @@ private fun BatteryChip(percent: Int?, side: String, inCase: Boolean, modifier: 
             Text(
                 label,
                 style = if (percent != null) MaterialTheme.typography.titleSmall else MaterialTheme.typography.labelMedium,
-                color = if (percent != null) scheme.onSurface else scheme.onSurfaceVariant,
+                color = labelColor,
             )
         }
-        Text(side, style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant)
+        Text(
+            side,
+            style = MaterialTheme.typography.labelSmall,
+            color = if (inCase) scheme.outlineVariant else scheme.onSurfaceVariant,
+        )
     }
 }
 

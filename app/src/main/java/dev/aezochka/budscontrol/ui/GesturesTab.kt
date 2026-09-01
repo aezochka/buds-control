@@ -196,14 +196,17 @@ private val pickableActions = listOf(
     TouchAction.OFF,
 )
 
-private fun actionLabel(action: TouchAction) = when (action) {
-    TouchAction.OFF -> tr("actNothing")
-    TouchAction.PLAY_PAUSE -> tr("actPlay")
-    TouchAction.VOICE_ASSISTANT, TouchAction.VOICE_ASSISTANT_REALME -> tr("actAssistant")
-    TouchAction.PREVIOUS -> tr("actPrev")
-    TouchAction.NEXT -> tr("actNext")
-    TouchAction.NOISE_CONTROL -> tr("actNoise")
-    TouchAction.VOLUME_UP -> tr("actVolUp")
-    TouchAction.VOLUME_DOWN -> tr("actVolDown")
-    TouchAction.GAME_MODE -> tr("actGame")
+private fun actionLabelKey(action: TouchAction) = when (action) {
+    TouchAction.OFF -> "actNothing"
+    TouchAction.PLAY_PAUSE -> "actPlay"
+    TouchAction.VOICE_ASSISTANT, TouchAction.VOICE_ASSISTANT_REALME -> "actAssistant"
+    TouchAction.PREVIOUS -> "actPrev"
+    TouchAction.NEXT -> "actNext"
+    TouchAction.NOISE_CONTROL -> "actNoise"
+    TouchAction.VOLUME_UP -> "actVolUp"
+    TouchAction.VOLUME_DOWN -> "actVolDown"
+    TouchAction.GAME_MODE -> "actGame"
 }
+
+@Composable
+private fun actionLabel(action: TouchAction) = tr(actionLabelKey(action))

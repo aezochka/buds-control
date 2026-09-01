@@ -35,6 +35,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import dev.aezochka.budscontrol.data.EarbudProfile
+import dev.aezochka.budscontrol.i18n.tr
 import kotlin.math.abs
 import kotlin.math.roundToInt
 

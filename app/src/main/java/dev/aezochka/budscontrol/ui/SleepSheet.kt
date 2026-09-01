@@ -210,6 +210,53 @@ fun VolumeLimitSheet(vm: BudsViewModel, onDismiss: () -> Unit) {
                     if (active) Icon(Icons.Filled.Check, null, tint = scheme.onPrimary, modifier = Modifier.size(20.dp))
                 }
             }
+
+            // Свой процент — того, чего не было.
+            Spacer(Modifier.height(6.dp))
+            var custom by remember(limit) { mutableStateOf(if (limit > 0) limit else 60) }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Свой предел", style = MaterialTheme.typography.titleSmall, color = scheme.onSurfaceVariant)
+                Spacer(Modifier.weight(1f))
+                Text("$custom%", style = MaterialTheme.typography.labelMedium, color = scheme.primary)
+            }
+            Spacer(Modifier.height(8.dp))
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .height(34.dp)
+                    .clip(RoundedCornerShape(17.dp))
+                    .background(scheme.surfaceContainer)
+                    .pointerInput(Unit) {
+                        detectHorizontalDragGestures { change, _ ->
+                            val ratio = (change.position.x / size.width).coerceIn(0f, 1f)
+                            custom = (10 + ratio * 90).roundToInt()
+                        }
+                    },
+                contentAlignment = Alignment.CenterStart,
+            ) {
+                Box(
+                    Modifier
+                        .fillMaxWidth(((custom - 10) / 90f).coerceIn(0.03f, 1f))
+                        .height(34.dp)
+                        .clip(RoundedCornerShape(17.dp))
+                        .background(scheme.primary),
+                )
+            }
+            Spacer(Modifier.height(10.dp))
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(scheme.primary)
+                    .pressBounce { vm.setVolumeLimitPercent(custom) }
+                    .padding(vertical = 15.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    "Ограничить до $custom%",
+                    style = MaterialTheme.typography.labelLarge, color = scheme.onPrimary,
+                )
+            }
             Spacer(Modifier.height(22.dp))
         }
     }

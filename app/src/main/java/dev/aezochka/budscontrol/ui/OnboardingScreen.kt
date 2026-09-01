@@ -269,7 +269,15 @@ private fun DevicesStep(vm: BudsViewModel, onRequestBluetooth: () -> Unit) {
                     "Достань наушники из кейса и включи Bluetooth. Сопряжённые устройства появятся сразу.",
                     style = MaterialTheme.typography.bodyMedium, color = scheme.onSurfaceVariant,
                 )
-                PillButton(LocalStrings.current.searchAgain, filled = false, enabled = true) { vm.startScan() }
+                Spacer(Modifier.height(16.dp))
+                // Кнопка на всю ширину: без modifier она сжималась по тексту
+                // и выглядела кривой относительно остального экрана.
+                PillButton(
+                    LocalStrings.current.searchAgain,
+                    filled = false,
+                    enabled = true,
+                    modifier = Modifier.fillMaxWidth(),
+                ) { vm.startScan() }
             }
         } else {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {

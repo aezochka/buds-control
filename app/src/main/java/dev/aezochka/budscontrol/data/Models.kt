@@ -46,18 +46,19 @@ val defaultTileOrder = listOf("eq", "game", "case", "sleep", "volume", "find", "
 
 /** Акценты темы — выбираются пользователем, сохраняются локально. */
 enum class Accent(val key: String, val title: String, val seed: Long) {
-    Lime("lime", "Лаймовый", 0xFFB8E86B),
-    Rose("rose", "Розовый", 0xFFFFB0C8),
-    Amber("amber", "Янтарный", 0xFFF2BE8C),
-    Ice("ice", "Ледяной", 0xFF9CD8FF),
-    Violet("violet", "Фиолетовый", 0xFFD0BCFF),
-    Mint("mint", "Мятный", 0xFF7BE0C3),
-    Coral("coral", "Коралловый", 0xFFFF9E80),
-    Sky("sky", "Небесный", 0xFF82B1FF),
-    Sand("sand", "Песочный", 0xFFE8D5A3),
-    Magenta("magenta", "Пурпурный", 0xFFF48FB1),
-    Emerald("emerald", "Изумрудный", 0xFF69D98A),
-    Steel("steel", "Стальной", 0xFFB0BEC5);
+    // Насыщенные цвета: пастельные выглядели бледно на тёмном фоне.
+    Lime("lime", "Лаймовый", 0xFFA5E82C),
+    Rose("rose", "Розовый", 0xFFFF4F8B),
+    Amber("amber", "Янтарный", 0xFFFF9F1C),
+    Ice("ice", "Ледяной", 0xFF29C7FF),
+    Violet("violet", "Фиолетовый", 0xFF9D5CFF),
+    Mint("mint", "Мятный", 0xFF00E5B0),
+    Coral("coral", "Коралловый", 0xFFFF5E3A),
+    Sky("sky", "Небесный", 0xFF2F7BFF),
+    Gold("gold", "Золотой", 0xFFFFD400),
+    Magenta("magenta", "Пурпурный", 0xFFFF2FB9),
+    Emerald("emerald", "Изумрудный", 0xFF12D95F),
+    Crimson("crimson", "Багровый", 0xFFFF1F4B);
 
     companion object {
         fun from(key: String): Accent = entries.firstOrNull { it.key == key } ?: Lime

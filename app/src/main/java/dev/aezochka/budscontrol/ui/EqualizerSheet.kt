@@ -7,8 +7,8 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -51,9 +51,9 @@ import kotlin.math.roundToInt
 /**
  * Эквалайзер: вертикальные полосы по частотам, без пресетов.
  *
- * Жесты обрабатываются вручную через awaitPointerEvent, а не
- * detectDragGestures: тот срабатывает только на протяжку и полностью
- * игнорировал одиночный тап — отсюда «ничего не тыкается».
+ * Жесты: awaitEachGesture + consume() на каждом изменении. Иначе шторка
+ * ModalBottomSheet перехватывает вертикальную протяжку себе, и полоса
+ * успевает сдвинуться лишь на пару пикселей.
  */
 @Composable
 fun EqualizerSheet(vm: BudsViewModel, onDismiss: () -> Unit) {
@@ -148,22 +148,25 @@ private fun BandSliders(
                         .height(trackHeight)
                         .clip(RoundedCornerShape(20.dp))
                         .background(scheme.surfaceContainer)
-                        // Тап: ставит уровень на высоте касания.
+                        // Один обработчик на тап и протяжку. consume() обязателен:
+                        // без него ModalBottomSheet забирает вертикальный жест
+                        // себе после пары пикселей — отсюда «чуть тянулось и всё».
                         .pointerInput(index, minDb, maxDb) {
-                            detectTapGestures { position ->
-                                onChange(index, valueAt(position.y, trackPx, minDb, span))
+                            awaitEachGesture {
+                                val down = awaitFirstDown(requireUnconsumed = false)
+                                down.consume()
+                                onChange(index, valueAt(down.position.y, trackPx, minDb, span))
+                                while (true) {
+                                    val event = awaitPointerEvent()
+                                    val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                                    if (!change.pressed) {
+                                        change.consume()
+                                        break
+                                    }
+                                    change.consume()
+                                    onChange(index, valueAt(change.position.y, trackPx, minDb, span))
+                                }
                             }
-                        }
-                        // Протяжка: непрерывное изменение по вертикали.
-                        .pointerInput(index, minDb, maxDb) {
-                            var current = 0f
-                            detectVerticalDragGestures(
-                                onDragStart = { current = it.y },
-                                onVerticalDrag = { _, delta ->
-                                    current = (current + delta).coerceIn(0f, trackPx)
-                                    onChange(index, valueAt(current, trackPx, minDb, span))
-                                },
-                            )
                         },
                     contentAlignment = Alignment.BottomCenter,
                 ) {

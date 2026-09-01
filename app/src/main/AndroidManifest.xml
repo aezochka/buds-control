@@ -53,6 +53,18 @@
                 android:resource="@xml/update_paths" />
         </provider>
 
+        <!-- Система посылает broadcast с настоящим ID аудиосессии плеера.
+             Без него EqService видит лишь session 0, а многие ROM не применяют
+             global Equalizer к Bluetooth-выводу. -->
+        <receiver
+            android:name=".audio.EqSessionReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.media.action.OPEN_AUDIO_EFFECT_CONTROL_SESSION" />
+                <action android:name="android.media.action.CLOSE_AUDIO_EFFECT_CONTROL_SESSION" />
+            </intent-filter>
+        </receiver>
+
         <!-- Держит эквалайзер живым и цепляет его к сессиям плееров -->
         <service
             android:name=".audio.EqService"

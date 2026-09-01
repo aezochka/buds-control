@@ -8,6 +8,8 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.ServiceInfo
+import android.media.AudioManager
+import android.media.AudioPlaybackConfiguration
 import android.media.audiofx.AudioEffect
 import android.media.audiofx.Equalizer
 import android.os.Build
@@ -64,21 +66,63 @@ class EqService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        intent?.getIntArrayExtra(EXTRA_LEVELS)?.let { levelsDb = it.toList() }
+        intent?.getIntArrayExtra(EXTRA_LEVELS)?.let {
+            levelsDb = it.toList()
+            LevelStore.save(this, levelsDb)
+        }
+        if (levelsDb.isEmpty()) levelsDb = LevelStore.load(this)
 
         when (intent?.action) {
             ACTION_STOP -> {
                 stopEverything()
                 return START_NOT_STICKY
             }
+            ACTION_ATTACH_SESSION -> {
+                startForegroundSafely()
+                val session = intent.getIntExtra(EXTRA_SESSION, -1)
+                if (session > 0) {
+                    attach(session)
+                    applyToAll()
+                }
+            }
+            ACTION_DETACH_SESSION -> {
+                val session = intent.getIntExtra(EXTRA_SESSION, -1)
+                equalizers.remove(session)?.let { runCatching { it.release() } }
+                EqLog.log("Сессия $session отключена, осталось ${equalizers.size}")
+            }
             else -> {
                 startForegroundSafely()
                 EqLog.log("Сервис запущен, уровни=$levelsDb, активных сессий=${equalizers.size}")
                 attach(0)
+                attachActivePlayers()
                 applyToAll()
             }
         }
         return START_STICKY
+    }
+
+    /**
+     * Догоняет уже играющие плееры. Broadcast приходит только в момент
+     * открытия сессии, поэтому при запуске сервиса поверх играющей музыки
+     * без этого прохода мы остались бы только на сессии 0.
+     */
+    private fun attachActivePlayers() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+        runCatching {
+            val am = getSystemService(AudioManager::class.java) ?: return
+            val ids = am.activePlaybackConfigurations
+                .mapNotNull { config ->
+                    runCatching {
+                        AudioPlaybackConfiguration::class.java
+                            .getMethod("getSessionId")
+                            .invoke(config) as? Int
+                    }.getOrNull()
+                }
+                .filter { it > 0 }
+                .distinct()
+            EqLog.log("Активные сессии плееров: ${ids.ifEmpty { listOf("нет") }}")
+            ids.forEach { attach(it) }
+        }.onFailure { EqLog.log("Не удалось прочитать активные сессии: ${it.message}") }
     }
 
     private fun startForegroundSafely() {
@@ -162,7 +206,10 @@ class EqService : Service() {
     companion object {
         const val ACTION_APPLY = "dev.aezochka.budscontrol.EQ_APPLY"
         const val ACTION_STOP = "dev.aezochka.budscontrol.EQ_STOP"
+        const val ACTION_ATTACH_SESSION = "dev.aezochka.budscontrol.EQ_ATTACH_SESSION"
+        const val ACTION_DETACH_SESSION = "dev.aezochka.budscontrol.EQ_DETACH_SESSION"
         const val EXTRA_LEVELS = "levels"
+        const val EXTRA_SESSION = "session"
         private const val CHANNEL = "equalizer"
         private const val NOTIFICATION_ID = 77
         private const val PRIORITY = 100
@@ -178,6 +225,23 @@ class EqService : Service() {
 
         fun stop(context: Context) {
             val intent = Intent(context, EqService::class.java).apply { action = ACTION_STOP }
+            runCatching { context.startService(intent) }
+        }
+
+        /** Подключить эффект к конкретной сессии плеера. */
+        fun attachSession(context: Context, session: Int) {
+            val intent = Intent(context, EqService::class.java).apply {
+                action = ACTION_ATTACH_SESSION
+                putExtra(EXTRA_SESSION, session)
+            }
+            runCatching { ContextCompat.startForegroundService(context, intent) }
+        }
+
+        fun detachSession(context: Context, session: Int) {
+            val intent = Intent(context, EqService::class.java).apply {
+                action = ACTION_DETACH_SESSION
+                putExtra(EXTRA_SESSION, session)
+            }
             runCatching { context.startService(intent) }
         }
     }

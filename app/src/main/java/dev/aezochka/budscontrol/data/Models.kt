@@ -2,6 +2,14 @@ package dev.aezochka.budscontrol.data
 
 import kotlinx.serialization.Serializable
 
+/** Последний известный заряд кейса — держим на диске, гарнитура молчит при закрытом кейсе. */
+@Serializable
+data class CaseBatteryMemo(
+    val percent: Int,
+    val charging: Boolean,
+    val atMillis: Long,
+)
+
 @Serializable
 data class EarbudProfile(
     val id: String,
@@ -11,6 +19,7 @@ data class EarbudProfile(
     val imageKey: String? = null,
     val lastSeenMillis: Long = 0L,
     val isSelected: Boolean = false,
+    val caseBattery: CaseBatteryMemo? = null,
 )
 
 @Serializable

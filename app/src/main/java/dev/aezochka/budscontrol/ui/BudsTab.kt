@@ -271,7 +271,10 @@ private fun BentoGrid(vm: BudsViewModel) {
         Row(horizontalArrangement = Arrangement.spacedBy(11.dp)) {
             if ("case" !in hidden) BentoTile(Modifier.weight(3f)) { primary, secondary ->
                 Icon(Icons.Outlined.Inventory2, null, tint = secondary, modifier = Modifier.size(24.dp))
-                TileLabel("Кейс", secondary)
+                TileLabel(
+                    if (live.caseFromMemory) "Кейс · последнее" else "Кейс",
+                    secondary,
+                )
                 Row(verticalAlignment = Alignment.Bottom) {
                     TileValue(live.batteryCase?.let { "$it" } ?: "…", if (live.batteryCase != null) "%" else null, primary, secondary)
                     if (live.chargingCase) {

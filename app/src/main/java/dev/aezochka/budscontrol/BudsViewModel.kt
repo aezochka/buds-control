@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
+import dev.aezochka.budscontrol.data.CaseBatteryMemo
 import dev.aezochka.budscontrol.data.EarbudProfile
 import dev.aezochka.budscontrol.data.LocalStore
 import dev.aezochka.budscontrol.data.UserSettings
@@ -130,7 +131,21 @@ class BudsViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun connectSelected() = viewModelScope.launch {
-        store.profiles.first().firstOrNull { it.isSelected }?.let { session.connect(it.address, it.displayName) }
+        val profile = store.profiles.first().firstOrNull { it.isSelected } ?: return@launch
+        // Сохраняем заряд кейса, когда гарнитура его прислала.
+        session.onCaseReported = { percent, charging ->
+            viewModelScope.launch {
+                val list = store.profiles.first().map {
+                    if (it.id == profile.id) it.copy(
+                        caseBattery = CaseBatteryMemo(percent, charging, System.currentTimeMillis())
+                    ) else it
+                }
+                store.saveProfiles(list)
+            }
+        }
+        session.connect(profile.address, profile.displayName)
+        // Подставляем последнее известное значение: кейс молчит, когда закрыт.
+        profile.caseBattery?.let { session.seedCaseBattery(it.percent, it.charging, it.atMillis) }
     }
 
     fun finishOnboarding(language: String) = viewModelScope.launch {

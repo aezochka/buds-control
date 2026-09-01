@@ -33,6 +33,10 @@ data class LiveState(
     val batteryRight: Int? = null,
     val batteryCase: Int? = null,
     val chargingCase: Boolean = false,
+    /** Когда кейс последний раз реально сообщил заряд. */
+    val caseReportedAt: Long? = null,
+    /** Значение восстановлено из памяти, а не получено сейчас. */
+    val caseFromMemory: Boolean = false,
     val inEarLeft: Boolean? = null,
     val inEarRight: Boolean? = null,
     val gameMode: Boolean = false,
@@ -53,6 +57,17 @@ class BudsSession(private val context: Context) {
 
     private val _state = MutableStateFlow(LiveState())
     val state: StateFlow<LiveState> = _state.asStateFlow()
+
+    /** Колбэк для сохранения заряда кейса на диск. */
+    var onCaseReported: ((Int, Boolean) -> Unit)? = null
+
+    /** Подставляет запомненный заряд кейса, пока гарнитура молчит. */
+    fun seedCaseBattery(percent: Int, charging: Boolean, atMillis: Long) {
+        _state.update {
+            if (it.batteryCase != null) it
+            else it.copy(batteryCase = percent, chargingCase = charging, caseReportedAt = atMillis, caseFromMemory = true)
+        }
+    }
 
     @SuppressLint("MissingPermission")
     fun connect(address: String, name: String) {
@@ -151,6 +166,7 @@ class BudsSession(private val context: Context) {
         var i = 2
         var l = _state.value.batteryLeft; var r = _state.value.batteryRight
         var cs = _state.value.batteryCase; var chg = _state.value.chargingCase
+        var caseFresh = false
         while (i + 1 < p.size) {
             val idx = p[i].toInt() and 0xFF
             if (idx != 0xFF) {
@@ -159,12 +175,19 @@ class BudsSession(private val context: Context) {
                 when (idx - 1) {
                     0 -> { l = level; }
                     1 -> { r = level; }
-                    2 -> { cs = level; chg = charging }
+                    2 -> { cs = level; chg = charging; caseFresh = true }
                 }
             }
             i += 2
         }
-        _state.update { it.copy(batteryLeft = l, batteryRight = r, batteryCase = cs, chargingCase = chg) }
+        _state.update {
+            it.copy(
+                batteryLeft = l, batteryRight = r, batteryCase = cs, chargingCase = chg,
+                caseReportedAt = if (caseFresh) System.currentTimeMillis() else it.caseReportedAt,
+                caseFromMemory = if (caseFresh) false else it.caseFromMemory,
+            )
+        }
+        if (caseFresh && cs != null) onCaseReported?.invoke(cs, chg)
     }
 
     private fun applyFirmware(p: ByteArray) {

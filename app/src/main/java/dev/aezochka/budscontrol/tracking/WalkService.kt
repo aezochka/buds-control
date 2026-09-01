@@ -9,18 +9,22 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
-import android.os.Build
 import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.location.Location
-import android.location.LocationListener
-import android.location.LocationManager
+import android.os.Build
 import android.os.IBinder
 import android.util.Log
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
+import com.google.android.gms.location.FusedLocationProviderClient
+import com.google.android.gms.location.LocationCallback
+import com.google.android.gms.location.LocationRequest
+import com.google.android.gms.location.LocationResult
+import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.Priority
 import dev.aezochka.budscontrol.R
 import dev.aezochka.budscontrol.data.LocalStore
 import dev.aezochka.budscontrol.data.TrackPoint
@@ -33,27 +37,33 @@ import kotlinx.coroutines.launch
 import java.util.UUID
 
 /**
- * Фоновая запись прогулки. Стартует только по включению пользователем.
+ * Запись прогулки на реальных данных.
  *
- * Ключевое отличие от прошлой версии: каждая новая точка сразу пишется
- * в DataStore через upsertSession. Раньше сессия жила в памяти и терялась,
- * если Android убивал сервис — поэтому история всегда была пустой.
+ * Точки берём через FusedLocationProvider: чистый LocationManager на многих
+ * телефонах молчит в фоне (агрессивный энергосейв вендора), из-за чего маршрут
+ * оставался пустым. Fused сам выбирает GPS/сеть и работает при потушенном экране.
  */
-class WalkService : Service(), LocationListener, SensorEventListener {
+class WalkService : Service(), SensorEventListener {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private lateinit var store: LocalStore
-    private lateinit var locationManager: LocationManager
     private lateinit var sensorManager: SensorManager
+    private lateinit var fused: FusedLocationProviderClient
 
     @Volatile private var session: WalkSession? = null
     private var latestSteps: Long? = null
     private var baselineSteps: Long? = null
 
+    private val locationCallback = object : LocationCallback() {
+        override fun onLocationResult(result: LocationResult) {
+            result.locations.forEach { handleLocation(it) }
+        }
+    }
+
     override fun onCreate() {
         super.onCreate()
         store = LocalStore(this)
-        locationManager = getSystemService(Context.LOCATION_SERVICE) as LocationManager
         sensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
+        fused = LocationServices.getFusedLocationProviderClient(this)
         createChannel()
     }
 
@@ -66,10 +76,8 @@ class WalkService : Service(), LocationListener, SensorEventListener {
     }
 
     private fun startTracking() {
-        // Тип сервиса подбираем по фактически выданным разрешениям: с типом
-        // location без ACCESS_FINE_LOCATION Android бросает исключение и сервис
-        // умирает молча — именно поэтому история не писалась вообще.
-        val hasLocation = has(Manifest.permission.ACCESS_FINE_LOCATION)
+        val hasLocation = has(Manifest.permission.ACCESS_FINE_LOCATION) ||
+            has(Manifest.permission.ACCESS_COARSE_LOCATION)
         val type = if (hasLocation) {
             ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION
         } else {
@@ -77,42 +85,44 @@ class WalkService : Service(), LocationListener, SensorEventListener {
         }
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                startForeground(NOTIFICATION_ID, notification(statusText(hasLocation)), type)
+                startForeground(NOTIFICATION_ID, notification(statusText(hasLocation, 0)), type)
             } else {
-                startForeground(NOTIFICATION_ID, notification(statusText(hasLocation)))
+                startForeground(NOTIFICATION_ID, notification(statusText(hasLocation, 0)))
             }
         } catch (e: Exception) {
             Log.e(TAG, "Не удалось поднять foreground: ${e.message}")
             stopSelf()
             return
         }
-        if (session != null) return
 
-        scope.launch {
-            val profile = store.profiles.first().firstOrNull { it.isSelected }
-            val fresh = WalkSession(
-                id = UUID.randomUUID().toString(),
-                startedAtMillis = System.currentTimeMillis(),
-                profileId = profile?.id ?: "unknown",
-                startSteps = latestSteps,
-            )
-            session = fresh
-            store.upsertSession(fresh)
-            Log.i(TAG, "Начата сессия ${fresh.id}")
+        if (session == null) {
+            scope.launch {
+                val profile = store.profiles.first().firstOrNull { it.isSelected }
+                val fresh = WalkSession(
+                    id = UUID.randomUUID().toString(),
+                    startedAtMillis = System.currentTimeMillis(),
+                    profileId = profile?.id ?: "unknown",
+                    startSteps = latestSteps,
+                )
+                session = fresh
+                store.upsertSession(fresh)
+                Log.i(TAG, "Начата сессия ${fresh.id}")
+            }
         }
 
         if (hasLocation) {
+            // 5 секунд / 5 метров: достаточно частo, чтобы маршрут был живым.
+            val request = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 5_000L)
+                .setMinUpdateIntervalMillis(3_000L)
+                .setMinUpdateDistanceMeters(5f)
+                .setWaitForAccurateLocation(false)
+                .build()
+            runCatching { fused.requestLocationUpdates(request, locationCallback, mainLooper) }
+                .onFailure { Log.e(TAG, "Fused отказал: ${it.message}") }
+            // Последняя известная точка — чтобы маршрут начался сразу.
             runCatching {
-                locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 10_000L, 8f, this)
-            }.onFailure { Log.w(TAG, "GPS недоступен: ${it.message}") }
-            runCatching {
-                locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 15_000L, 15f, this)
+                fused.lastLocation.addOnSuccessListener { it?.let(::handleLocation) }
             }
-            // Последняя известная точка — чтобы маршрут не начинался с пустоты.
-            runCatching {
-                locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER)
-                    ?: locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
-            }.getOrNull()?.let { onLocationChanged(it) }
         } else {
             Log.w(TAG, "Нет разрешения на геолокацию — маршрут писаться не будет")
         }
@@ -120,12 +130,12 @@ class WalkService : Service(), LocationListener, SensorEventListener {
         if (has(Manifest.permission.ACTIVITY_RECOGNITION)) {
             sensorManager.getDefaultSensor(Sensor.TYPE_STEP_COUNTER)?.let {
                 sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_NORMAL)
-            } ?: Log.w(TAG, "Шагомера нет в этом телефоне")
+            }
         }
     }
 
     private fun stopTracking() {
-        runCatching { locationManager.removeUpdates(this) }
+        runCatching { fused.removeLocationUpdates(locationCallback) }
         runCatching { sensorManager.unregisterListener(this) }
         val finished = session?.copy(
             endedAtMillis = System.currentTimeMillis(),
@@ -142,13 +152,13 @@ class WalkService : Service(), LocationListener, SensorEventListener {
         stopSelf()
     }
 
-    override fun onLocationChanged(location: Location) {
+    private fun handleLocation(location: Location) {
         val current = session ?: return
-        if (location.accuracy > 70f) return
+        if (location.accuracy > 100f) return
         val last = current.points.lastOrNull()
         if (last != null) {
             val prev = Location("").apply { latitude = last.latitude; longitude = last.longitude }
-            if (location.distanceTo(prev) < 6f) return
+            if (location.distanceTo(prev) < 4f) return
         }
         val point = TrackPoint(
             latitude = location.latitude,
@@ -159,8 +169,15 @@ class WalkService : Service(), LocationListener, SensorEventListener {
         )
         val updated = current.copy(points = current.points + point, endSteps = latestSteps)
         session = updated
-        // Пишем сразу: если сервис умрёт, точки останутся.
         scope.launch { store.upsertSession(updated) }
+        updateNotification(updated.points.size)
+    }
+
+    private fun updateNotification(points: Int) {
+        runCatching {
+            getSystemService(NotificationManager::class.java)
+                .notify(NOTIFICATION_ID, notification(statusText(true, points)))
+        }
     }
 
     override fun onSensorChanged(event: SensorEvent?) {
@@ -176,7 +193,6 @@ class WalkService : Service(), LocationListener, SensorEventListener {
         }
     }
 
-    /** Шаги от начала сессии — датчик считает от загрузки телефона. */
     private fun relativeSteps(): Long? {
         val total = latestSteps ?: return null
         val base = session?.startSteps ?: baselineSteps ?: return null
@@ -188,8 +204,11 @@ class WalkService : Service(), LocationListener, SensorEventListener {
     private fun has(permission: String) =
         ActivityCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED
 
-    private fun statusText(hasLocation: Boolean): String =
-        if (hasLocation) "Записываю маршрут прогулки" else "Нет доступа к геолокации — маршрут не пишется"
+    private fun statusText(hasLocation: Boolean, points: Int): String = when {
+        !hasLocation -> "Нет доступа к геолокации — маршрут не пишется"
+        points == 0 -> "Ищу спутники…"
+        else -> "Записано точек: $points"
+    }
 
     private fun createChannel() {
         getSystemService(NotificationManager::class.java).createNotificationChannel(

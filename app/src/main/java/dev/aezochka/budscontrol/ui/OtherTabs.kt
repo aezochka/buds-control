@@ -183,7 +183,7 @@ private fun SettingsToggle(
 
 /** Свой переключатель: без системного highlight, с пружинным бегунком. */
 @Composable
-private fun AnimatedSwitch(checked: Boolean) {
+fun AnimatedSwitch(checked: Boolean) {
     val scheme = MaterialTheme.colorScheme
     val trackColor by animateColorAsState(
         if (checked) scheme.onPrimary.copy(alpha = 0.28f) else scheme.surfaceContainerHighest,

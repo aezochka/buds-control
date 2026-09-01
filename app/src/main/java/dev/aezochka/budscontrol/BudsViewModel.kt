@@ -152,6 +152,18 @@ class BudsViewModel(app: Application) : AndroidViewModel(app) {
     fun setTileOrder(order: List<String>) = viewModelScope.launch {
         store.saveSettings(settings.value.copy(tileOrder = order))
     }
+    /** Перемещение плитки на шаг влево/вправо при перетаскивании. */
+    fun moveTile(key: String, step: Int) = viewModelScope.launch {
+        val order = settings.value.tileOrder.toMutableList()
+        val from = order.indexOf(key)
+        if (from < 0) return@launch
+        val to = (from + step).coerceIn(0, order.lastIndex)
+        if (to == from) return@launch
+        order.removeAt(from)
+        order.add(to, key)
+        store.saveSettings(settings.value.copy(tileOrder = order))
+    }
+
     /** Тап в режиме правки: 1 → 2 → 3 → 4 → 1 колонки. */
     fun cycleTileSpan(key: String) = viewModelScope.launch {
         val current = settings.value.tileSpans[key] ?: 1

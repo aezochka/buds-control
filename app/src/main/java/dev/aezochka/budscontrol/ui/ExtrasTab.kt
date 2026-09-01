@@ -201,7 +201,7 @@ private fun ExtraToggle(
             Text(title, style = MaterialTheme.typography.bodyLarge, color = scheme.onSurface)
             Text(subtitle, style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant)
         }
-        SpringSwitch(checked = checked, onChange = onChange)
+        AnimatedSwitch(checked = checked)
     }
 }
 

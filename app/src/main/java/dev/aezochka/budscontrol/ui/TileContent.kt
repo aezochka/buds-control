@@ -17,7 +17,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Bedtime
 import androidx.compose.material.icons.outlined.Devices
 import androidx.compose.material.icons.outlined.Inventory2
-import androidx.compose.material.icons.outlined.MemoryAlt
+import androidx.compose.material.icons.outlined.Memory
 import androidx.compose.material.icons.outlined.NotificationsActive
 import androidx.compose.material.icons.outlined.SpatialAudio
 import androidx.compose.material.icons.outlined.SportsEsports
@@ -122,7 +122,7 @@ fun BoxScope.TileContent(
         }
 
         "firmware" -> BentoTile(Modifier.fillMaxWidth(), onClick = null) { primary, secondary ->
-            Icon(Icons.Outlined.MemoryAlt, null, tint = secondary, modifier = Modifier.size(22.dp))
+            Icon(Icons.Outlined.Memory, null, tint = secondary, modifier = Modifier.size(22.dp))
             Spacer(Modifier.height(6.dp))
             TileLabel("Прошивка", secondary)
             Text(live.firmware ?: "—", style = MaterialTheme.typography.titleSmall, color = primary)

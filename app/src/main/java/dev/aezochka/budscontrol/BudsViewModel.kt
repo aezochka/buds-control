@@ -353,7 +353,7 @@ class BudsViewModel(app: Application) : AndroidViewModel(app) {
         else -> "ru"
     }
 
-    private val audioFx = SystemAudioFx()
+    private val audioFx = SystemAudioFx(getApplication())
     private val audioTools = AudioTools(getApplication())
     private val feedback = Feedback(getApplication())
 

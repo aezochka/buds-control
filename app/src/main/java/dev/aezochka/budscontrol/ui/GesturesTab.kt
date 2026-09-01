@@ -99,6 +99,13 @@ private fun SideGestures(
                 label = label,
                 current = touch[side to type] ?: touch[TouchSide.BOTH to type],
                 enabled = enabled,
+                // Заводское значение, пока гарнитура не прислала своё.
+                fallbackLabel = when (type) {
+                    TouchType.TAP_2 -> "по умолчанию: плей / пауза"
+                    TouchType.TAP_3 -> "по умолчанию: следующий трек"
+                    TouchType.HOLD -> "по умолчанию: помощник"
+                    else -> "не задано"
+                },
                 onPick = { onPick(type, it) },
             )
         }
@@ -106,7 +113,13 @@ private fun SideGestures(
 }
 
 @Composable
-private fun GestureRow(label: String, current: TouchAction?, enabled: Boolean, onPick: (TouchAction) -> Unit) {
+private fun GestureRow(
+    label: String,
+    current: TouchAction?,
+    enabled: Boolean,
+    fallbackLabel: String,
+    onPick: (TouchAction) -> Unit,
+) {
     val scheme = MaterialTheme.colorScheme
     var expanded by remember { mutableStateOf(false) }
     val rotation by animateFloatAsState(if (expanded) 180f else 0f, Motion.spatial(), label = "chev")
@@ -119,14 +132,17 @@ private fun GestureRow(label: String, current: TouchAction?, enabled: Boolean, o
             .background(scheme.surfaceContainer),
     ) {
         Row(
-            Modifier.pressBounce(enabled = enabled) { expanded = !expanded }.padding(16.dp),
+            // Раскрытие доступно всегда: раньше строка не нажималась,
+            // пока гарнитура не ответила, и выглядело как «сломано».
+            Modifier.pressBounce { expanded = !expanded }.padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(Modifier.fillMaxWidth(0.84f)) {
                 Text(label, style = MaterialTheme.typography.bodyLarge, color = scheme.onSurface)
                 Text(
-                    current?.let(::actionLabel) ?: "не задано",
-                    style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant,
+                    current?.let(::actionLabel) ?: fallbackLabel,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (current == null) scheme.outline else scheme.onSurfaceVariant,
                 )
             }
             Spacer(Modifier.fillMaxWidth(0.08f))

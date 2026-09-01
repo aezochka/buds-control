@@ -15,7 +15,7 @@ import android.util.Log
  * Системный эффект применяется к выводу телефона, то есть реально слышен
  * в наушниках. Сессия 0 — глобальный микс.
  */
-class SystemAudioFx {
+class SystemAudioFx(private val context: android.content.Context) {
     private var equalizer: Equalizer? = null
     private var loudness: LoudnessEnhancer? = null
 
@@ -60,13 +60,26 @@ class SystemAudioFx {
         }.getOrElse { emptyList() }
     }
 
-    /** Ставит усиление одной полосы в дБ. */
+    /**
+     * Ставит усиление полосы. Помимо локального объекта, отправляем уровни
+     * в foreground-сервис: только он реально влияет на воспроизведение,
+     * потому что подключён ко всем активным сессиям плееров.
+     */
     fun setBandDb(band: Int, db: Int) {
-        val eq = equalizer ?: return
-        runCatching {
-            val mb = (db * 100).coerceIn(minGainMb.toInt(), maxGainMb.toInt())
-            eq.setBandLevel(band.toShort(), mb.toShort())
+        val eq = equalizer
+        if (eq != null) {
+            runCatching {
+                val mb = (db * 100).coerceIn(minGainMb.toInt(), maxGainMb.toInt())
+                eq.setBandLevel(band.toShort(), mb.toShort())
+            }
         }
+        pushToService()
+    }
+
+    /** Отдаёт текущие уровни сервису, который применяет их к плеерам. */
+    private fun pushToService() {
+        val levels = currentGainsDb()
+        if (levels.isNotEmpty()) EqService.apply(context, levels)
     }
 
     fun setEnabled(on: Boolean) {
@@ -86,7 +99,14 @@ class SystemAudioFx {
     }
 
     fun applyPreset(gains: List<Int>) {
-        gains.forEachIndexed { index, db -> setBandDb(index, db) }
+        val eq = equalizer
+        gains.forEachIndexed { index, db ->
+            runCatching {
+                val mb = (db * 100).coerceIn(minGainMb.toInt(), maxGainMb.toInt())
+                eq?.setBandLevel(index.toShort(), mb.toShort())
+            }
+        }
+        EqService.apply(context, gains)
     }
 
     fun release() {

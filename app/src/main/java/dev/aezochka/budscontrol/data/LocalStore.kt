@@ -23,7 +23,6 @@ class LocalStore(private val context: Context) {
 
     private val settingsKey = stringPreferencesKey("settings_v2")
     private val profilesKey = stringPreferencesKey("profiles_v2")
-    private val historyKey = stringPreferencesKey("history_v2")
 
     /** null = ещё читаем с диска. Не путать с «настройки по умолчанию». */
     val settings: Flow<UserSettings?> = context.budsDataStore.data.map { prefs ->
@@ -38,11 +37,6 @@ class LocalStore(private val context: Context) {
         } ?: emptyList()
     }
 
-    val sessions: Flow<List<WalkSession>> = context.budsDataStore.data.map { prefs ->
-        prefs[historyKey]?.let { raw ->
-            runCatching { json.decodeFromString<List<WalkSession>>(raw) }.getOrNull()
-        } ?: emptyList()
-    }
 
     suspend fun saveSettings(value: UserSettings) =
         context.budsDataStore.edit { it[settingsKey] = json.encodeToString(value) }
@@ -50,15 +44,5 @@ class LocalStore(private val context: Context) {
     suspend fun saveProfiles(value: List<EarbudProfile>) =
         context.budsDataStore.edit { it[profilesKey] = json.encodeToString(value) }
 
-    suspend fun saveSessions(value: List<WalkSession>) =
-        context.budsDataStore.edit { it[historyKey] = json.encodeToString(value.takeLast(60)) }
 
-    /** Обновляет одну сессию по id — сервис пишет точки инкрементально. */
-    suspend fun upsertSession(session: WalkSession) = context.budsDataStore.edit { prefs ->
-        val current = prefs[historyKey]?.let { raw ->
-            runCatching { json.decodeFromString<List<WalkSession>>(raw) }.getOrNull()
-        } ?: emptyList()
-        val merged = current.filterNot { it.id == session.id } + session
-        prefs[historyKey] = json.encodeToString(merged.takeLast(60))
-    }
 }

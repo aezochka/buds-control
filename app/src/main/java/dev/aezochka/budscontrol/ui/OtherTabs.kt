@@ -28,7 +28,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.DashboardCustomize
 import androidx.compose.material.icons.outlined.DirectionsWalk
 import androidx.compose.material.icons.outlined.GraphicEq
-import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Terminal
 import androidx.compose.material.icons.outlined.TouchApp
@@ -51,91 +50,7 @@ import dev.aezochka.budscontrol.proto.TouchAction
 import dev.aezochka.budscontrol.proto.TouchSide
 import dev.aezochka.budscontrol.proto.TouchType
 
-/** Звук: жесты по данным гарнитуры. */
-@Composable
-fun SoundTab(vm: BudsViewModel) {
-    val scheme = MaterialTheme.colorScheme
-    val live by vm.live.collectAsState()
-
-    LazyColumn(Modifier.fillMaxSize()) {
-        item {
-            Column(Modifier.statusBarsPadding().padding(20.dp)) {
-                Text("Звук и жесты", style = MaterialTheme.typography.displayMedium, color = scheme.onSurface)
-                Spacer(Modifier.height(6.dp))
-                Text(
-                    if (live.touch.isEmpty()) "Гарнитура ещё не прислала настройки касаний"
-                    else "Применяется сразу на наушниках",
-                    style = MaterialTheme.typography.bodyMedium, color = scheme.onSurfaceVariant,
-                )
-            }
-        }
-        item {
-            Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
-                val slots = listOf(
-                    Triple(TouchSide.BOTH, TouchType.TAP_2, "Двойное касание"),
-                    Triple(TouchSide.BOTH, TouchType.TAP_3, "Тройное касание"),
-                    Triple(TouchSide.BOTH, TouchType.HOLD, "Долгое нажатие"),
-                )
-                slots.forEach { (side, type, title) ->
-                    val current = live.touch[side to type]
-                    GestureRow(title, current?.let(::actionLabel) ?: "—") {
-                        val next = nextAction(current)
-                        vm.setTouch(side, type, next)
-                    }
-                }
-            }
-        }
-        item { BottomSpacer() }
-    }
-}
-
-private fun nextAction(current: TouchAction?): TouchAction {
-    val order = listOf(
-        TouchAction.PLAY_PAUSE, TouchAction.NEXT, TouchAction.PREVIOUS,
-        TouchAction.VOLUME_UP, TouchAction.VOLUME_DOWN,
-        TouchAction.VOICE_ASSISTANT_REALME, TouchAction.GAME_MODE, TouchAction.OFF,
-    )
-    val index = order.indexOf(current)
-    return order[(index + 1).coerceAtLeast(0) % order.size]
-}
-
-private fun actionLabel(action: TouchAction) = when (action) {
-    TouchAction.OFF -> "Ничего"
-    TouchAction.PLAY_PAUSE -> "Плей / пауза"
-    TouchAction.VOICE_ASSISTANT, TouchAction.VOICE_ASSISTANT_REALME -> "Голосовой помощник"
-    TouchAction.PREVIOUS -> "Предыдущий трек"
-    TouchAction.NEXT -> "Следующий трек"
-    TouchAction.NOISE_CONTROL -> "Переключить шумодав"
-    TouchAction.VOLUME_UP -> "Громче"
-    TouchAction.VOLUME_DOWN -> "Тише"
-    TouchAction.GAME_MODE -> "Игровой режим"
-}
-
-@Composable
-private fun GestureRow(title: String, value: String, onClick: () -> Unit) {
-    val scheme = MaterialTheme.colorScheme
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(22.dp))
-            .background(scheme.surfaceContainer)
-            .pressBounce(onClick = onClick)
-            .padding(16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(14.dp),
-    ) {
-        Box(
-            Modifier.size(44.dp).clip(RoundedCornerShape(16.dp)).background(scheme.surfaceContainerHighest),
-            contentAlignment = Alignment.Center,
-        ) { Icon(Icons.Outlined.TouchApp, null, tint = scheme.primary, modifier = Modifier.size(21.dp)) }
-        Column(Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.bodyLarge, color = scheme.onSurface)
-            Text(value, style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant)
-        }
-    }
-}
-
-/** Настройки: профили, история, диагностика. */
+/** Настройки: профили, тема, плитки, диагностика. */
 @Composable
 fun SettingsTab(vm: BudsViewModel) {
     val scheme = MaterialTheme.colorScheme
@@ -148,7 +63,7 @@ fun SettingsTab(vm: BudsViewModel) {
     if (showTiles) {
         CustomizeTilesSheet(
             settings = settings,
-            onMove = vm::moveTile,
+            onReorder = vm::setTileOrderList,
             onToggle = vm::toggleTile,
             onDismiss = { showTiles = false },
         )
@@ -174,13 +89,6 @@ fun SettingsTab(vm: BudsViewModel) {
         }
         item {
             Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
-                SettingsToggle(
-                    icon = Icons.Outlined.History,
-                    title = "Вести историю прогулок",
-                    subtitle = "Маршрут, треки, шаги",
-                    checked = settings.historyEnabled,
-                    onToggle = { vm.setHistoryEnabled(it) },
-                )
                 SettingsRow(
                     Icons.Outlined.DashboardCustomize, "Настроить плитки",
                     "Порядок и что показывать",

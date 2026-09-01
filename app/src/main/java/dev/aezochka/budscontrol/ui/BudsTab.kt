@@ -285,9 +285,26 @@ private fun BentoGrid(vm: BudsViewModel) {
                 Spacer(Modifier.height(4.dp))
                 SmoothBar((live.batteryCase ?: 0) / 100f, scheme.surfaceContainerHighest, scheme.primary)
             }
-            if ("find" !in hidden) BentoTile(Modifier.weight(1f), onClick = { vm.findDevice(true) }) { primary, _ ->
-                Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                    Icon(Icons.Outlined.NotificationsActive, "Найти", tint = primary, modifier = Modifier.size(27.dp))
+            if ("find" !in hidden) {
+                var ringing by remember { mutableStateOf(false) }
+                BentoTile(
+                    Modifier.weight(1f), active = ringing,
+                    onClick = {
+                        ringing = !ringing
+                        vm.findDevice(ringing)
+                    },
+                ) { primary, secondary ->
+                    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            MorphIcon(active = ringing, icon = Icons.Outlined.NotificationsActive, tint = primary)
+                            Spacer(Modifier.height(6.dp))
+                            Text(
+                                if (ringing) "Стоп" else "Найти",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = secondary,
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -315,20 +332,44 @@ private fun BentoGrid(vm: BudsViewModel) {
         }
 
         Row(horizontalArrangement = Arrangement.spacedBy(11.dp)) {
-            if ("sleep" !in hidden) SquareToggle(Icons.Outlined.Bedtime, Modifier.weight(1f))
-            if ("volume" !in hidden) SquareToggle(Icons.Outlined.VolumeUp, Modifier.weight(1f))
-            if ("spatial" !in hidden) SquareToggle(Icons.Outlined.SpatialAudio, Modifier.weight(1f))
-            if ("multipoint" !in hidden) SquareToggle(Icons.Outlined.Devices, Modifier.weight(1f))
+            if ("sleep" !in hidden) SquareToggle(Icons.Outlined.Bedtime, "Сон", Modifier.weight(1f))
+            if ("volume" !in hidden) SquareToggle(Icons.Outlined.VolumeUp, "Лимит", Modifier.weight(1f))
+            if ("spatial" !in hidden) SquareToggle(
+                Icons.Outlined.SpatialAudio, "3D",
+                Modifier.weight(1f),
+                supported = "spatial" in live.supported,
+            )
+            if ("multipoint" !in hidden) SquareToggle(
+                Icons.Outlined.Devices, "2 устр.",
+                Modifier.weight(1f),
+                supported = "multipoint" in live.supported,
+            )
         }
     }
 }
 
 @Composable
-private fun SquareToggle(icon: androidx.compose.ui.graphics.vector.ImageVector, modifier: Modifier = Modifier) {
+private fun SquareToggle(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    modifier: Modifier = Modifier,
+    supported: Boolean = true,
+) {
     var active by remember { mutableStateOf(false) }
-    BentoTile(modifier, active = active, minHeight = 96.dp, onClick = { active = !active }) { primary, _ ->
+    BentoTile(
+        modifier, active = active, minHeight = 104.dp,
+        onClick = if (supported) ({ active = !active }) else null,
+    ) { primary, secondary ->
         Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-            MorphIcon(active = active, icon = icon, tint = primary)
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                MorphIcon(active = active, icon = icon, tint = if (supported) primary else secondary)
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    if (supported) label else "нет",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = secondary,
+                )
+            }
         }
     }
 }

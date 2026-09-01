@@ -76,6 +76,10 @@ object OppoProtocol {
     fun batteryReq() = encode(Cmd.BATTERY_REQ)
     fun statusReq() = encode(Cmd.STATUS_REQ)
     fun equalizerReq() = encode(Cmd.EQUALIZER_REQ)
+
+    /** Пресет эквалайзера. Код режима идёт одним байтом. */
+    fun equalizerSet(preset: EqPreset) =
+        encode(Cmd.EQUALIZER_SET, byteArrayOf(0x01, preset.code.toByte()))
     fun firmwareReq() = encode(Cmd.FIRMWARE_GET)
     fun findDevice(start: Boolean) =
         encode(Cmd.FIND_DEVICE_REQ, byteArrayOf(if (start) 1 else 0))
@@ -160,6 +164,20 @@ enum class Cmd(val code: Short) {
 }
 
 enum class AncType(val code: Int) { MODE(0x01), TOUCH_CYCLE_MODES(0x02) }
+
+/**
+ * Пресеты эквалайзера. Коды соответствуют режимам realme Link:
+ * у T110 их ровно три, поэтому список короткий и честный.
+ */
+enum class EqPreset(val code: Int, val title: String, val bars: List<Float>) {
+    Balanced(0x00, "Ровный", listOf(0.5f, 0.5f, 0.5f, 0.5f, 0.5f)),
+    BassBoost(0x01, "Бас", listOf(1f, 0.78f, 0.5f, 0.4f, 0.35f)),
+    TrebleBoost(0x02, "Верх", listOf(0.35f, 0.42f, 0.55f, 0.82f, 1f));
+
+    companion object {
+        fun from(code: Int) = entries.firstOrNull { it.code == code }
+    }
+}
 
 enum class AncMode(val code: Int, val prefId: String) {
     OFF(0x01, "0"),

@@ -6,6 +6,7 @@ import android.bluetooth.BluetoothManager
 import android.content.Context
 import dev.aezochka.budscontrol.proto.AncMode
 import dev.aezochka.budscontrol.proto.Cmd
+import dev.aezochka.budscontrol.proto.EqPreset
 import dev.aezochka.budscontrol.proto.MiscType
 import dev.aezochka.budscontrol.proto.OppoProtocol
 import dev.aezochka.budscontrol.proto.SubType
@@ -41,6 +42,7 @@ data class LiveState(
     val inEarRight: Boolean? = null,
     val gameMode: Boolean = false,
     val ancMode: AncMode? = null,
+    val eqPreset: EqPreset? = null,
     val touch: Map<Pair<TouchSide, TouchType>, TouchAction> = emptyMap(),
     val supported: Set<String> = emptySet(),
     val probed: Boolean = false,
@@ -134,6 +136,7 @@ class BudsSession(private val context: Context) {
         c.send(OppoProtocol.miscConfigReq(listOf(MiscType.GAME_MODE, MiscType.MULTIPOINT, MiscType.LDAC)))
         c.send(OppoProtocol.touchConfigReq())
         c.send(OppoProtocol.ancConfigReq())
+        c.send(OppoProtocol.equalizerReq())
         _state.update { it.copy(supported = supported, probed = true) }
     }
 
@@ -154,6 +157,7 @@ class BudsSession(private val context: Context) {
                 Cmd.MISC_CONFIG_RET -> applyMisc(frame.payload)
                 Cmd.ANC_CONFIG_RET -> applyAnc(frame.payload)
                 Cmd.TOUCH_CONFIG_RET -> applyTouch(frame.payload)
+                Cmd.EQUALIZER_RET -> applyEq(frame.payload)
                 else -> Unit
             }
         }
@@ -234,6 +238,14 @@ class BudsSession(private val context: Context) {
         }
     }
 
+    private fun applyEq(p: ByteArray) {
+        if (p.size < 2) return
+        val code = p[p.size - 1].toInt() and 0xFF
+        EqPreset.from(code)?.let { preset ->
+            _state.update { it.copy(eqPreset = preset, supported = it.supported + "eq") }
+        }
+    }
+
     private fun applyTouch(p: ByteArray) {
         if (p.isEmpty() || p[0].toInt() != 0) return
         val map = _state.value.touch.toMutableMap()
@@ -252,6 +264,10 @@ class BudsSession(private val context: Context) {
     fun setGameMode(on: Boolean) = send(OppoProtocol.miscConfigSet(MiscType.GAME_MODE, on)) {
         _state.update { it.copy(gameMode = on) }
     }
+    fun setEqualizer(preset: EqPreset) = send(OppoProtocol.equalizerSet(preset)) {
+        _state.update { it.copy(eqPreset = preset) }
+    }
+
     fun setAnc(mode: AncMode) = send(OppoProtocol.ancModeSet(mode)) { _state.update { it.copy(ancMode = mode) } }
     fun setTouch(side: TouchSide, type: TouchType, action: TouchAction) =
         send(OppoProtocol.touchConfigSet(side, type, action)) {

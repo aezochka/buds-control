@@ -11,12 +11,10 @@ import dev.aezochka.budscontrol.data.CaseBatteryMemo
 import dev.aezochka.budscontrol.data.EarbudProfile
 import dev.aezochka.budscontrol.data.LocalStore
 import dev.aezochka.budscontrol.data.UserSettings
-import dev.aezochka.budscontrol.data.WalkSession
-import dev.aezochka.budscontrol.tracking.WalkService
-import android.content.Intent
 import dev.aezochka.budscontrol.device.BluetoothScanner
 import dev.aezochka.budscontrol.device.BudsSession
 import dev.aezochka.budscontrol.device.LiveState
+import dev.aezochka.budscontrol.proto.EqPreset
 import dev.aezochka.budscontrol.proto.TouchAction
 import dev.aezochka.budscontrol.proto.TouchSide
 import dev.aezochka.budscontrol.proto.TouchType
@@ -46,32 +44,13 @@ class BudsViewModel(app: Application) : AndroidViewModel(app) {
     val profiles: StateFlow<List<EarbudProfile>> =
         store.profiles.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
-    val sessions: StateFlow<List<WalkSession>> =
-        store.sessions.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     private val _found = MutableStateFlow<List<BluetoothScanner.Found>>(emptyList())
     val found: StateFlow<List<BluetoothScanner.Found>> = _found.asStateFlow()
     private val _scanning = MutableStateFlow(false)
     val scanning: StateFlow<Boolean> = _scanning.asStateFlow()
 
-    init {
-        // Если пользователь ранее включил историю, поднимаем сервис при старте:
-        // раньше после перезапуска запись просто не шла, хотя тумблер горел.
-        viewModelScope.launch {
-            val saved = store.settings.filterNotNull().first()
-            if (saved.historyEnabled) startWalkService(true)
-        }
-    }
 
-    private fun startWalkService(on: Boolean) {
-        val app = getApplication<Application>()
-        val intent = Intent(app, WalkService::class.java).apply {
-            action = if (on) WalkService.ACTION_START else WalkService.ACTION_STOP
-        }
-        runCatching {
-            if (on) app.startForegroundService(intent) else app.startService(intent)
-        }
-    }
 
     fun bluetoothReady(): Boolean = scanner.isEnabled() && scanner.hasPermission()
 
@@ -153,14 +132,7 @@ class BudsViewModel(app: Application) : AndroidViewModel(app) {
         connectSelected()
     }
 
-    fun setHistoryEnabled(on: Boolean) = viewModelScope.launch {
-        store.saveSettings(settings.value.copy(historyEnabled = on))
-        startWalkService(on)
-    }
 
-    fun deleteSession(id: String) = viewModelScope.launch {
-        store.saveSessions(store.sessions.first().filterNot { it.id == id })
-    }
     fun setTileOrder(order: List<String>) = viewModelScope.launch {
         store.saveSettings(settings.value.copy(tileOrder = order))
     }
@@ -179,15 +151,7 @@ class BudsViewModel(app: Application) : AndroidViewModel(app) {
         )
     }
 
-    /** Перемещение плитки в списке — сохраняется сразу. */
-    fun moveTile(key: String, delta: Int) = viewModelScope.launch {
-        val order = settings.value.tileOrder.toMutableList()
-        val index = order.indexOf(key)
-        if (index < 0) return@launch
-        val target = (index + delta).coerceIn(0, order.lastIndex)
-        if (target == index) return@launch
-        order.removeAt(index)
-        order.add(target, key)
+    fun setTileOrderList(order: List<String>) = viewModelScope.launch {
         store.saveSettings(settings.value.copy(tileOrder = order))
     }
 
@@ -197,6 +161,7 @@ class BudsViewModel(app: Application) : AndroidViewModel(app) {
 
     fun refresh() = session.refresh()
     fun setGameMode(on: Boolean) = session.setGameMode(on)
+    fun setEqualizer(preset: EqPreset) = session.setEqualizer(preset)
     fun findDevice(start: Boolean) = session.findDevice(start)
     fun setTouch(side: TouchSide, type: TouchType, action: TouchAction) = session.setTouch(side, type, action)
 

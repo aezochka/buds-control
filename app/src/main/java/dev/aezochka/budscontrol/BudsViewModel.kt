@@ -159,6 +159,10 @@ class BudsViewModel(app: Application) : AndroidViewModel(app) {
     fun refresh() = session.refresh()
     fun setGameMode(on: Boolean) = session.setGameMode(on)
     fun setEqualizer(preset: EqPreset) = session.setEqualizer(preset)
+    fun setEqualizerGains(gains: List<Int>) = session.setEqualizerGains(gains)
+    fun setSpatialAudio(on: Boolean) = session.setSpatialAudio(on)
+    fun setMultipoint(on: Boolean) = session.setMultipoint(on)
+    fun startAddDevice() = startScan()
 
     // Таймер сна и лимит громкости живут в приложении: гарнитура их не хранит.
     private val _sleepTimer = MutableStateFlow("Выключить")

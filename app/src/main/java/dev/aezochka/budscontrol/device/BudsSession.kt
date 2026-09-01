@@ -39,10 +39,14 @@ data class LiveState(
     /** Значение восстановлено из памяти, а не получено сейчас. */
     val caseFromMemory: Boolean = false,
     val gameMode: Boolean = false,
+    val spatialAudio: Boolean = false,
+    val multipoint: Boolean = false,
     val ancMode: AncMode? = null,
     val eqPreset: EqPreset? = null,
     /** Гарнитура подтвердила команду поиска. */
     val findAcked: Boolean = false,
+    /** Усиление по 5 полосам, дБ от -6 до +6. */
+    val eqGains: List<Int> = listOf(0, 0, 0, 0, 0),
     val touch: Map<Pair<TouchSide, TouchType>, TouchAction> = emptyMap(),
     val supported: Set<String> = emptySet(),
     val probed: Boolean = false,
@@ -140,7 +144,7 @@ class BudsSession(private val context: Context) {
         val supported = mutableSetOf<String>()
         c.send(OppoProtocol.firmwareReq()); supported += "firmware"
         c.send(OppoProtocol.batteryReq()); supported += "battery"
-        c.send(OppoProtocol.miscConfigReq(listOf(MiscType.GAME_MODE, MiscType.MULTIPOINT, MiscType.LDAC)))
+        c.send(OppoProtocol.miscConfigReq(listOf(MiscType.GAME_MODE, MiscType.MULTIPOINT, MiscType.LDAC, MiscType.SPATIAL_AUDIO)))
         c.send(OppoProtocol.touchConfigReq())
         c.send(OppoProtocol.ancConfigReq())
         c.send(OppoProtocol.equalizerReq())
@@ -219,7 +223,8 @@ class BudsSession(private val context: Context) {
             val on = (p[i + 1].toInt() and 0xFF) == 1
             when (MiscType.from(p[i].toInt() and 0xFF)) {
                 MiscType.GAME_MODE -> _state.update { it.copy(gameMode = on, supported = it.supported + "game") }
-                MiscType.MULTIPOINT -> _state.update { it.copy(supported = it.supported + "multipoint") }
+                MiscType.MULTIPOINT -> _state.update { it.copy(multipoint = on, supported = it.supported + "multipoint") }
+                MiscType.SPATIAL_AUDIO -> _state.update { it.copy(spatialAudio = on, supported = it.supported + "spatial") }
                 MiscType.LDAC -> _state.update { it.copy(supported = it.supported + "ldac") }
                 else -> Unit
             }
@@ -257,11 +262,34 @@ class BudsSession(private val context: Context) {
         _state.update { it.copy(touch = map, supported = it.supported + "touch") }
     }
 
-    fun setGameMode(on: Boolean) = send(OppoProtocol.miscConfigSet(MiscType.GAME_MODE, on)) {
+    fun setGameMode(on: Boolean) {
+        // Меняем состояние сразу: раньше плитка «долго включалась», потому
+        // что ждала ответа гарнитуры или следующего цикла опроса.
         _state.update { it.copy(gameMode = on) }
+        val c = conn ?: return
+        scope.launch { c.send(OppoProtocol.miscConfigSet(MiscType.GAME_MODE, on)) }
     }
     fun setEqualizer(preset: EqPreset) = send(OppoProtocol.equalizerSet(preset)) {
         _state.update { it.copy(eqPreset = preset) }
+    }
+
+    /** Кастомные полосы: применяем сразу, состояние обновляем оптимистично. */
+    fun setEqualizerGains(gains: List<Int>) {
+        _state.update { it.copy(eqGains = gains, eqPreset = EqPreset.Custom) }
+        val c = conn ?: return
+        scope.launch { c.send(OppoProtocol.equalizerCustom(gains)) }
+    }
+
+    fun setSpatialAudio(on: Boolean) {
+        _state.update { it.copy(spatialAudio = on) }
+        val c = conn ?: return
+        scope.launch { c.send(OppoProtocol.miscConfigSet(MiscType.SPATIAL_AUDIO, on)) }
+    }
+
+    fun setMultipoint(on: Boolean) {
+        _state.update { it.copy(multipoint = on) }
+        val c = conn ?: return
+        scope.launch { c.send(OppoProtocol.miscConfigSet(MiscType.MULTIPOINT, on)) }
     }
 
     fun setAnc(mode: AncMode) = send(OppoProtocol.ancModeSet(mode)) { _state.update { it.copy(ancMode = mode) } }

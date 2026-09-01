@@ -58,6 +58,8 @@ import dev.aezochka.budscontrol.device.BluetoothScanner
  * Начальный экран: язык → поиск наушников по Bluetooth → доступы.
  * Профили добавляются только из результатов реального скана.
  */
+private const val LAST_STEP = 2
+
 @Composable
 fun OnboardingScreen(
     vm: BudsViewModel,
@@ -124,19 +126,24 @@ fun OnboardingScreen(
                 PillButton("Назад", filled = false, modifier = Modifier.weight(1f)) { step-- }
             }
             val profiles by vm.profiles.collectAsState()
-            val canContinue = step != 1 || profiles.isNotEmpty()
+            // Кнопка блокируется только там, где действительно нельзя идти дальше:
+            // на шаге выбора наушников. На «Доступах» она всегда активна.
+            val canContinue = when (step) {
+                1 -> profiles.isNotEmpty()
+                else -> true
+            }
+            val label = when {
+                step == 1 && profiles.isEmpty() -> "Выбери наушники"
+                step == LAST_STEP -> "Поехали"
+                else -> "Далее"
+            }
             PillButton(
-                text = when {
-                    step == 0 -> "Далее"
-                    step == 1 && profiles.isEmpty() -> "Выбери наушники"
-                    step == 1 -> "Далее"
-                    else -> "Поехали"
-                },
+                text = label,
                 filled = true,
                 enabled = canContinue,
                 modifier = Modifier.weight(1f),
             ) {
-                if (step == 2) vm.finishOnboarding(language) else step++
+                if (step == LAST_STEP) vm.finishOnboarding(language) else step = (step + 1).coerceAtMost(LAST_STEP)
             }
         }
     }

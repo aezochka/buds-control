@@ -31,6 +31,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Bedtime
 import androidx.compose.material.icons.outlined.BluetoothConnected
 import androidx.compose.material.icons.outlined.Devices
@@ -78,14 +79,20 @@ fun BudsTab(vm: BudsViewModel) {
     LaunchedEffect(selected?.address) { if (selected != null) vm.connectSelected() }
 
     var showEq by remember { mutableStateOf(false) }
+    var showAddDevice by remember { mutableStateOf(false) }
     var showSleep by remember { mutableStateOf(false) }
     var showVolume by remember { mutableStateOf(false) }
 
+    if (showAddDevice) {
+        AddDeviceSheet(vm) { showAddDevice = false }
+    }
     if (showEq) {
         EqualizerSheet(
             current = live.eqPreset,
+            gains = live.eqGains,
             connected = live.connected,
             onPick = { vm.setEqualizer(it) },
+            onGains = { vm.setEqualizerGains(it) },
             onDismiss = { showEq = false },
         )
     }
@@ -113,12 +120,13 @@ fun BudsTab(vm: BudsViewModel) {
     LazyColumn(Modifier.fillMaxWidth()) {
         item {
             Column(Modifier.statusBarsPadding().padding(horizontal = 20.dp, vertical = 8.dp)) {
-                ProfileChips(vm)
+                ProfileChips(vm) { showAddDevice = true }
                 Spacer(Modifier.height(10.dp))
                 ProductHero(
                     name = selected?.displayName ?: "Наушники не выбраны",
                     left = live.batteryLeft,
                     right = live.batteryRight,
+                    charging = live.chargingCase,
                     connecting = live.connecting,
                     connected = live.connected,
                     onRefresh = vm::refresh,
@@ -131,12 +139,13 @@ fun BudsTab(vm: BudsViewModel) {
 }
 
 @Composable
-private fun ProfileChips(vm: BudsViewModel) {
+private fun ProfileChips(vm: BudsViewModel, onAdd: () -> Unit) {
     val profiles by vm.profiles.collectAsState()
     if (profiles.isEmpty()) return
     val scheme = MaterialTheme.colorScheme
+    Row(verticalAlignment = Alignment.CenterVertically) {
     Row(
-        Modifier.horizontalScroll(rememberScrollState()),
+        Modifier.weight(1f).horizontalScroll(rememberScrollState()),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         profiles.forEach { profile ->
@@ -163,6 +172,19 @@ private fun ProfileChips(vm: BudsViewModel) {
             }
         }
     }
+    Spacer(Modifier.width(8.dp))
+    // Плюсик: добавить ещё одну гарнитуру через Bluetooth-скан.
+    Box(
+        Modifier
+            .size(42.dp)
+            .clip(CircleShape)
+            .background(scheme.surfaceContainerHigh)
+            .pressBounce(scaleDown = 0.88f) { onAdd() },
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(Icons.Outlined.Add, "Добавить наушники", tint = scheme.primary, modifier = Modifier.size(21.dp))
+    }
+    }
 }
 
 @Composable
@@ -170,6 +192,7 @@ private fun ProductHero(
     name: String,
     left: Int?,
     right: Int?,
+    charging: Boolean,
     connecting: Boolean,
     connected: Boolean,
     onRefresh: () -> Unit,
@@ -183,9 +206,25 @@ private fun ProductHero(
         label = "floatY",
     )
 
+    // Пульсирующее свечение, когда кейс на зарядке.
+    val glow by transition.animateFloat(
+        initialValue = 0.18f, targetValue = if (charging) 0.55f else 0.18f,
+        animationSpec = infiniteRepeatable(tween(1400, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+        label = "chargeGlow",
+    )
+
     Box(Modifier.fillMaxWidth()) {
         Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
             Box(Modifier.fillMaxWidth(0.82f).aspectRatio(1.05f), contentAlignment = Alignment.Center) {
+                if (charging) {
+                    Box(
+                        Modifier
+                            .fillMaxWidth(0.7f)
+                            .aspectRatio(1f)
+                            .clip(CircleShape)
+                            .background(scheme.primary.copy(alpha = glow * 0.28f)),
+                    )
+                }
                 if (asset != null) {
                     AsyncImage(
                         model = "file:///android_asset/$asset",
@@ -367,16 +406,16 @@ private fun BentoGrid(
             ) { onVolume() }
             if ("spatial" !in hidden) ActionSquare(
                 Icons.Outlined.SpatialAudio, "3D",
-                active = false,
+                active = live.spatialAudio,
                 supported = "spatial" in live.supported,
                 modifier = Modifier.weight(1f),
-            ) { }
+            ) { vm.setSpatialAudio(!live.spatialAudio) }
             if ("multipoint" !in hidden) ActionSquare(
                 Icons.Outlined.Devices, "2 устр.",
-                active = false,
+                active = live.multipoint,
                 supported = "multipoint" in live.supported,
                 modifier = Modifier.weight(1f),
-            ) { }
+            ) { vm.setMultipoint(!live.multipoint) }
         }
     }
 }

@@ -67,13 +67,13 @@ fun BudsApp(vm: BudsViewModel) {
             Box(
                 Modifier
                     .fillMaxSize()
-                    // clipToBounds обязателен: без него контент страницы вылезал
-                    // за её пределы и наезжал на соседнюю вкладку.
-                    .clip(RoundedCornerShape(0.dp))
                     .graphicsLayer {
                         clip = true
-                        translationX = size.width * offset * 0.18f
-                        alpha = 1f - (offset.absoluteValue * 0.5f).coerceIn(0f, 0.55f)
+                        // Сдвиг только у соседних страниц. Раньше при переходе
+                        // 1→4 промежуточные мелькали и анимация выглядела рвано.
+                        val near = offset.absoluteValue <= 1f
+                        translationX = if (near) size.width * offset * 0.16f else 0f
+                        alpha = if (near) 1f - (offset.absoluteValue * 0.45f).coerceIn(0f, 0.5f) else 0f
                     }
             ) {
                 when (Tab.entries[page]) {
@@ -87,7 +87,16 @@ fun BudsApp(vm: BudsViewModel) {
 
         FloatingTabBar(
             current = pager.currentPage,
-            onSelect = { index -> scope.launch { pager.animateScrollToPage(index) } },
+            onSelect = { index ->
+                scope.launch {
+                    // Прыжок на дальнюю вкладку: без прокрутки через середину.
+                    if ((index - pager.currentPage).absoluteValue > 1) {
+                        pager.scrollToPage(index)
+                    } else {
+                        pager.animateScrollToPage(index)
+                    }
+                }
+            },
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .padding(bottom = 14.dp + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()),

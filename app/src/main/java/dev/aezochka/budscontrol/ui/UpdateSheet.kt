@@ -39,6 +39,7 @@ fun UpdateSheet(vm: BudsViewModel, onDismiss: () -> Unit) {
     val scheme = MaterialTheme.colorScheme
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val state by vm.updateState.collectAsState()
+    val pending = state.release
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -59,15 +60,15 @@ fun UpdateSheet(vm: BudsViewModel, onDismiss: () -> Unit) {
                     Text(
                         when {
                             state.checking -> "Проверяю релизы…"
-                            state.release == null -> "Установлена последняя версия ${state.currentVersion}"
-                            else -> "Доступна ${state.release.version}, у тебя ${state.currentVersion}"
+                            pending == null -> "Установлена последняя версия ${state.currentVersion}"
+                            else -> "Доступна ${pending.version}, у тебя ${state.currentVersion}"
                         },
                         style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant,
                     )
                 }
             }
 
-            val release = state.release
+            val release = pending
             if (release != null) {
                 Spacer(Modifier.height(16.dp))
                 Column(

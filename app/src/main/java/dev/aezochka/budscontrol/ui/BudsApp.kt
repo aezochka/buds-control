@@ -39,14 +39,26 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import dev.aezochka.budscontrol.BudsViewModel
+import dev.aezochka.budscontrol.i18n.LocalStrings
 import kotlinx.coroutines.launch
 import kotlin.math.absoluteValue
 
-private enum class Tab(val label: String, val icon: ImageVector) {
-    Buds("Наушники", Icons.Outlined.Headphones),
-    Sound("Звук", Icons.Outlined.GraphicEq),
-    Gestures("Жесты", Icons.Outlined.TouchApp),
-    Settings("Ещё", Icons.Outlined.Tune),
+private enum class Tab(val icon: ImageVector) {
+    Buds(Icons.Outlined.Headphones),
+    Sound(Icons.Outlined.GraphicEq),
+    Gestures(Icons.Outlined.TouchApp),
+    Settings(Icons.Outlined.Tune);
+}
+
+@Composable
+private fun Tab.label(): String {
+    val s = LocalStrings.current
+    return when (this) {
+        Tab.Buds -> s.tabBuds
+        Tab.Sound -> s.tabSound
+        Tab.Gestures -> s.tabGestures
+        Tab.Settings -> s.tabMore
+    }
 }
 
 /**
@@ -143,11 +155,11 @@ private fun FloatingTabBar(current: Int, onSelect: (Int) -> Unit, modifier: Modi
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Icon(
-                    tab.icon, contentDescription = tab.label, tint = tint,
+                    tab.icon, contentDescription = tab.label(), tint = tint,
                     modifier = Modifier.size(21.dp).graphicsLayer { scaleX = iconScale; scaleY = iconScale },
                 )
                 Spacer(Modifier.height(3.dp))
-                Text(tab.label, style = MaterialTheme.typography.labelMedium, color = tint)
+                Text(tab.label(), style = MaterialTheme.typography.labelMedium, color = tint)
             }
         }
     }

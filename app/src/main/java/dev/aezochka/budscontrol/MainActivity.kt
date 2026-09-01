@@ -19,6 +19,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -26,6 +27,8 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.aezochka.budscontrol.ui.BudsApp
 import dev.aezochka.budscontrol.ui.OnboardingScreen
+import dev.aezochka.budscontrol.i18n.LocalStrings
+import dev.aezochka.budscontrol.i18n.Strings
 import dev.aezochka.budscontrol.ui.theme.BudsControlTheme
 
 class MainActivity : ComponentActivity() {
@@ -44,6 +47,10 @@ class MainActivity : ComponentActivity() {
             // null = DataStore ещё читается. Показываем нейтральный фон,
             // иначе на старте моргает онбординг — это и был баг после рестарта.
             val loaded by vm.settingsOrNull.collectAsState()
+            // Язык — через CompositionLocal: смена перерисовывает UI сразу,
+            // без пересоздания активити и перезапуска приложения.
+            val lang by vm.uiLanguage.collectAsState()
+            CompositionLocalProvider(LocalStrings provides Strings.of(lang)) {
             BudsControlTheme(
                 accentKey = loaded?.accent ?: "lime",
                 customAccent = loaded?.customAccent ?: 0L,

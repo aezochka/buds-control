@@ -74,19 +74,41 @@ object PhotoFinder {
         var fallback: String? = null
         for (i in 0 until minOf(items.length(), 16)) {
             val item = items.optJSONObject(i) ?: continue
-            val url = item.optString("image")
+            val raw = item.optString("image")
+            // http:// блокируется политикой usesCleartextTraffic=false,
+            // поэтому апгрейдим до https и отбрасываем всё, что не http(s).
+            val url = when {
+                raw.startsWith("https://") -> raw
+                raw.startsWith("http://") -> "https://" + raw.removePrefix("http://")
+                else -> continue
+            }
             val w = item.optInt("width")
             val h = item.optInt("height")
-            if (!url.startsWith("http") || w < 600) continue
+            if (w < 600) continue
             val ratio = if (h == 0) 0f else w.toFloat() / h
-            if (ratio in 0.8f..1.25f) return@runCatching url
-            if (fallback == null) fallback = url
+            if (ratio in 0.8f..1.25f && reachable(url)) return@runCatching url
+            if (fallback == null && reachable(url)) fallback = url
         }
         fallback
     }.getOrElse {
         Log.i(TAG, "Поиск фото не удался: ${it.message}")
         null
     }
+
+    /** Быстрая проверка, что ссылка реально отдаёт картинку. */
+    private fun reachable(url: String): Boolean = runCatching {
+        val conn = (URL(url).openConnection() as HttpURLConnection).apply {
+            requestMethod = "HEAD"
+            instanceFollowRedirects = true
+            setRequestProperty("User-Agent", UA)
+            connectTimeout = 6_000
+            readTimeout = 6_000
+        }
+        val ok = conn.responseCode in 200..299
+        val type = conn.contentType ?: ""
+        conn.disconnect()
+        ok && type.startsWith("image")
+    }.getOrDefault(false)
 
     private fun fetch(url: String, referer: String? = null): String? = runCatching {
         val conn = (URL(url).openConnection() as HttpURLConnection).apply {

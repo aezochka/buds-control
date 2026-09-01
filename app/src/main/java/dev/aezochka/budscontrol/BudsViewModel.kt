@@ -186,6 +186,18 @@ class BudsViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /** Свой цвет темы: ARGB, перебивает пресет. */
+    /**
+     * Язык интерфейса. Меняется мгновенно: значение кладём в StateFlow сразу,
+     * а запись в DataStore идёт следом.
+     */
+    private val _uiLanguage = MutableStateFlow("ru")
+    val uiLanguage: StateFlow<String> = _uiLanguage.asStateFlow()
+
+    fun setLanguage(code: String) {
+        _uiLanguage.value = code
+        viewModelScope.launch { store.saveSettings(settings.value.copy(language = code)) }
+    }
+
     fun setSoundEffects(on: Boolean) = viewModelScope.launch {
         store.saveSettings(settings.value.copy(soundEffects = on))
         if (on) tick(Feedback.Kind.On)
@@ -239,6 +251,19 @@ class BudsViewModel(app: Application) : AndroidViewModel(app) {
     fun startAddDevice() = startScan()
 
     // ===== Системный звук: работает независимо от протокола гарнитуры =====
+    init {
+        viewModelScope.launch {
+            val saved = store.settings.filterNotNull().first()
+            _uiLanguage.value = if (saved.language == "system") systemLanguage() else saved.language
+        }
+    }
+
+    private fun systemLanguage(): String = when (java.util.Locale.getDefault().language) {
+        "en" -> "en"
+        "uk" -> "uk"
+        else -> "ru"
+    }
+
     private val audioFx = SystemAudioFx()
     private val audioTools = AudioTools(getApplication())
     private val feedback = Feedback(getApplication())

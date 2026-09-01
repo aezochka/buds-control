@@ -52,6 +52,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.aezochka.budscontrol.BudsViewModel
+import dev.aezochka.budscontrol.i18n.LocalStrings
 import dev.aezochka.budscontrol.device.BluetoothScanner
 
 /**
@@ -111,7 +112,7 @@ fun OnboardingScreen(
             label = "onbStep",
         ) { current ->
             when (current) {
-                0 -> LanguageStep(language) { language = it }
+                0 -> LanguageStep(language) { vm.setLanguage(it) }
                 else -> DevicesStep(vm, onRequestBluetooth)
             }
         }
@@ -121,7 +122,7 @@ fun OnboardingScreen(
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             if (step > 0) {
-                PillButton("Назад", filled = false, modifier = Modifier.weight(1f)) { step-- }
+                PillButton(s.back, filled = false, modifier = Modifier.weight(1f)) { step-- }
             }
             val profiles by vm.profiles.collectAsState()
             // Кнопка блокируется только там, где действительно нельзя идти дальше:
@@ -132,9 +133,9 @@ fun OnboardingScreen(
             }
             // Короткая подпись: длинная строка ломалась переносом в узкой кнопке.
             val label = when {
-                step == 1 && profiles.isEmpty() -> "Выбери наушники"
-                step == LAST_STEP -> "Поехали"
-                else -> "Далее"
+                step == 1 && profiles.isEmpty() -> s.pickBudsFirst
+                step == LAST_STEP -> s.go
+                else -> s.next
             }
             PillButton(
                 text = label,
@@ -193,16 +194,15 @@ private fun PillButton(
 @Composable
 private fun LanguageStep(selected: String, onSelect: (String) -> Unit) {
     val scheme = MaterialTheme.colorScheme
+    val s = LocalStrings.current
     Column {
-        Text("Язык", style = MaterialTheme.typography.displayMedium, color = scheme.onSurface)
-        Spacer(Modifier.height(10.dp))
-        Text(
-            "Можно сменить позже в настройках",
-            style = MaterialTheme.typography.bodyLarge, color = scheme.onSurfaceVariant,
-        )
-        Spacer(Modifier.height(22.dp))
-        listOf("ru" to "Русский", "en" to "English", "uk" to "Українська", "system" to "Как в системе").forEach { (code, title) ->
-            val active = code == selected
+        Text(s.languageTitle, style = MaterialTheme.typography.displayMedium, color = scheme.onSurface)
+        Spacer(Modifier.height(6.dp))
+        Text(s.languageHint, style = MaterialTheme.typography.bodyMedium, color = scheme.onSurfaceVariant)
+        Spacer(Modifier.height(20.dp))
+        // Тап меняет язык сразу — весь экран перерисовывается на новом языке.
+        listOf("ru" to "Русский", "en" to "English", "uk" to "Українська").forEach { (code, title) ->
+            val active = selected == code
             val bg by animateColorAsState(
                 if (active) scheme.primary else scheme.surfaceContainer, Motion.effects(), label = "langBg",
             )
@@ -210,24 +210,21 @@ private fun LanguageStep(selected: String, onSelect: (String) -> Unit) {
                 Modifier
                     .fillMaxWidth()
                     .padding(bottom = 10.dp)
-                    .clip(RoundedCornerShape(24.dp))
+                    .clip(RoundedCornerShape(22.dp))
                     .background(bg)
                     .pressBounce { onSelect(code) }
-                    .padding(17.dp),
+                    .padding(horizontal = 18.dp, vertical = 16.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
                     title,
                     style = MaterialTheme.typography.bodyLarge,
                     color = if (active) scheme.onPrimary else scheme.onSurface,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.fillMaxWidth(0.88f),
                 )
-                Icon(
-                    if (active) Icons.Filled.CheckCircle else Icons.Outlined.Circle,
-                    null,
-                    tint = if (active) scheme.onPrimary else scheme.outline,
-                    modifier = Modifier.size(22.dp),
-                )
+                if (active) {
+                    Icon(Icons.Filled.Check, null, tint = scheme.onPrimary, modifier = Modifier.size(20.dp))
+                }
             }
         }
     }
@@ -270,7 +267,7 @@ private fun DevicesStep(vm: BudsViewModel, onRequestBluetooth: () -> Unit) {
                     "Достань наушники из кейса и включи Bluetooth. Сопряжённые устройства появятся сразу.",
                     style = MaterialTheme.typography.bodyMedium, color = scheme.onSurfaceVariant,
                 )
-                PillButton("Искать снова", filled = false, enabled = true) { vm.startScan() }
+                PillButton(LocalStrings.current.searchAgain, filled = false, enabled = true) { vm.startScan() }
             }
         } else {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -320,7 +317,7 @@ private fun DeviceRow(device: BluetoothScanner.Found, added: Boolean, onAdd: () 
             Text(
                 buildString {
                     if (device.bonded) append("Уже сопряжены с телефоном")
-                    else append("Найдено рядом")
+                    else append(LocalStrings.current.nearby)
                     device.rssi?.let { append(" · сигнал ${if (it > -60) "сильный" else "средний"}") }
                 },
                 style = MaterialTheme.typography.bodySmall,
@@ -329,7 +326,7 @@ private fun DeviceRow(device: BluetoothScanner.Found, added: Boolean, onAdd: () 
             )
         }
         Text(
-            if (added) "Убрать" else "Добавить",
+            if (added) LocalStrings.current.remove else LocalStrings.current.add,
             style = MaterialTheme.typography.labelMedium,
             color = if (added) scheme.onPrimary else scheme.primary,
         )

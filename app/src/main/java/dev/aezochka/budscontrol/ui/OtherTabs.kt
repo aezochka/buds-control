@@ -34,6 +34,8 @@ import androidx.compose.material.icons.outlined.Vibration
 import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material.icons.outlined.BatteryAlert
 import androidx.compose.material.icons.outlined.MusicNote
+import androidx.compose.material.icons.outlined.Download
+import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Terminal
 import androidx.compose.material.icons.outlined.TouchApp
@@ -65,11 +67,15 @@ fun SettingsTab(vm: BudsViewModel) {
     val live by vm.live.collectAsState()
     var showTheme by remember { mutableStateOf(false) }
     var showEq by remember { mutableStateOf(false) }
+    var showUpdate by remember { mutableStateOf(false) }
+    var showLang by remember { mutableStateOf(false) }
     var showSleep by remember { mutableStateOf(false) }
     var showVolume by remember { mutableStateOf(false) }
     val sleepMin by vm.sleepMinutes.collectAsState()
     val limit by vm.volumeLimit.collectAsState()
     if (showEq) { EqualizerSheet(vm) { showEq = false } }
+    if (showUpdate) { UpdateSheet(vm) { showUpdate = false } }
+    if (showLang) { LanguageSheet(vm) { showLang = false } }
     if (showSleep) { SleepSheet(vm) { showSleep = false } }
     if (showVolume) { VolumeLimitSheet(vm) { showVolume = false } }
     if (showTheme) {
@@ -128,6 +134,16 @@ fun SettingsTab(vm: BudsViewModel) {
                     subtitle = "Когда наушник ниже 20%",
                     checked = settings.lowBatteryAlert,
                     onToggle = { vm.setLowBatteryAlert(it) },
+                )
+                SettingsRow(
+                    Icons.Outlined.Download, "Обновление",
+                    "Проверить и установить новую версию",
+                    onClick = { showUpdate = true; vm.checkUpdate() },
+                )
+                SettingsRow(
+                    Icons.Outlined.Language, "Язык",
+                    "8 языков, меняется сразу",
+                    onClick = { showLang = true },
                 )
                 SettingsRow(
                     Icons.Outlined.Palette, "Тема",

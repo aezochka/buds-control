@@ -15,6 +15,7 @@ import kotlinx.coroutines.Job
 import dev.aezochka.budscontrol.data.CaseBatteryMemo
 import dev.aezochka.budscontrol.data.ImageProbe
 import dev.aezochka.budscontrol.data.PhotoFinder
+import dev.aezochka.budscontrol.update.Updater
 import dev.aezochka.budscontrol.data.EarbudProfile
 import dev.aezochka.budscontrol.data.LocalStore
 import dev.aezochka.budscontrol.data.UserSettings
@@ -197,6 +198,47 @@ class BudsViewModel(app: Application) : AndroidViewModel(app) {
     fun setLanguage(code: String) {
         _uiLanguage.value = code
         viewModelScope.launch { store.saveSettings(settings.value.copy(language = code)) }
+    }
+
+    // ===== Обновление приложения =====
+    data class UpdateState(
+        val checking: Boolean = false,
+        val currentVersion: String = "",
+        val release: Updater.Release? = null,
+        val progress: Float = 0f,
+        val error: String? = null,
+    )
+
+    private val _updateState = MutableStateFlow(UpdateState())
+    val updateState: StateFlow<UpdateState> = _updateState.asStateFlow()
+
+    private fun installedVersion(): String = runCatching {
+        val app = getApplication<Application>()
+        app.packageManager.getPackageInfo(app.packageName, 0).versionName ?: "0"
+    }.getOrDefault("0")
+
+    fun checkUpdate() = viewModelScope.launch {
+        val current = installedVersion()
+        _updateState.value = UpdateState(checking = true, currentVersion = current)
+        val release = Updater.check(current)
+        _updateState.value = UpdateState(
+            checking = false,
+            currentVersion = current,
+            release = release,
+        )
+    }
+
+    fun downloadAndInstall() = viewModelScope.launch {
+        val release = _updateState.value.release ?: return@launch
+        val file = Updater.download(getApplication(), release) { p ->
+            _updateState.value = _updateState.value.copy(progress = p)
+        }
+        if (file == null) {
+            _updateState.value = _updateState.value.copy(error = "Не удалось скачать обновление")
+            return@launch
+        }
+        _updateState.value = _updateState.value.copy(progress = 1f, error = null)
+        Updater.install(getApplication(), file)
     }
 
     fun setSoundEffects(on: Boolean) = viewModelScope.launch {

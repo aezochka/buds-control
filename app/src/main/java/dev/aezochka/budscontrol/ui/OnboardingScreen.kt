@@ -203,7 +203,7 @@ private fun LanguageStep(selected: String, onSelect: (String) -> Unit) {
         Text(s.languageHint, style = MaterialTheme.typography.bodyMedium, color = scheme.onSurfaceVariant)
         Spacer(Modifier.height(20.dp))
         // Тап меняет язык сразу — весь экран перерисовывается на новом языке.
-        listOf("ru" to "Русский", "en" to "English", "uk" to "Українська").forEach { (code, title) ->
+        dev.aezochka.budscontrol.i18n.Strings.available.forEach { (code, title) ->
             val active = selected == code
             val bg by animateColorAsState(
                 if (active) scheme.primary else scheme.surfaceContainer, Motion.effects(), label = "langBg",
@@ -275,7 +275,12 @@ private fun DevicesStep(vm: BudsViewModel, onRequestBluetooth: () -> Unit) {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 items(found, key = { it.address }) { device ->
                     val added = profiles.any { it.address == device.address }
-                    DeviceRow(device, added) { vm.addProfile(device) }
+                    DeviceRow(device, added) {
+                        // Раньше всегда вызывался addProfile, поэтому «Убрать»
+                        // ничего не делало и выглядело как мёртвая кнопка.
+                        if (added) vm.removeProfileByAddress(device.address)
+                        else vm.addProfile(device)
+                    }
                 }
             }
         }

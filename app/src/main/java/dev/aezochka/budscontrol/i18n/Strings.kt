@@ -61,11 +61,80 @@ data class Strings(
             tabBuds = "Навушники", tabSound = "Звук", tabGestures = "Жести", tabMore = "Ще",
         )
 
+
+        val De = Strings(
+            next = "Weiter", back = "Zurück", go = "Los geht's",
+            pickBudsFirst = "Kopfhörer wählen",
+            languageTitle = "Sprache", languageHint = "Später in den Einstellungen änderbar",
+            devicesTitle = "Kopfhörer", devicesHint = "Wähle deine — mehrere möglich",
+            searchAgain = "Erneut suchen", scanning = "Bluetooth-Suche…",
+            bonded = "Schon gekoppelt", nearby = "In der Nähe",
+            add = "Hinzufügen", remove = "Entfernen", added = "Hinzugefügt",
+            tabBuds = "Kopfhörer", tabSound = "Klang", tabGestures = "Gesten", tabMore = "Mehr",
+        )
+        val Es = Strings(
+            next = "Siguiente", back = "Atrás", go = "Vamos",
+            pickBudsFirst = "Elige auriculares",
+            languageTitle = "Idioma", languageHint = "Se puede cambiar en ajustes",
+            devicesTitle = "Auriculares", devicesHint = "Elige los tuyos — puedes añadir varios",
+            searchAgain = "Buscar otra vez", scanning = "Buscando Bluetooth…",
+            bonded = "Ya emparejados", nearby = "Cerca",
+            add = "Añadir", remove = "Quitar", added = "Añadido",
+            tabBuds = "Auriculares", tabSound = "Sonido", tabGestures = "Gestos", tabMore = "Más",
+        )
+        val Pl = Strings(
+            next = "Dalej", back = "Wstecz", go = "Zaczynamy",
+            pickBudsFirst = "Wybierz słuchawki",
+            languageTitle = "Język", languageHint = "Można zmienić w ustawieniach",
+            devicesTitle = "Słuchawki", devicesHint = "Wybierz swoje — możesz dodać kilka",
+            searchAgain = "Szukaj ponownie", scanning = "Szukam przez Bluetooth…",
+            bonded = "Już sparowane", nearby = "W pobliżu",
+            add = "Dodaj", remove = "Usuń", added = "Dodano",
+            tabBuds = "Słuchawki", tabSound = "Dźwięk", tabGestures = "Gesty", tabMore = "Więcej",
+        )
+        val Tr = Strings(
+            next = "İleri", back = "Geri", go = "Başla",
+            pickBudsFirst = "Kulaklık seç",
+            languageTitle = "Dil", languageHint = "Ayarlardan değiştirilebilir",
+            devicesTitle = "Kulaklıklar", devicesHint = "Kendinizi seçin — birkaç tane eklenebilir",
+            searchAgain = "Yeniden ara", scanning = "Bluetooth taranıyor…",
+            bonded = "Zaten eşleşmiş", nearby = "Yakında bulundu",
+            add = "Ekle", remove = "Kaldır", added = "Eklendi",
+            tabBuds = "Kulaklık", tabSound = "Ses", tabGestures = "Hareketler", tabMore = "Daha",
+        )
+        val Zh = Strings(
+            next = "下一步", back = "返回", go = "开始",
+            pickBudsFirst = "选择耳机",
+            languageTitle = "语言", languageHint = "可在设置中更改",
+            devicesTitle = "耳机", devicesHint = "选择你的耳机，可添加多个",
+            searchAgain = "重新搜索", scanning = "正在搜索蓝牙…",
+            bonded = "已配对", nearby = "附近发现",
+            add = "添加", remove = "移除", added = "已添加",
+            tabBuds = "耳机", tabSound = "声音", tabGestures = "手势", tabMore = "更多",
+        )
+
         fun of(code: String): Strings = when (code) {
             "en" -> En
             "uk", "ua" -> Uk
+            "de" -> De
+            "es" -> Es
+            "pl" -> Pl
+            "tr" -> Tr
+            "zh" -> Zh
             else -> Ru
         }
+
+        /** Список для экрана выбора: код и родное название. */
+        val available = listOf(
+            "ru" to "Русский",
+            "en" to "English",
+            "uk" to "Українська",
+            "de" to "Deutsch",
+            "es" to "Español",
+            "pl" to "Polski",
+            "tr" to "Türkçe",
+            "zh" to "中文",
+        )
     }
 }
 

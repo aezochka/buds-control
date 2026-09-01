@@ -164,13 +164,20 @@ fun TileContent(
             )
         }
 
+        // Прошивка приходит только от подключённой гарнитуры — раньше
+        // плитка была просто пустой и выглядела как баг.
         "firmware" -> if (compact) {
-            MiniTile(Icons.Outlined.Memory, live.firmware?.take(6) ?: "—", false, null)
+            MiniTile(
+                Icons.Outlined.Memory,
+                live.firmware ?: if (live.connected) "…" else "нет связи",
+                false,
+                null,
+            )
         } else {
             StatTile(
                 icon = Icons.Outlined.Memory,
                 label = "Прошивка",
-                value = live.firmware ?: "—",
+                value = live.firmware ?: if (live.connected) "запрашиваю…" else "нет связи",
                 active = false,
                 onClick = null,
             )

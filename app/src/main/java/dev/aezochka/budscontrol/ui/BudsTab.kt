@@ -12,6 +12,11 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -119,8 +124,31 @@ fun BudsTab(vm: BudsViewModel, onDragActive: (Boolean) -> Unit = {}) {
         VolumeLimitSheet(vm) { showVolume = false }
     }
 
-    LazyColumn(Modifier.fillMaxWidth()) {
-        item {
+    // Скрытие панели при скролле вниз, как строка поиска в Telegram.
+    val listState = rememberLazyListState()
+    var lastIndex by remember { mutableStateOf(0) }
+    var lastOffset by remember { mutableStateOf(0) }
+    var barVisible by remember { mutableStateOf(true) }
+
+    LaunchedEffect(listState) {
+        snapshotFlow { listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset }
+            .collect { (index, offset) ->
+                val scrollingDown = index > lastIndex || (index == lastIndex && offset > lastOffset + 6)
+                val scrollingUp = index < lastIndex || (index == lastIndex && offset < lastOffset - 6)
+                if (scrollingDown && index > 0) barVisible = false
+                if (scrollingUp) barVisible = true
+                if (index == 0 && offset < 8) barVisible = true
+                lastIndex = index
+                lastOffset = offset
+            }
+    }
+
+    Column(Modifier.fillMaxWidth()) {
+        AnimatedVisibility(
+            visible = barVisible,
+            enter = expandVertically(Motion.spatial()) + fadeIn(Motion.effects()),
+            exit = shrinkVertically(Motion.spatial()) + fadeOut(Motion.effects()),
+        ) {
             Column(Modifier.statusBarsPadding().padding(horizontal = 20.dp, vertical = 8.dp)) {
                 ProfileRow(
                     profiles = profiles,
@@ -129,7 +157,11 @@ fun BudsTab(vm: BudsViewModel, onDragActive: (Boolean) -> Unit = {}) {
                     onAdd = { showAddDevice = true },
                     onDragActive = onDragActive,
                 )
-                Spacer(Modifier.height(10.dp))
+            }
+        }
+
+        LazyColumn(Modifier.fillMaxWidth(), state = listState) {
+            item {
                 ProductHero(
                     name = selected?.displayName ?: "Наушники не выбраны",
                     left = live.batteryLeft,
@@ -149,17 +181,17 @@ fun BudsTab(vm: BudsViewModel, onDragActive: (Boolean) -> Unit = {}) {
                     onRefresh = vm::refresh,
                 )
             }
+            item {
+                BentoGrid(
+                    vm = vm,
+                    editing = false,
+                    onEq = { showEq = true },
+                    onSleep = { showSleep = true },
+                    onVolume = { showVolume = true },
+                )
+            }
+            item { BottomSpacer() }
         }
-        item {
-            BentoGrid(
-                vm = vm,
-                editing = false,
-                onEq = { showEq = true },
-                onSleep = { showSleep = true },
-                onVolume = { showVolume = true },
-            )
-        }
-        item { BottomSpacer() }
     }
 }
 

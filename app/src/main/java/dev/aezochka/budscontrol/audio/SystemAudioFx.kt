@@ -32,8 +32,24 @@ class SystemAudioFx(private val context: android.content.Context) {
     val bandCount: Int get() = bandFrequencies.size
     val available: Boolean get() = equalizer != null
 
+    /**
+     * Пробует взять реальные параметры эквалайзера с устройства.
+     * Если не удалось — работаем на стандартных 5 полосах и всё равно
+     * отправляем уровни в сервис: раньше при неудаче полосы вообще
+     * не рисовались и эквалайзер выглядел мёртвым.
+     */
     fun attach(): Boolean {
         if (equalizer != null) return true
+        val ok = tryAttach()
+        if (!ok) {
+            bandFrequencies = FALLBACK_BANDS
+            minGainMb = -1500
+            maxGainMb = 1500
+        }
+        return true
+    }
+
+    private fun tryAttach(): Boolean {
         return runCatching {
             val eq = Equalizer(0, 0).apply { enabled = true }
             val bands = eq.numberOfBands.toInt()
@@ -52,13 +68,17 @@ class SystemAudioFx(private val context: android.content.Context) {
         }
     }
 
-    /** Текущие уровни полос в дБ. */
+    /** Текущие уровни полос в дБ. Пустым не возвращает. */
     fun currentGainsDb(): List<Int> {
-        val eq = equalizer ?: return emptyList()
+        val eq = equalizer
+        if (eq == null) return manualGains.ifEmpty { List(bandCount) { 0 } }
         return runCatching {
             (0 until bandCount).map { eq.getBandLevel(it.toShort()) / 100 }
-        }.getOrElse { emptyList() }
+        }.getOrElse { manualGains.ifEmpty { List(bandCount) { 0 } } }
     }
+
+    /** Уровни, выставленные вручную, когда системный объект недоступен. */
+    private var manualGains: List<Int> = emptyList()
 
     /**
      * Ставит усиление полосы. Помимо локального объекта, отправляем уровни
@@ -66,6 +86,12 @@ class SystemAudioFx(private val context: android.content.Context) {
      * потому что подключён ко всем активным сессиям плееров.
      */
     fun setBandDb(band: Int, db: Int) {
+        // Держим значения у себя: нужны, если системный объект не создался.
+        val current = currentGainsDb().toMutableList()
+        while (current.size <= band) current.add(0)
+        current[band] = db.coerceIn(minGainMb / 100, maxGainMb / 100)
+        manualGains = current
+
         val eq = equalizer
         if (eq != null) {
             runCatching {
@@ -99,6 +125,7 @@ class SystemAudioFx(private val context: android.content.Context) {
     }
 
     fun applyPreset(gains: List<Int>) {
+        manualGains = gains
         val eq = equalizer
         gains.forEachIndexed { index, db ->
             runCatching {
@@ -115,5 +142,9 @@ class SystemAudioFx(private val context: android.content.Context) {
         equalizer = null; loudness = null
     }
 
-    companion object { private const val TAG = "SystemAudioFx" }
+    companion object {
+        private const val TAG = "SystemAudioFx"
+        /** Стандартные полосы, если устройство не сообщило свои. */
+        private val FALLBACK_BANDS = listOf(60, 230, 910, 3600, 14000)
+    }
 }

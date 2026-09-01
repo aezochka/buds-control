@@ -7,7 +7,10 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
+import dev.aezochka.budscontrol.audio.AudioTools
 import dev.aezochka.budscontrol.audio.MusicPulse
+import dev.aezochka.budscontrol.audio.SystemAudioFx
+import kotlinx.coroutines.Job
 import dev.aezochka.budscontrol.data.CaseBatteryMemo
 import dev.aezochka.budscontrol.data.PhotoFinder
 import dev.aezochka.budscontrol.data.ProductCatalog
@@ -17,7 +20,6 @@ import dev.aezochka.budscontrol.data.UserSettings
 import dev.aezochka.budscontrol.device.BluetoothScanner
 import dev.aezochka.budscontrol.device.BudsSession
 import dev.aezochka.budscontrol.device.LiveState
-import dev.aezochka.budscontrol.proto.EqPreset
 import dev.aezochka.budscontrol.proto.TouchAction
 import dev.aezochka.budscontrol.proto.TouchSide
 import dev.aezochka.budscontrol.proto.TouchType
@@ -184,6 +186,18 @@ class BudsViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /** Свой цвет темы: ARGB, перебивает пресет. */
+    fun setHaptic(on: Boolean) = viewModelScope.launch {
+        store.saveSettings(settings.value.copy(hapticFeedback = on))
+    }
+
+    fun setAutoConnect(on: Boolean) = viewModelScope.launch {
+        store.saveSettings(settings.value.copy(autoConnect = on))
+    }
+
+    fun setLowBatteryAlert(on: Boolean) = viewModelScope.launch {
+        store.saveSettings(settings.value.copy(lowBatteryAlert = on))
+    }
+
     fun setCustomAccent(argb: Long) = viewModelScope.launch {
         store.saveSettings(settings.value.copy(customAccent = argb))
     }
@@ -202,8 +216,6 @@ class BudsViewModel(app: Application) : AndroidViewModel(app) {
 
     fun refresh() = session.refresh()
     fun setGameMode(on: Boolean) = session.setGameMode(on)
-    fun setEqualizer(preset: EqPreset) = session.setEqualizer(preset)
-    fun setEqualizerGains(gains: List<Int>) = session.setEqualizerGains(gains)
     fun setSpatialAudio(on: Boolean) = session.setSpatialAudio(on)
     fun setMultipoint(on: Boolean) = session.setMultipoint(on)
 
@@ -225,13 +237,91 @@ class BudsViewModel(app: Application) : AndroidViewModel(app) {
 
     fun startAddDevice() = startScan()
 
-    // Таймер сна и лимит громкости живут в приложении: гарнитура их не хранит.
-    private val _sleepTimer = MutableStateFlow("Выключить")
-    private val _volumeLimit = MutableStateFlow("Без лимита")
-    fun sleepTimerLabel(): String = _sleepTimer.value
-    fun volumeLimitLabel(): String = _volumeLimit.value
-    fun setSleepTimer(value: String) { _sleepTimer.value = value }
-    fun setVolumeLimit(value: String) { _volumeLimit.value = value }
+    // ===== Системный звук: работает независимо от протокола гарнитуры =====
+    private val audioFx = SystemAudioFx()
+    private val audioTools = AudioTools(getApplication())
+
+    private val _fxReady = MutableStateFlow(false)
+    val fxReady: StateFlow<Boolean> = _fxReady.asStateFlow()
+    private val _eqGains = MutableStateFlow<List<Int>>(emptyList())
+    val eqGains: StateFlow<List<Int>> = _eqGains.asStateFlow()
+    private val _bassBoost = MutableStateFlow(0)
+    val bassBoost: StateFlow<Int> = _bassBoost.asStateFlow()
+
+    fun bandFrequencies(): List<Int> = audioFx.bandFrequencies
+    fun gainRangeDb(): Pair<Int, Int> = (audioFx.minGainMb / 100) to (audioFx.maxGainMb / 100)
+
+    fun attachAudioFx() {
+        if (audioFx.attach()) {
+            _fxReady.value = true
+            _eqGains.value = audioFx.currentGainsDb()
+            _bassBoost.value = audioFx.bassBoostStrength()
+        }
+    }
+
+    fun setBandDb(band: Int, db: Int) {
+        audioFx.setBandDb(band, db)
+        _eqGains.value = audioFx.currentGainsDb()
+    }
+
+    fun setBassBoostStrength(value: Int) {
+        audioFx.setBassBoost(value)
+        _bassBoost.value = value
+    }
+
+    fun applyEqPreset(gains: List<Int>) {
+        audioFx.applyPreset(gains)
+        _eqGains.value = audioFx.currentGainsDb()
+    }
+
+    fun resetEq() {
+        repeat(audioFx.bandCount) { audioFx.setBandDb(it, 0) }
+        audioFx.setBassBoost(0)
+        _bassBoost.value = 0
+        _eqGains.value = audioFx.currentGainsDb()
+    }
+
+    // ===== Таймер сна =====
+    private val _sleepMinutes = MutableStateFlow(0)
+    val sleepMinutes: StateFlow<Int> = _sleepMinutes.asStateFlow()
+    private val _sleepLeft = MutableStateFlow(0L)
+    val sleepLeft: StateFlow<Long> = _sleepLeft.asStateFlow()
+    private var sleepJob: Job? = null
+
+    fun setSleepTimerMinutes(minutes: Int) {
+        sleepJob?.cancel()
+        _sleepMinutes.value = minutes
+        if (minutes <= 0) { _sleepLeft.value = 0; return }
+        sleepJob = viewModelScope.launch {
+            var left = minutes * 60L
+            while (left > 0) {
+                _sleepLeft.value = left
+                delay(1000)
+                left--
+            }
+            _sleepLeft.value = 0
+            _sleepMinutes.value = 0
+            audioTools.pausePlayback()
+        }
+    }
+
+    // ===== Лимит громкости =====
+    private val _volumeLimit = MutableStateFlow(0)
+    val volumeLimit: StateFlow<Int> = _volumeLimit.asStateFlow()
+    private var limitJob: Job? = null
+
+    fun setVolumeLimitPercent(percent: Int) {
+        _volumeLimit.value = percent
+        limitJob?.cancel()
+        if (percent <= 0) return
+        // Держим лимит: система может поднять громкость кнопками.
+        limitJob = viewModelScope.launch {
+            while (_volumeLimit.value > 0) {
+                audioTools.enforceLimit(_volumeLimit.value)
+                delay(700)
+            }
+        }
+    }
     fun findDevice(start: Boolean) = session.findDevice(start)
     fun setTouch(side: TouchSide, type: TouchType, action: TouchAction) = session.setTouch(side, type, action)
 

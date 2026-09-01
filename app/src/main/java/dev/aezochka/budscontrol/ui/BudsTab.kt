@@ -77,7 +77,6 @@ import dev.aezochka.budscontrol.data.ProductCatalog
 fun BudsTab(vm: BudsViewModel) {
     val live by vm.live.collectAsState()
     val profiles by vm.profiles.collectAsState()
-    val tileSettings by vm.settings.collectAsState()
     val selected = profiles.firstOrNull { it.isSelected }
 
     // Ключ только по адресу: раньше эффект перезапускался на каждое изменение
@@ -91,52 +90,20 @@ fun BudsTab(vm: BudsViewModel) {
 
     var showEq by remember { mutableStateOf(false) }
     var showAddDevice by remember { mutableStateOf(false) }
-    var showTiles by remember { mutableStateOf(false) }
     var showSleep by remember { mutableStateOf(false) }
     var showVolume by remember { mutableStateOf(false) }
 
     if (showAddDevice) {
         AddDeviceSheet(vm) { showAddDevice = false }
     }
-    if (showTiles) {
-        CustomizeTilesSheet(
-            settings = tileSettings,
-            onReorder = vm::setTileOrderList,
-            onSpan = vm::setTileSpan,
-            onToggle = vm::toggleTile,
-            onDismiss = { showTiles = false },
-        )
-    }
     if (showEq) {
-        EqualizerSheet(
-            current = live.eqPreset,
-            gains = live.eqGains,
-            connected = live.connected,
-            supported = "eq" in live.supported,
-            onPick = { vm.setEqualizer(it) },
-            onGains = { vm.setEqualizerGains(it) },
-            onDismiss = { showEq = false },
-        )
+        EqualizerSheet(vm) { showEq = false }
     }
     if (showSleep) {
-        OptionSheet(
-            title = "Таймер сна",
-            subtitle = "Наушники выключатся сами",
-            options = listOf("15 минут", "30 минут", "60 минут", "Выключить"),
-            selected = vm.sleepTimerLabel(),
-            onPick = { vm.setSleepTimer(it); showSleep = false },
-            onDismiss = { showSleep = false },
-        )
+        SleepSheet(vm) { showSleep = false }
     }
     if (showVolume) {
-        OptionSheet(
-            title = "Лимит громкости",
-            subtitle = "Защита слуха",
-            options = listOf("75 дБ", "85 дБ", "95 дБ", "Без лимита"),
-            selected = vm.volumeLimitLabel(),
-            onPick = { vm.setVolumeLimit(it); showVolume = false },
-            onDismiss = { showVolume = false },
-        )
+        VolumeLimitSheet(vm) { showVolume = false }
     }
 
     LazyColumn(Modifier.fillMaxWidth()) {
@@ -162,7 +129,6 @@ fun BudsTab(vm: BudsViewModel) {
                     connecting = live.connecting,
                     connected = live.connected,
                     onRefresh = vm::refresh,
-                    onCustomize = { showTiles = true },
                 )
             }
         }
@@ -188,7 +154,6 @@ private fun ProductHero(
     inCaseLeft: Boolean,
     inCaseRight: Boolean,
     foundPhoto: String?,
-    onCustomize: () -> Unit,
     connecting: Boolean,
     connected: Boolean,
     onRefresh: () -> Unit,
@@ -346,20 +311,6 @@ private fun ProductHero(
                         contentAlignment = Alignment.Center,
                     ) {
                         Icon(Icons.Outlined.Refresh, "Обновить", tint = scheme.onSurfaceVariant, modifier = Modifier.size(19.dp))
-                    }
-                    // Настройка плиток — прямо здесь, чтобы не искать в «Ещё».
-                    Box(
-                        Modifier
-                            .size(38.dp)
-                            .clip(CircleShape)
-                            .background(scheme.surfaceContainer)
-                            .pressBounce(onClick = onCustomize),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(
-                            Icons.Outlined.DashboardCustomize, "Настроить плитки",
-                            tint = scheme.onSurfaceVariant, modifier = Modifier.size(19.dp),
-                        )
                     }
                 }
             }

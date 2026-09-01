@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -44,6 +45,15 @@ class MainActivity : ComponentActivity() {
             // null = DataStore ещё читается. Показываем нейтральный фон,
             // иначе на старте моргает онбординг — это и был баг после рестарта.
             val loaded by vm.settingsOrNull.collectAsState()
+            LaunchedEffect(Unit) {
+                // Просим доступ к звуку сразу: без него визуализация EQ мертва.
+                if (ActivityCompat.checkSelfPermission(
+                        this@MainActivity, Manifest.permission.RECORD_AUDIO
+                    ) != PackageManager.PERMISSION_GRANTED
+                ) {
+                    permissionLauncher.launch(audioPermissions())
+                }
+            }
             BudsControlTheme(
                 accentKey = loaded?.accent ?: "lime",
                 customAccent = loaded?.customAccent ?: 0L,
@@ -77,6 +87,11 @@ class MainActivity : ComponentActivity() {
         } else {
             arrayOf(Manifest.permission.BLUETOOTH, Manifest.permission.BLUETOOTH_ADMIN, Manifest.permission.ACCESS_FINE_LOCATION)
         }
+
+    /** Микрофон нужен системному Visualizer, иначе полосы EQ не двигаются. */
+    private fun audioPermissions(): Array<String> = buildList {
+        add(Manifest.permission.RECORD_AUDIO)
+    }.toTypedArray()
 
     private fun historyPermissions(): Array<String> = buildList {
         add(Manifest.permission.ACCESS_FINE_LOCATION)

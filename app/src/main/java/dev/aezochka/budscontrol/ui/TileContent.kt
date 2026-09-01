@@ -15,7 +15,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Bedtime
+import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material.icons.outlined.Devices
+import androidx.compose.material.icons.outlined.GraphicEq
 import androidx.compose.material.icons.outlined.Inventory2
 import androidx.compose.material.icons.outlined.Memory
 import androidx.compose.material.icons.outlined.NotificationsActive
@@ -52,8 +54,10 @@ fun BoxScope.TileContent(
     when (key) {
         "eq" -> {
             val levels by vm.musicLevels.collectAsState()
+            val fxOn by vm.fxReady.collectAsState()
+            val eqGains by vm.eqGains.collectAsState()
             BentoTile(
-            Modifier.fillMaxWidth(), active = live.eqPreset != null, minHeight = 150.dp,
+            Modifier.fillMaxWidth(), active = eqGains.any { it != 0 }, minHeight = 150.dp,
             onClick = if (editing) null else onEq,
         ) { primary, secondary ->
             // Есть звук — полосы идут под музыку, нет — обычная анимация.
@@ -65,7 +69,7 @@ fun BoxScope.TileContent(
             Spacer(Modifier.height(6.dp))
             TileLabel("Эквалайзер", secondary)
             AnimatedContent(
-                live.eqPreset?.title ?: "—",
+                if (!fxOn) "—" else if (eqGains.any { it != 0 }) "Настроен" else "Ровный",
                 transitionSpec = { fadeIn(Motion.effects()) togetherWith fadeOut(Motion.effects()) },
                 label = "eqName",
             ) { name -> Text(name, style = MaterialTheme.typography.titleMedium, color = primary) }
@@ -134,34 +138,50 @@ fun BoxScope.TileContent(
             Text(live.firmware ?: "—", style = MaterialTheme.typography.titleSmall, color = primary)
         }
 
-        "sleep" -> ActionSquare(
-            Icons.Outlined.Bedtime, "Сон",
-            active = vm.sleepTimerLabel() != "Выключить",
-            modifier = Modifier.fillMaxWidth(),
-            onClick = if (editing) ({}) else onSleep,
-        )
+        "sleep" -> {
+            val minutes by vm.sleepMinutes.collectAsState()
+            val left by vm.sleepLeft.collectAsState()
+            ActionSquare(
+                Icons.Outlined.Bedtime,
+                // Таймер виден прямо на плитке.
+                if (left > 0) "%d:%02d".format(left / 60, left % 60) else "Сон",
+                active = minutes > 0,
+                modifier = Modifier.fillMaxWidth(),
+                onClick = onSleep,
+            )
+        }
 
-        "volume" -> ActionSquare(
-            Icons.Outlined.VolumeUp, "Лимит",
-            active = vm.volumeLimitLabel() != "Без лимита",
-            modifier = Modifier.fillMaxWidth(),
-            onClick = if (editing) ({}) else onVolume,
-        )
+        "volume" -> {
+            val limit by vm.volumeLimit.collectAsState()
+            ActionSquare(
+                Icons.Outlined.VolumeUp,
+                if (limit > 0) "$limit%" else "Лимит",
+                active = limit > 0,
+                modifier = Modifier.fillMaxWidth(),
+                onClick = onVolume,
+            )
+        }
 
-        "spatial" -> ActionSquare(
-            Icons.Outlined.SpatialAudio, "3D",
-            active = live.spatialAudio,
-            supported = "spatial" in live.supported,
-            modifier = Modifier.fillMaxWidth(),
-            onClick = if (editing) ({}) else ({ vm.setSpatialAudio(!live.spatialAudio) }),
-        )
+        // 3-я плитка: усиление басов — работает через системный эффект.
+        "bass" -> {
+            val bass by vm.bassBoost.collectAsState()
+            ActionSquare(
+                Icons.Outlined.GraphicEq,
+                if (bass > 0) "${bass * 100 / 1000}%" else "Басы",
+                active = bass > 0,
+                modifier = Modifier.fillMaxWidth(),
+                onClick = { vm.setBassBoostStrength(if (bass > 0) 0 else 600) },
+            )
+        }
 
-        "multipoint" -> ActionSquare(
-            Icons.Outlined.Devices, "2 устр.",
-            active = live.multipoint,
-            supported = "multipoint" in live.supported,
+        // 4-я плитка: игровой режим низкой задержки по протоколу.
+        "lowlatency" -> ActionSquare(
+            Icons.Outlined.Bolt,
+            "Задержка",
+            active = live.gameMode,
+            supported = live.connected,
             modifier = Modifier.fillMaxWidth(),
-            onClick = if (editing) ({}) else ({ vm.setMultipoint(!live.multipoint) }),
+            onClick = { vm.setGameMode(!live.gameMode) },
         )
     }
 }

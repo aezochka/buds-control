@@ -6,7 +6,6 @@ import android.bluetooth.BluetoothManager
 import android.content.Context
 import dev.aezochka.budscontrol.proto.AncMode
 import dev.aezochka.budscontrol.proto.Cmd
-import dev.aezochka.budscontrol.proto.EqPreset
 import dev.aezochka.budscontrol.proto.MiscType
 import dev.aezochka.budscontrol.proto.OppoProtocol
 import dev.aezochka.budscontrol.proto.SubType
@@ -45,11 +44,8 @@ data class LiveState(
     val budInCaseLeft: Boolean = false,
     val budInCaseRight: Boolean = false,
     val ancMode: AncMode? = null,
-    val eqPreset: EqPreset? = null,
     /** Гарнитура подтвердила команду поиска. */
     val findAcked: Boolean = false,
-    /** Усиление по 5 полосам, дБ от -6 до +6. */
-    val eqGains: List<Int> = listOf(0, 0, 0, 0, 0),
     val touch: Map<Pair<TouchSide, TouchType>, TouchAction> = emptyMap(),
     val supported: Set<String> = emptySet(),
     val probed: Boolean = false,
@@ -135,8 +131,7 @@ class BudsSession(private val context: Context) {
                     delay(3_000)
                     if (!_state.value.connected) break
                     c.send(OppoProtocol.miscConfigReq(listOf(MiscType.GAME_MODE)))
-                    c.send(OppoProtocol.equalizerReq())
-                }
+                            }
             }
             launch {
                 while (_state.value.connected) {
@@ -165,7 +160,6 @@ class BudsSession(private val context: Context) {
         c.send(OppoProtocol.miscConfigReq(listOf(MiscType.GAME_MODE, MiscType.MULTIPOINT, MiscType.LDAC, MiscType.SPATIAL_AUDIO)))
         c.send(OppoProtocol.touchConfigReq())
         c.send(OppoProtocol.ancConfigReq())
-        c.send(OppoProtocol.equalizerReq())
         _state.update { it.copy(probed = true) }
     }
 
@@ -198,11 +192,9 @@ class BudsSession(private val context: Context) {
                 Cmd.MISC_CONFIG_RET -> applyMisc(frame.payload)
                 Cmd.ANC_CONFIG_RET -> applyAnc(frame.payload)
                 Cmd.TOUCH_CONFIG_RET -> applyTouch(frame.payload)
-                Cmd.EQUALIZER_RET -> applyEq(frame.payload)
                 Cmd.FIND_DEVICE_ACK -> _state.update {
                     it.copy(supported = it.supported + "find", findAcked = true)
                 }
-                Cmd.EQUALIZER_ACK -> _state.update { it.copy(supported = it.supported + "eq") }
                 else -> Unit
             }
         }
@@ -277,13 +269,6 @@ class BudsSession(private val context: Context) {
         }
     }
 
-    private fun applyEq(p: ByteArray) {
-        if (p.size < 2) return
-        val code = p[p.size - 1].toInt() and 0xFF
-        EqPreset.from(code)?.let { preset ->
-            _state.update { it.copy(eqPreset = preset, supported = it.supported + "eq") }
-        }
-    }
 
     private fun applyTouch(p: ByteArray) {
         if (p.isEmpty() || p[0].toInt() != 0) return
@@ -307,16 +292,7 @@ class BudsSession(private val context: Context) {
         val c = conn ?: return
         scope.launch { c.send(OppoProtocol.miscConfigSet(MiscType.GAME_MODE, on)) }
     }
-    fun setEqualizer(preset: EqPreset) = send(OppoProtocol.equalizerSet(preset)) {
-        _state.update { it.copy(eqPreset = preset) }
-    }
 
-    /** Кастомные полосы: применяем сразу, состояние обновляем оптимистично. */
-    fun setEqualizerGains(gains: List<Int>) {
-        _state.update { it.copy(eqGains = gains, eqPreset = EqPreset.Custom) }
-        val c = conn ?: return
-        scope.launch { c.send(OppoProtocol.equalizerCustom(gains)) }
-    }
 
     fun setSpatialAudio(on: Boolean) {
         _state.update { it.copy(spatialAudio = on) }
@@ -374,9 +350,14 @@ class BudsSession(private val context: Context) {
         }
     }
 
+    /**
+     * Состояние обновляем СРАЗУ, отправка идёт параллельно.
+     * Раньше плитка ждала подтверждения записи в сокет и «долго срабатывала».
+     */
     private fun send(data: ByteArray, onOk: () -> Unit) {
+        onOk()
         val c = conn ?: return
-        scope.launch { if (c.send(data)) onOk() }
+        scope.launch { c.send(data) }
     }
 
     fun disconnect() {

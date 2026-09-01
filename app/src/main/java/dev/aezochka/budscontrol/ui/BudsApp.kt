@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
@@ -103,7 +104,7 @@ fun BudsApp(vm: BudsViewModel) {
             },
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(bottom = 14.dp + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()),
+                .padding(bottom = 12.dp + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()),
         )
     }
 }
@@ -113,10 +114,13 @@ private fun FloatingTabBar(current: Int, onSelect: (Int) -> Unit, modifier: Modi
     val scheme = MaterialTheme.colorScheme
     Row(
         modifier
-            .clip(RoundedCornerShape(32.dp))
+            // Прямоугольник с круглыми углами вместо пилюли.
+            .fillMaxWidth()
+            .padding(horizontal = 14.dp)
+            .clip(RoundedCornerShape(26.dp))
             .background(scheme.surfaceContainer)
-            .padding(7.dp),
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
+            .padding(horizontal = 6.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Tab.entries.forEachIndexed { index, tab ->
@@ -135,7 +139,7 @@ private fun FloatingTabBar(current: Int, onSelect: (Int) -> Unit, modifier: Modi
                     .clip(RoundedCornerShape(corner))
                     .background(bg)
                     .pressBounce(scaleDown = 0.93f) { onSelect(index) }
-                    .padding(horizontal = 13.dp, vertical = 9.dp),
+                    .padding(horizontal = 16.dp, vertical = 9.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Icon(

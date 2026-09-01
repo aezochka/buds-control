@@ -28,6 +28,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.DashboardCustomize
 import androidx.compose.material.icons.outlined.DirectionsWalk
 import androidx.compose.material.icons.outlined.GraphicEq
+import androidx.compose.material.icons.outlined.Bedtime
+import androidx.compose.material.icons.outlined.VolumeUp
+import androidx.compose.material.icons.outlined.Vibration
+import androidx.compose.material.icons.outlined.Bolt
+import androidx.compose.material.icons.outlined.BatteryAlert
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Terminal
 import androidx.compose.material.icons.outlined.TouchApp
@@ -57,18 +62,15 @@ fun SettingsTab(vm: BudsViewModel) {
     val settings by vm.settings.collectAsState()
     val profiles by vm.profiles.collectAsState()
     val live by vm.live.collectAsState()
-    var showTiles by remember { mutableStateOf(false) }
     var showTheme by remember { mutableStateOf(false) }
-
-    if (showTiles) {
-        CustomizeTilesSheet(
-            settings = settings,
-            onReorder = vm::setTileOrderList,
-            onSpan = vm::setTileSpan,
-            onToggle = vm::toggleTile,
-            onDismiss = { showTiles = false },
-        )
-    }
+    var showEq by remember { mutableStateOf(false) }
+    var showSleep by remember { mutableStateOf(false) }
+    var showVolume by remember { mutableStateOf(false) }
+    val sleepMin by vm.sleepMinutes.collectAsState()
+    val limit by vm.volumeLimit.collectAsState()
+    if (showEq) { EqualizerSheet(vm) { showEq = false } }
+    if (showSleep) { SleepSheet(vm) { showSleep = false } }
+    if (showVolume) { VolumeLimitSheet(vm) { showVolume = false } }
     if (showTheme) {
         ThemeSheet(
             current = settings.accent,
@@ -93,13 +95,40 @@ fun SettingsTab(vm: BudsViewModel) {
         item {
             Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
                 SettingsRow(
-                    Icons.Outlined.DashboardCustomize, "Настроить плитки",
-                    "Порядок и что показывать",
-                    onClick = { showTiles = true },
+                    Icons.Outlined.GraphicEq, "Эквалайзер",
+                    "Системный: полосы, басы, пресеты",
+                    onClick = { showEq = true },
                 )
                 SettingsRow(
-                    Icons.Outlined.Terminal, "Результат опроса",
-                    if (live.supported.isEmpty()) "Гарнитура не отвечала" else "Подтверждено: ${live.supported.size}",
+                    Icons.Outlined.Bedtime, "Таймер сна",
+                    if (sleepMin > 0) "Активен: $sleepMin мин" else "Пауза по времени",
+                    onClick = { showSleep = true },
+                )
+                SettingsRow(
+                    Icons.Outlined.VolumeUp, "Лимит громкости",
+                    if (limit > 0) "Не выше $limit%" else "Защита слуха",
+                    onClick = { showVolume = true },
+                )
+                SettingsToggle(
+                    icon = Icons.Outlined.Vibration,
+                    title = "Отклик при нажатии",
+                    subtitle = "Виброотдача на плитках",
+                    checked = settings.hapticFeedback,
+                    onChange = { vm.setHaptic(it) },
+                )
+                SettingsToggle(
+                    icon = Icons.Outlined.Bolt,
+                    title = "Подключать автоматически",
+                    subtitle = "Как только гарнитура рядом",
+                    checked = settings.autoConnect,
+                    onChange = { vm.setAutoConnect(it) },
+                )
+                SettingsToggle(
+                    icon = Icons.Outlined.BatteryAlert,
+                    title = "Уведомлять о низком заряде",
+                    subtitle = "Когда наушник ниже 20%",
+                    checked = settings.lowBatteryAlert,
+                    onChange = { vm.setLowBatteryAlert(it) },
                 )
                 SettingsRow(
                     Icons.Outlined.Palette, "Тема",

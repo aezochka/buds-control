@@ -75,24 +75,7 @@ object OppoProtocol {
 
     fun batteryReq() = encode(Cmd.BATTERY_REQ)
     fun statusReq() = encode(Cmd.STATUS_REQ)
-    fun equalizerReq() = encode(Cmd.EQUALIZER_REQ)
 
-    /** Пресет эквалайзера. Код режима идёт одним байтом. */
-    fun equalizerSet(preset: EqPreset) =
-        encode(Cmd.EQUALIZER_SET, byteArrayOf(0x01, preset.code.toByte()))
-
-    /**
-     * Кастомный эквалайзер: 5 полос, каждая от -6 до +6 дБ.
-     * Формат: [0x02][band count][gain x N], где gain — знаковый байт.
-     * Пресет при этом переключается в custom (0x03).
-     */
-    fun equalizerCustom(gains: List<Int>): ByteArray {
-        val payload = ByteArray(2 + gains.size)
-        payload[0] = 0x02
-        payload[1] = gains.size.toByte()
-        gains.forEachIndexed { i, g -> payload[2 + i] = g.coerceIn(-6, 6).toByte() }
-        return encode(Cmd.EQUALIZER_SET, payload)
-    }
     fun firmwareReq() = encode(Cmd.FIRMWARE_GET)
     fun findDevice(start: Boolean) =
         encode(Cmd.FIND_DEVICE_REQ, byteArrayOf(if (start) 1 else 0))
@@ -179,23 +162,6 @@ enum class Cmd(val code: Short) {
 
 enum class AncType(val code: Int) { MODE(0x01), TOUCH_CYCLE_MODES(0x02) }
 
-/**
- * Пресеты эквалайзера. Коды соответствуют режимам realme Link:
- * у T110 их ровно три, поэтому список короткий и честный.
- */
-/** Частоты полос — как в realme Link. */
-val EqBands = listOf("60 Гц", "230 Гц", "910 Гц", "3.6 кГц", "14 кГц")
-
-enum class EqPreset(val code: Int, val title: String, val bars: List<Float>) {
-    Balanced(0x00, "Ровный", listOf(0.5f, 0.5f, 0.5f, 0.5f, 0.5f)),
-    BassBoost(0x01, "Бас", listOf(1f, 0.78f, 0.5f, 0.4f, 0.35f)),
-    TrebleBoost(0x02, "Верх", listOf(0.35f, 0.42f, 0.55f, 0.82f, 1f)),
-    Custom(0x03, "Свой", listOf(0.5f, 0.5f, 0.5f, 0.5f, 0.5f));
-
-    companion object {
-        fun from(code: Int) = entries.firstOrNull { it.code == code }
-    }
-}
 
 enum class AncMode(val code: Int, val prefId: String) {
     OFF(0x01, "0"),

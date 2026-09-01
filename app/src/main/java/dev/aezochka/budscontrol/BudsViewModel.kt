@@ -53,6 +53,25 @@ class BudsViewModel(app: Application) : AndroidViewModel(app) {
     private val _scanning = MutableStateFlow(false)
     val scanning: StateFlow<Boolean> = _scanning.asStateFlow()
 
+    init {
+        // Если пользователь ранее включил историю, поднимаем сервис при старте:
+        // раньше после перезапуска запись просто не шла, хотя тумблер горел.
+        viewModelScope.launch {
+            val saved = store.settings.filterNotNull().first()
+            if (saved.historyEnabled) startWalkService(true)
+        }
+    }
+
+    private fun startWalkService(on: Boolean) {
+        val app = getApplication<Application>()
+        val intent = Intent(app, WalkService::class.java).apply {
+            action = if (on) WalkService.ACTION_START else WalkService.ACTION_STOP
+        }
+        runCatching {
+            if (on) app.startForegroundService(intent) else app.startService(intent)
+        }
+    }
+
     fun bluetoothReady(): Boolean = scanner.isEnabled() && scanner.hasPermission()
 
     /** Скан по Bluetooth: сопряжённые сразу + живой поиск рядом. */
@@ -121,11 +140,7 @@ class BudsViewModel(app: Application) : AndroidViewModel(app) {
 
     fun setHistoryEnabled(on: Boolean) = viewModelScope.launch {
         store.saveSettings(settings.value.copy(historyEnabled = on))
-        val app = getApplication<Application>()
-        val intent = Intent(app, WalkService::class.java).apply {
-            action = if (on) WalkService.ACTION_START else WalkService.ACTION_STOP
-        }
-        if (on) app.startForegroundService(intent) else app.startService(intent)
+        startWalkService(on)
     }
 
     fun deleteSession(id: String) = viewModelScope.launch {

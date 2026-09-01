@@ -8,6 +8,8 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.content.pm.ServiceInfo
+import android.os.Build
 import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
@@ -64,7 +66,26 @@ class WalkService : Service(), LocationListener, SensorEventListener {
     }
 
     private fun startTracking() {
-        startForeground(NOTIFICATION_ID, notification("Записываю прогулку"))
+        // Тип сервиса подбираем по фактически выданным разрешениям: с типом
+        // location без ACCESS_FINE_LOCATION Android бросает исключение и сервис
+        // умирает молча — именно поэтому история не писалась вообще.
+        val hasLocation = has(Manifest.permission.ACCESS_FINE_LOCATION)
+        val type = if (hasLocation) {
+            ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION
+        } else {
+            ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE
+        }
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                startForeground(NOTIFICATION_ID, notification(statusText(hasLocation)), type)
+            } else {
+                startForeground(NOTIFICATION_ID, notification(statusText(hasLocation)))
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Не удалось поднять foreground: ${e.message}")
+            stopSelf()
+            return
+        }
         if (session != null) return
 
         scope.launch {
@@ -80,7 +101,7 @@ class WalkService : Service(), LocationListener, SensorEventListener {
             Log.i(TAG, "Начата сессия ${fresh.id}")
         }
 
-        if (has(Manifest.permission.ACCESS_FINE_LOCATION)) {
+        if (hasLocation) {
             runCatching {
                 locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 10_000L, 8f, this)
             }.onFailure { Log.w(TAG, "GPS недоступен: ${it.message}") }
@@ -166,6 +187,9 @@ class WalkService : Service(), LocationListener, SensorEventListener {
     override fun onBind(intent: Intent?): IBinder? = null
     private fun has(permission: String) =
         ActivityCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED
+
+    private fun statusText(hasLocation: Boolean): String =
+        if (hasLocation) "Записываю маршрут прогулки" else "Нет доступа к геолокации — маршрут не пишется"
 
     private fun createChannel() {
         getSystemService(NotificationManager::class.java).createNotificationChannel(

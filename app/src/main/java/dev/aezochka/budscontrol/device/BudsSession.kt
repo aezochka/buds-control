@@ -89,6 +89,16 @@ class BudsSession(private val context: Context) {
             c.send(OppoProtocol.subscribe(setOf(SubType.BATTERY, SubType.STATUS, SubType.ANC_SELECTOR, SubType.GAME_MODE)))
             probe(c)
             // Часть моделей игнорирует первый запрос — повторяем, как в Gadgetbridge.
+            // Периодический опрос: заряд кейса приходит по событию, поэтому
+            // без повторов плитка оставалась пустой всё время.
+            launch {
+                while (_state.value.connected) {
+                    delay(20_000)
+                    if (!_state.value.connected) break
+                    c.send(OppoProtocol.batteryReq())
+                    c.send(OppoProtocol.statusReq())
+                }
+            }
             repeat(3) { attempt ->
                 delay(1400L * (attempt + 1))
                 val st = _state.value
@@ -135,9 +145,10 @@ class BudsSession(private val context: Context) {
     }
 
     private fun applyBattery(p: ByteArray, subscription: Boolean) {
-        val start = if (subscription) 1 else 0
-        if (p.size < start + 2) return
-        var i = start + 2
+        // Раскладка одинаковая для BATTERY_RET и SUBSCRIPTION_RET(BATTERY):
+        // [0]=статус/тип, [1]=кол-во ячеек, далее пары (индекс, уровень) с i=2.
+        if (p.size < 4) return
+        var i = 2
         var l = _state.value.batteryLeft; var r = _state.value.batteryRight
         var cs = _state.value.batteryCase; var chg = _state.value.chargingCase
         while (i + 1 < p.size) {
@@ -145,7 +156,11 @@ class BudsSession(private val context: Context) {
             if (idx != 0xFF) {
                 val level = p[i + 1].toInt() and 0x7F
                 val charging = (p[i + 1].toInt() and 0x80) != 0
-                when (idx - 1) { 0 -> l = level; 1 -> r = level; 2 -> if (level > 0) { cs = level; chg = charging } }
+                when (idx - 1) {
+                    0 -> { l = level; }
+                    1 -> { r = level; }
+                    2 -> { cs = level; chg = charging }
+                }
             }
             i += 2
         }
@@ -223,6 +238,9 @@ class BudsSession(private val context: Context) {
     fun refresh() {
         val c = conn ?: return
         scope.launch {
+            // Кейс рапортует заряд не всегда с первого раза — просим дважды.
+            c.send(OppoProtocol.batteryReq())
+            delay(400)
             c.send(OppoProtocol.batteryReq())
             c.send(OppoProtocol.statusReq())
             c.send(OppoProtocol.miscConfigReq(listOf(MiscType.GAME_MODE)))

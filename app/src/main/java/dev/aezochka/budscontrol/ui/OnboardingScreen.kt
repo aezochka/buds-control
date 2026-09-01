@@ -123,13 +123,17 @@ fun OnboardingScreen(
             if (step > 0) {
                 PillButton("Назад", filled = false, modifier = Modifier.weight(1f)) { step-- }
             }
+            val profiles by vm.profiles.collectAsState()
+            val canContinue = step != 1 || profiles.isNotEmpty()
             PillButton(
-                text = when (step) {
-                    0 -> "Далее"
-                    1 -> "Далее без ожидания"
+                text = when {
+                    step == 0 -> "Далее"
+                    step == 1 && profiles.isEmpty() -> "Выбери наушники"
+                    step == 1 -> "Далее"
                     else -> "Поехали"
                 },
                 filled = true,
+                enabled = canContinue,
                 modifier = Modifier.weight(1f),
             ) {
                 if (step == 2) vm.finishOnboarding(language) else step++
@@ -139,22 +143,35 @@ fun OnboardingScreen(
 }
 
 @Composable
-private fun PillButton(text: String, filled: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
+private fun PillButton(
+    text: String,
+    filled: Boolean,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    onClick: () -> Unit,
+) {
     val scheme = MaterialTheme.colorScheme
-    val corner by animateDpAsState(if (filled) 999.dp else 999.dp, Motion.spatial(), label = "btn")
+    // Раньше кнопка выглядела серой, но всё равно нажималась. Теперь вид
+    // и поведение совпадают: выключенная не реагирует вообще.
+    val container = when {
+        !enabled -> scheme.surfaceContainer
+        filled -> scheme.primary
+        else -> scheme.surfaceContainerHigh
+    }
+    val label = when {
+        !enabled -> scheme.outline
+        filled -> scheme.onPrimary
+        else -> scheme.onSurface
+    }
     Box(
         modifier
-            .clip(RoundedCornerShape(corner))
-            .background(if (filled) scheme.primary else scheme.surfaceContainerHigh)
-            .pressBounce(scaleDown = 0.96f, onClick = onClick)
+            .clip(RoundedCornerShape(999.dp))
+            .background(container)
+            .pressBounce(scaleDown = 0.96f, enabled = enabled, onClick = onClick)
             .padding(vertical = 18.dp),
         contentAlignment = Alignment.Center,
     ) {
-        Text(
-            text,
-            style = MaterialTheme.typography.labelLarge,
-            color = if (filled) scheme.onPrimary else scheme.onSurface,
-        )
+        Text(text, style = MaterialTheme.typography.labelLarge, color = label)
     }
 }
 
@@ -238,7 +255,7 @@ private fun DevicesStep(vm: BudsViewModel, onRequestBluetooth: () -> Unit) {
                     "Достань наушники из кейса и включи Bluetooth. Сопряжённые устройства появятся сразу.",
                     style = MaterialTheme.typography.bodyMedium, color = scheme.onSurfaceVariant,
                 )
-                PillButton("Искать снова", filled = false) { vm.startScan() }
+                PillButton("Искать снова", filled = false, enabled = true) { vm.startScan() }
             }
         } else {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {

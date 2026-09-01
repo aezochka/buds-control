@@ -13,14 +13,28 @@ android {
         applicationId = "dev.aezochka.budscontrol"
         minSdk = 26
         targetSdk = 36
-        versionCode = 2
-        versionName = "2.0"
+        versionCode = 3
+        versionName = "3.0"
+    }
+
+    // Постоянный ключ: без него каждая сборка подписывалась новым debug-ключом
+    // и Android отказывался обновлять приложение поверх старого.
+    signingConfigs {
+        create("release") {
+            storeFile = rootProject.file("buds-release.jks")
+            storePassword = "budscontrol"
+            keyAlias = "buds"
+            keyPassword = "budscontrol"
+        }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("release")
+        }
+        debug {
+            signingConfig = signingConfigs.getByName("release")
         }
     }
 

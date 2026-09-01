@@ -77,6 +77,39 @@ fun BudsTab(vm: BudsViewModel) {
     // live.connected и уходил в бесконечный цикл подключений.
     LaunchedEffect(selected?.address) { if (selected != null) vm.connectSelected() }
 
+    var showEq by remember { mutableStateOf(false) }
+    var showSleep by remember { mutableStateOf(false) }
+    var showVolume by remember { mutableStateOf(false) }
+
+    if (showEq) {
+        EqualizerSheet(
+            current = live.eqPreset,
+            connected = live.connected,
+            onPick = { vm.setEqualizer(it) },
+            onDismiss = { showEq = false },
+        )
+    }
+    if (showSleep) {
+        OptionSheet(
+            title = "Таймер сна",
+            subtitle = "Наушники выключатся сами",
+            options = listOf("15 минут", "30 минут", "60 минут", "Выключить"),
+            selected = vm.sleepTimerLabel(),
+            onPick = { vm.setSleepTimer(it); showSleep = false },
+            onDismiss = { showSleep = false },
+        )
+    }
+    if (showVolume) {
+        OptionSheet(
+            title = "Лимит громкости",
+            subtitle = "Защита слуха",
+            options = listOf("75 дБ", "85 дБ", "95 дБ", "Без лимита"),
+            selected = vm.volumeLimitLabel(),
+            onPick = { vm.setVolumeLimit(it); showVolume = false },
+            onDismiss = { showVolume = false },
+        )
+    }
+
     LazyColumn(Modifier.fillMaxWidth()) {
         item {
             Column(Modifier.statusBarsPadding().padding(horizontal = 20.dp, vertical = 8.dp)) {
@@ -239,17 +272,19 @@ private fun BentoGrid(vm: BudsViewModel) {
     Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(11.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(11.dp)) {
             if ("eq" !in hidden) {
-                var eqIndex by remember { mutableStateOf(0) }
-                val eqNames = listOf("Бас", "Ровный", "Верх")
                 BentoTile(
-                    Modifier.weight(1f), active = true, minHeight = 150.dp,
-                    onClick = { eqIndex = (eqIndex + 1) % eqNames.size },
+                    Modifier.weight(1f), active = live.eqPreset != null, minHeight = 150.dp,
+                    onClick = { showEq = true },
                 ) { primary, secondary ->
-                    EqualizerBars(active = true, color = primary)
+                    EqBars(
+                        bars = live.eqPreset?.bars ?: listOf(0.4f, 0.6f, 0.9f, 0.5f, 0.45f),
+                        animated = live.eqPreset != null,
+                        color = primary,
+                    )
                     Spacer(Modifier.height(6.dp))
                     TileLabel("Эквалайзер", secondary)
                     AnimatedContent(
-                        eqNames[eqIndex],
+                        live.eqPreset?.title ?: "—",
                         transitionSpec = { fadeIn(Motion.effects()) togetherWith fadeOut(Motion.effects()) },
                         label = "eqName",
                     ) { name -> Text(name, style = MaterialTheme.typography.titleMedium, color = primary) }
@@ -315,50 +350,47 @@ private fun BentoGrid(vm: BudsViewModel) {
                 TileLabel("Прошивка", secondary)
                 Text(live.firmware ?: "—", style = MaterialTheme.typography.titleMedium, color = primary)
             }
-            if ("inear" !in hidden) BentoTile(Modifier.weight(1f)) { primary, secondary ->
-                Icon(Icons.Outlined.Hearing, null, tint = secondary, modifier = Modifier.size(23.dp))
-                TileLabel("В ухе", secondary)
-                Text(
-                    when {
-                        live.inEarLeft == true && live.inEarRight == true -> "Оба"
-                        live.inEarLeft == true -> "Левый"
-                        live.inEarRight == true -> "Правый"
-                        live.inEarLeft == false && live.inEarRight == false -> "Сняты"
-                        else -> "Нет данных"
-                    },
-                    style = MaterialTheme.typography.titleMedium, color = primary,
-                )
-            }
         }
 
         Row(horizontalArrangement = Arrangement.spacedBy(11.dp)) {
-            if ("sleep" !in hidden) SquareToggle(Icons.Outlined.Bedtime, "Сон", Modifier.weight(1f))
-            if ("volume" !in hidden) SquareToggle(Icons.Outlined.VolumeUp, "Лимит", Modifier.weight(1f))
-            if ("spatial" !in hidden) SquareToggle(
+            if ("sleep" !in hidden) ActionSquare(
+                Icons.Outlined.Bedtime, "Сон",
+                active = vm.sleepTimerLabel() != "Выключить",
+                modifier = Modifier.weight(1f),
+            ) { showSleep = true }
+            if ("volume" !in hidden) ActionSquare(
+                Icons.Outlined.VolumeUp, "Лимит",
+                active = vm.volumeLimitLabel() != "Без лимита",
+                modifier = Modifier.weight(1f),
+            ) { showVolume = true }
+            if ("spatial" !in hidden) ActionSquare(
                 Icons.Outlined.SpatialAudio, "3D",
-                Modifier.weight(1f),
+                active = false,
                 supported = "spatial" in live.supported,
-            )
-            if ("multipoint" !in hidden) SquareToggle(
+                modifier = Modifier.weight(1f),
+            ) { }
+            if ("multipoint" !in hidden) ActionSquare(
                 Icons.Outlined.Devices, "2 устр.",
-                Modifier.weight(1f),
+                active = false,
                 supported = "multipoint" in live.supported,
-            )
+                modifier = Modifier.weight(1f),
+            ) { }
         }
     }
 }
 
 @Composable
-private fun SquareToggle(
+private fun ActionSquare(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     label: String,
+    active: Boolean,
     modifier: Modifier = Modifier,
     supported: Boolean = true,
+    onClick: () -> Unit,
 ) {
-    var active by remember { mutableStateOf(false) }
     BentoTile(
         modifier, active = active, minHeight = 104.dp,
-        onClick = if (supported) ({ active = !active }) else null,
+        onClick = if (supported) onClick else null,
     ) { primary, secondary ->
         Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {

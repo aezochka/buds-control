@@ -16,14 +16,13 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.GraphicEq
 import androidx.compose.material.icons.outlined.Headphones
+import androidx.compose.material.icons.outlined.TouchApp
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -44,13 +43,14 @@ import kotlin.math.absoluteValue
 private enum class Tab(val label: String, val icon: ImageVector) {
     Buds("Наушники", Icons.Outlined.Headphones),
     Sound("Звук", Icons.Outlined.GraphicEq),
-    Settings("Настройки", Icons.Outlined.Tune),
+    Gestures("Жесты", Icons.Outlined.TouchApp),
+    Settings("Ещё", Icons.Outlined.Tune),
 }
 
 /**
- * Три вкладки, у каждой подпись под иконкой — раньше было непонятно,
- * что делают кнопки внизу. Свайп через HorizontalPager с плавным
- * сдвигом и затуханием страницы (shared-axis X).
+ * Каркас. Четыре вкладки, чтобы звук и жесты не были свалены в одну.
+ * Страница обрезается по своим границам — раньше текст соседней вкладки
+ * заезжал в кадр во время свайпа.
  */
 @Composable
 fun BudsApp(vm: BudsViewModel) {
@@ -58,18 +58,28 @@ fun BudsApp(vm: BudsViewModel) {
     val scope = rememberCoroutineScope()
 
     Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-        HorizontalPager(state = pager, modifier = Modifier.fillMaxSize()) { page ->
-            // Shared-axis X: страница уезжает и притухает, а не дёргается.
+        HorizontalPager(
+            state = pager,
+            modifier = Modifier.fillMaxSize(),
+            beyondViewportPageCount = 0,
+        ) { page ->
             val offset = (pager.currentPage - page) + pager.currentPageOffsetFraction
             Box(
-                Modifier.graphicsLayer {
-                    translationX = size.width * offset * 0.22f
-                    alpha = 1f - (offset.absoluteValue * 0.45f).coerceIn(0f, 0.6f)
-                }
+                Modifier
+                    .fillMaxSize()
+                    // clipToBounds обязателен: без него контент страницы вылезал
+                    // за её пределы и наезжал на соседнюю вкладку.
+                    .clip(RoundedCornerShape(0.dp))
+                    .graphicsLayer {
+                        clip = true
+                        translationX = size.width * offset * 0.18f
+                        alpha = 1f - (offset.absoluteValue * 0.5f).coerceIn(0f, 0.55f)
+                    }
             ) {
                 when (Tab.entries[page]) {
                     Tab.Buds -> BudsTab(vm)
                     Tab.Sound -> SoundTab(vm)
+                    Tab.Gestures -> GesturesTab(vm)
                     Tab.Settings -> SettingsTab(vm)
                 }
             }
@@ -80,7 +90,7 @@ fun BudsApp(vm: BudsViewModel) {
             onSelect = { index -> scope.launch { pager.animateScrollToPage(index) } },
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(bottom = 16.dp + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()),
+                .padding(bottom = 14.dp + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()),
         )
     }
 }
@@ -90,10 +100,10 @@ private fun FloatingTabBar(current: Int, onSelect: (Int) -> Unit, modifier: Modi
     val scheme = MaterialTheme.colorScheme
     Row(
         modifier
-            .clip(RoundedCornerShape(34.dp))
+            .clip(RoundedCornerShape(32.dp))
             .background(scheme.surfaceContainer)
-            .padding(horizontal = 8.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
+            .padding(7.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Tab.entries.forEachIndexed { index, tab ->
@@ -104,20 +114,20 @@ private fun FloatingTabBar(current: Int, onSelect: (Int) -> Unit, modifier: Modi
             val tint by animateColorAsState(
                 if (selected) scheme.onPrimary else scheme.onSurfaceVariant, Motion.effects(), label = "tabTint",
             )
-            val corner by animateDpAsState(if (selected) 20.dp else 30.dp, Motion.spatialFast(), label = "tabCorner")
-            val iconScale by animateFloatAsState(if (selected) 1.1f else 1f, Motion.spatial(), label = "tabIcon")
+            val corner by animateDpAsState(if (selected) 19.dp else 28.dp, Motion.spatialFast(), label = "tabCorner")
+            val iconScale by animateFloatAsState(if (selected) 1.12f else 1f, Motion.spatial(), label = "tabIcon")
 
             Column(
                 Modifier
                     .clip(RoundedCornerShape(corner))
                     .background(bg)
                     .pressBounce(scaleDown = 0.93f) { onSelect(index) }
-                    .padding(horizontal = 18.dp, vertical = 10.dp),
+                    .padding(horizontal = 13.dp, vertical = 9.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Icon(
                     tab.icon, contentDescription = tab.label, tint = tint,
-                    modifier = Modifier.size(23.dp).graphicsLayer { scaleX = iconScale; scaleY = iconScale },
+                    modifier = Modifier.size(22.dp).graphicsLayer { scaleX = iconScale; scaleY = iconScale },
                 )
                 Spacer(Modifier.height(3.dp))
                 Text(tab.label, style = MaterialTheme.typography.labelMedium, color = tint)
@@ -127,4 +137,4 @@ private fun FloatingTabBar(current: Int, onSelect: (Int) -> Unit, modifier: Modi
 }
 
 @Composable
-fun BottomSpacer() = Spacer(Modifier.height(122.dp))
+fun BottomSpacer() = Spacer(Modifier.height(126.dp))

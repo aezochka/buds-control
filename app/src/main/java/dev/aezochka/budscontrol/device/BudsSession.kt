@@ -38,11 +38,11 @@ data class LiveState(
     val caseReportedAt: Long? = null,
     /** Значение восстановлено из памяти, а не получено сейчас. */
     val caseFromMemory: Boolean = false,
-    val inEarLeft: Boolean? = null,
-    val inEarRight: Boolean? = null,
     val gameMode: Boolean = false,
     val ancMode: AncMode? = null,
     val eqPreset: EqPreset? = null,
+    /** Гарнитура подтвердила команду поиска. */
+    val findAcked: Boolean = false,
     val touch: Map<Pair<TouchSide, TouchType>, TouchAction> = emptyMap(),
     val supported: Set<String> = emptySet(),
     val probed: Boolean = false,
@@ -109,11 +109,20 @@ class BudsSession(private val context: Context) {
             // Периодический опрос: заряд кейса приходит по событию, поэтому
             // без повторов плитка оставалась пустой всё время.
             launch {
+                // Быстрый цикл: жесты на самих наушниках меняют режим/EQ, а
+                // гарнитура не всегда присылает событие — поэтому переспрашиваем.
                 while (_state.value.connected) {
-                    delay(20_000)
+                    delay(3_000)
+                    if (!_state.value.connected) break
+                    c.send(OppoProtocol.miscConfigReq(listOf(MiscType.GAME_MODE)))
+                    c.send(OppoProtocol.equalizerReq())
+                }
+            }
+            launch {
+                while (_state.value.connected) {
+                    delay(15_000)
                     if (!_state.value.connected) break
                     c.send(OppoProtocol.batteryReq())
-                    c.send(OppoProtocol.statusReq())
                 }
             }
             repeat(3) { attempt ->
@@ -123,7 +132,6 @@ class BudsSession(private val context: Context) {
                 if (st.batteryLeft == null && st.batteryRight == null) c.send(OppoProtocol.batteryReq())
                 if (st.firmware == null) c.send(OppoProtocol.firmwareReq())
                 if (st.touch.isEmpty()) c.send(OppoProtocol.touchConfigReq())
-                if (st.inEarLeft == null) c.send(OppoProtocol.statusReq())
             }
         }
     }
@@ -132,7 +140,6 @@ class BudsSession(private val context: Context) {
         val supported = mutableSetOf<String>()
         c.send(OppoProtocol.firmwareReq()); supported += "firmware"
         c.send(OppoProtocol.batteryReq()); supported += "battery"
-        c.send(OppoProtocol.statusReq()); supported += "status"
         c.send(OppoProtocol.miscConfigReq(listOf(MiscType.GAME_MODE, MiscType.MULTIPOINT, MiscType.LDAC)))
         c.send(OppoProtocol.touchConfigReq())
         c.send(OppoProtocol.ancConfigReq())
@@ -153,11 +160,14 @@ class BudsSession(private val context: Context) {
             when (frame.cmd) {
                 Cmd.BATTERY_RET, Cmd.SUBSCRIPTION_RET -> applyBattery(frame.payload, frame.cmd == Cmd.SUBSCRIPTION_RET)
                 Cmd.FIRMWARE_RET -> applyFirmware(frame.payload)
-                Cmd.STATUS_RET -> applyStatus(frame.payload)
                 Cmd.MISC_CONFIG_RET -> applyMisc(frame.payload)
                 Cmd.ANC_CONFIG_RET -> applyAnc(frame.payload)
                 Cmd.TOUCH_CONFIG_RET -> applyTouch(frame.payload)
                 Cmd.EQUALIZER_RET -> applyEq(frame.payload)
+                Cmd.FIND_DEVICE_ACK -> _state.update {
+                    it.copy(supported = it.supported + "find", findAcked = true)
+                }
+                Cmd.EQUALIZER_ACK -> _state.update { it.copy(supported = it.supported + "eq") }
                 else -> Unit
             }
         }
@@ -201,20 +211,6 @@ class BudsSession(private val context: Context) {
         _state.update { it.copy(firmware = version.ifBlank { null }) }
     }
 
-    private fun applyStatus(p: ByteArray) {
-        if (p.size < 2) return
-        var i = 2
-        var left = _state.value.inEarLeft; var right = _state.value.inEarRight
-        while (i + 1 < p.size) {
-            val side = p[i].toInt() and 0xFF
-            val value = p[i + 1].toInt() and 0xFF
-            val inEar = value == 0x03
-            if (side == 0x01) left = inEar
-            if (side == 0x02) right = inEar
-            i += 2
-        }
-        _state.update { it.copy(inEarLeft = left, inEarRight = right) }
-    }
 
     private fun applyMisc(p: ByteArray) {
         if (p.size < 3 || p[0].toInt() != 0) return
@@ -273,7 +269,21 @@ class BudsSession(private val context: Context) {
         send(OppoProtocol.touchConfigSet(side, type, action)) {
             _state.update { it.copy(touch = it.touch + ((side to type) to action)) }
         }
-    fun findDevice(start: Boolean) = send(OppoProtocol.findDevice(start)) {}
+    /**
+     * Поиск наушников. Если гарнитура не ответит ACK за 1.5 с — помечаем
+     * функцию как неподдерживаемую, чтобы кнопка не врала.
+     */
+    fun findDevice(start: Boolean) {
+        val c = conn ?: return
+        scope.launch {
+            _state.update { it.copy(findAcked = false) }
+            c.send(OppoProtocol.findDevice(start))
+            delay(1500)
+            if (!_state.value.findAcked) {
+                _state.update { it.copy(error = "Гарнитура не поддерживает поиск") }
+            }
+        }
+    }
     fun refresh() {
         val c = conn ?: return
         scope.launch {

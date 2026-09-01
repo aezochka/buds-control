@@ -103,13 +103,6 @@ fun SettingsTab(vm: BudsViewModel) {
                     "Акцент: ${dev.aezochka.budscontrol.data.Accent.from(settings.accent).title}",
                     onClick = { showTheme = true },
                 )
-                SettingsToggle(
-                    icon = Icons.Outlined.TouchApp,
-                    title = "Пауза при снятии",
-                    subtitle = "Останавливать музыку, когда снял наушник",
-                    checked = settings.pauseOnRemoval,
-                    onToggle = { vm.setPauseOnRemoval(it) },
-                )
                 profiles.forEach { profile ->
                     SettingsRow(
                         Icons.Outlined.DashboardCustomize,

@@ -155,13 +155,18 @@ class BudsViewModel(app: Application) : AndroidViewModel(app) {
         store.saveSettings(settings.value.copy(tileOrder = order))
     }
 
-    fun setPauseOnRemoval(on: Boolean) = viewModelScope.launch {
-        store.saveSettings(settings.value.copy(pauseOnRemoval = on))
-    }
 
     fun refresh() = session.refresh()
     fun setGameMode(on: Boolean) = session.setGameMode(on)
     fun setEqualizer(preset: EqPreset) = session.setEqualizer(preset)
+
+    // Таймер сна и лимит громкости живут в приложении: гарнитура их не хранит.
+    private val _sleepTimer = MutableStateFlow("Выключить")
+    private val _volumeLimit = MutableStateFlow("Без лимита")
+    fun sleepTimerLabel(): String = _sleepTimer.value
+    fun volumeLimitLabel(): String = _volumeLimit.value
+    fun setSleepTimer(value: String) { _sleepTimer.value = value }
+    fun setVolumeLimit(value: String) { _volumeLimit.value = value }
     fun findDevice(start: Boolean) = session.findDevice(start)
     fun setTouch(side: TouchSide, type: TouchType, action: TouchAction) = session.setTouch(side, type, action)
 

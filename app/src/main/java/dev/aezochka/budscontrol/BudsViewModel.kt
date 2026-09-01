@@ -285,12 +285,38 @@ class BudsViewModel(app: Application) : AndroidViewModel(app) {
         _photoLayout.value = ImageProbe.Layout.Default
     }
 
-    /** Ручное смещение индикаторов заряда. */
-    private val _chipOffset = MutableStateFlow(0f to 0f)
-    val chipOffset: StateFlow<Pair<Float, Float>> = _chipOffset.asStateFlow()
+    /**
+     * Ручная правка индикаторов: у левого и правого СВОИ смещения,
+     * плюс общий масштаб. Раньше двигались только оба сразу.
+     */
+    data class ChipTweak(
+        val leftDx: Float = 0f,
+        val leftDy: Float = 0f,
+        val rightDx: Float = 0f,
+        val rightDy: Float = 0f,
+        val scale: Float = 1f,
+    )
 
-    fun setChipOffset(dx: Float, dy: Float) {
-        _chipOffset.value = dx.coerceIn(-0.3f, 0.3f) to dy.coerceIn(-0.3f, 0.3f)
+    private val _chipTweak = MutableStateFlow(ChipTweak())
+    val chipTweak: StateFlow<ChipTweak> = _chipTweak.asStateFlow()
+
+    /** Двигает выбранные чипы: left, right или оба. */
+    fun nudgeChips(dx: Float, dy: Float, moveLeft: Boolean, moveRight: Boolean) {
+        val t = _chipTweak.value
+        _chipTweak.value = t.copy(
+            leftDx = if (moveLeft) (t.leftDx + dx).coerceIn(-0.35f, 0.35f) else t.leftDx,
+            leftDy = if (moveLeft) (t.leftDy + dy).coerceIn(-0.35f, 0.35f) else t.leftDy,
+            rightDx = if (moveRight) (t.rightDx + dx).coerceIn(-0.35f, 0.35f) else t.rightDx,
+            rightDy = if (moveRight) (t.rightDy + dy).coerceIn(-0.35f, 0.35f) else t.rightDy,
+        )
+    }
+
+    fun setChipScale(scale: Float) {
+        _chipTweak.value = _chipTweak.value.copy(scale = scale.coerceIn(0.7f, 1.6f))
+    }
+
+    fun resetChips() {
+        _chipTweak.value = ChipTweak()
     }
 
 

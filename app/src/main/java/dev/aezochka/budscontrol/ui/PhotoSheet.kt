@@ -1,8 +1,15 @@
 package dev.aezochka.budscontrol.ui
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,8 +26,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Inventory2
 import androidx.compose.material.icons.outlined.OpenWith
 import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material.icons.outlined.RestartAlt
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -38,17 +47,20 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import dev.aezochka.budscontrol.BudsViewModel
 import java.io.File
+import kotlin.math.roundToInt
 
 /**
- * Тап по фото на главной. Здесь можно выбрать другую картинку из найденных
- * и вручную поправить положение индикаторов заряда.
+ * Тап по фото на главной: выбор картинки и правка индикаторов.
+ *
+ * Превью повторяет главный экран один в один (те же пропорции, тот же
+ * масштаб фото), чтобы результат совпадал с тем, что видно на главной.
  */
 @Composable
 fun PhotoSheet(
@@ -62,8 +74,13 @@ fun PhotoSheet(
     val variants by vm.photoVariants.collectAsState()
     val current by vm.foundPhoto.collectAsState()
     val layout by vm.photoLayout.collectAsState()
-    val offset by vm.chipOffset.collectAsState()
-    var adjusting by remember { mutableStateOf(false) }
+    val tweak by vm.chipTweak.collectAsState()
+
+    var editing by remember { mutableStateOf(false) }
+    // Что двигаем: по умолчанию оба, тапом можно оставить один.
+    var pickLeft by remember { mutableStateOf(true) }
+    var pickRight by remember { mutableStateOf(true) }
+    var sizing by remember { mutableStateOf(false) }
 
     LaunchedEffect(address) { vm.loadPhotoVariants(address, deviceName) }
 
@@ -80,43 +97,54 @@ fun PhotoSheet(
         Column(Modifier.padding(horizontal = 20.dp).navigationBarsPadding()) {
             Spacer(Modifier.height(10.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.fillMaxWidth(0.78f)) {
+                Column(Modifier.fillMaxWidth(0.72f)) {
                     Text("Картинка", style = MaterialTheme.typography.headlineSmall, color = scheme.onSurface)
                     Text(
-                        if (adjusting) "Тяни превью, чтобы сдвинуть индикаторы"
-                        else "Выбери подходящую или поправь индикаторы",
+                        when {
+                            sizing -> "Тяни ползунок — меняется размер"
+                            editing -> "Тапни индикатор, чтобы выбрать, и тяни"
+                            else -> "Выбери картинку или поправь индикаторы"
+                        },
                         style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant,
                     )
                 }
-                Spacer(Modifier.fillMaxWidth(0.04f))
+                Spacer(Modifier.weight(1f))
+                if (editing) {
+                    Box(
+                        Modifier.size(40.dp).clip(CircleShape).background(scheme.surfaceContainer)
+                            .pressBounce { vm.resetChips() },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(Icons.Outlined.RestartAlt, "Сброс", tint = scheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
+                    }
+                    Spacer(Modifier.size(8.dp))
+                }
                 Box(
-                    Modifier
-                        .size(42.dp)
-                        .clip(CircleShape)
-                        .background(scheme.surfaceContainer)
+                    Modifier.size(40.dp).clip(CircleShape).background(scheme.surfaceContainer)
                         .pressBounce { vm.loadPhotoVariants(address, deviceName) },
                     contentAlignment = Alignment.Center,
                 ) {
-                    Icon(Icons.Outlined.Refresh, "Обновить", tint = scheme.onSurfaceVariant, modifier = Modifier.size(19.dp))
+                    Icon(Icons.Outlined.Refresh, "Обновить", tint = scheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
                 }
             }
 
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(14.dp))
 
-            // Превью с индикаторами: тут же настраивается их положение.
-            val density = LocalDensity.current
+            // Пропорции и масштаб как на главном экране.
             Box(
                 Modifier
                     .fillMaxWidth()
-                    .aspectRatio(1.15f)
+                    .aspectRatio(1.05f)
                     .clip(RoundedCornerShape(28.dp))
                     .background(scheme.surfaceContainerLow)
                     .then(
-                        if (adjusting) Modifier.pointerInput(Unit) {
+                        if (editing) Modifier.pointerInput(pickLeft, pickRight) {
                             detectDragGestures { _, drag ->
-                                vm.setChipOffset(
-                                    offset.first + drag.x / size.width,
-                                    offset.second + drag.y / size.height,
+                                vm.nudgeChips(
+                                    dx = drag.x / size.width,
+                                    dy = drag.y / size.height,
+                                    moveLeft = pickLeft,
+                                    moveRight = pickRight,
                                 )
                             }
                         } else Modifier
@@ -131,24 +159,26 @@ fun PhotoSheet(
                         modifier = Modifier.fillMaxWidth(0.82f),
                     )
                 }
-                listOf(
-                    Triple(layout.left.x + offset.first, layout.left.y + offset.second, "L"),
-                    Triple(layout.right.x + offset.first, layout.right.y + offset.second, "R"),
-                ).forEach { (x, y, side) ->
-                    Box(
-                        Modifier
-                            .align(BiasAlignment(x * 2f - 1f, y * 2f - 1f))
-                            .clip(CircleShape)
-                            .background(if (adjusting) scheme.primary else scheme.surfaceContainerHigh)
-                            .padding(horizontal = 12.dp, vertical = 7.dp),
-                    ) {
-                        Text(
-                            "100% $side",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = if (adjusting) scheme.onPrimary else scheme.onSurfaceVariant,
-                        )
-                    }
-                }
+
+                // Индикаторы в тех же позициях, что и на главной.
+                EditableChip(
+                    x = layout.left.x + tweak.leftDx,
+                    y = layout.left.y + tweak.leftDy,
+                    side = "L",
+                    scale = tweak.scale,
+                    selected = pickLeft,
+                    editing = editing,
+                    onTap = { if (editing) pickLeft = !pickLeft },
+                )
+                EditableChip(
+                    x = layout.right.x + tweak.rightDx,
+                    y = layout.right.y + tweak.rightDy,
+                    side = "R",
+                    scale = tweak.scale,
+                    selected = pickRight,
+                    editing = editing,
+                    onTap = { if (editing) pickRight = !pickRight },
+                )
             }
 
             Spacer(Modifier.height(12.dp))
@@ -156,30 +186,81 @@ fun PhotoSheet(
                 Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(20.dp))
-                    .background(if (adjusting) scheme.primary else scheme.surfaceContainer)
-                    .pressBounce { adjusting = !adjusting }
+                    .background(if (editing) scheme.primary else scheme.surfaceContainer)
+                    .pressBounce(
+                        onClick = {
+                            editing = !editing
+                            if (!editing) sizing = false
+                        },
+                    )
                     .padding(15.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(11.dp),
             ) {
                 Icon(
                     Icons.Outlined.OpenWith, null,
-                    tint = if (adjusting) scheme.onPrimary else scheme.primary,
+                    tint = if (editing) scheme.onPrimary else scheme.primary,
                     modifier = Modifier.size(20.dp),
                 )
-                Text(
-                    if (adjusting) "Готово" else "Настроить индикаторы",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = if (adjusting) scheme.onPrimary else scheme.onSurface,
-                    modifier = Modifier.fillMaxWidth(0.7f),
-                )
-                if (adjusting) {
+                Column(Modifier.fillMaxWidth(0.8f)) {
                     Text(
-                        "сброс",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = scheme.onPrimary.copy(alpha = 0.85f),
-                        modifier = Modifier.pressBounce { vm.setChipOffset(0f, 0f) },
+                        if (editing) "Готово" else "Настроить индикаторы",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = if (editing) scheme.onPrimary else scheme.onSurface,
                     )
+                    if (editing) {
+                        Text(
+                            when {
+                                pickLeft && pickRight -> "Двигаются оба"
+                                pickLeft -> "Двигается левый"
+                                pickRight -> "Двигается правый"
+                                else -> "Ничего не выбрано"
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = scheme.onPrimary.copy(alpha = 0.85f),
+                        )
+                    }
+                }
+            }
+
+            // Ползунок размера — по зажатию кнопки под превью.
+            AnimatedVisibility(
+                visible = editing,
+                enter = expandVertically(Motion.spatial()) + fadeIn(Motion.effects()),
+                exit = shrinkVertically(Motion.spatial()) + fadeOut(Motion.effects()),
+            ) {
+                Column(Modifier.padding(top = 10.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("Размер", style = MaterialTheme.typography.labelMedium, color = scheme.onSurfaceVariant)
+                        Spacer(Modifier.weight(1f))
+                        Text(
+                            "${(tweak.scale * 100).roundToInt()}%",
+                            style = MaterialTheme.typography.labelMedium, color = scheme.primary,
+                        )
+                    }
+                    Spacer(Modifier.height(6.dp))
+                    Box(
+                        Modifier
+                            .fillMaxWidth()
+                            .height(32.dp)
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(scheme.surfaceContainer)
+                            .pointerInput(Unit) {
+                                detectHorizontalDragGestures { change, _ ->
+                                    val ratio = (change.position.x / size.width).coerceIn(0f, 1f)
+                                    vm.setChipScale(0.7f + ratio * 0.9f)
+                                }
+                            },
+                        contentAlignment = Alignment.CenterStart,
+                    ) {
+                        Box(
+                            Modifier
+                                .fillMaxWidth(((tweak.scale - 0.7f) / 0.9f).coerceIn(0.04f, 1f))
+                                .height(32.dp)
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(scheme.primary),
+                        )
+                    }
                 }
             }
 
@@ -205,11 +286,7 @@ fun PhotoSheet(
                                 .size(104.dp)
                                 .clip(RoundedCornerShape(22.dp))
                                 .background(scheme.surfaceContainerLow)
-                                .border(
-                                    if (active) 3.dp else 0.dp,
-                                    scheme.primary,
-                                    RoundedCornerShape(22.dp),
-                                )
+                                .border(if (active) 3.dp else 0.dp, scheme.primary, RoundedCornerShape(22.dp))
                                 .pressBounce { vm.choosePhoto(address, path) },
                             contentAlignment = Alignment.Center,
                         ) {
@@ -225,5 +302,43 @@ fun PhotoSheet(
             }
             Spacer(Modifier.height(22.dp))
         }
+    }
+}
+
+/** Индикатор в редакторе: кликабельный, с подсветкой выбора. */
+@Composable
+private fun androidx.compose.foundation.layout.BoxScope.EditableChip(
+    x: Float,
+    y: Float,
+    side: String,
+    scale: Float,
+    selected: Boolean,
+    editing: Boolean,
+    onTap: () -> Unit,
+) {
+    val scheme = MaterialTheme.colorScheme
+    val bg by animateColorAsState(
+        when {
+            editing && selected -> scheme.primary
+            editing -> scheme.surfaceContainerHighest
+            else -> scheme.surfaceContainerHigh
+        },
+        Motion.effects(), label = "chipEditBg",
+    )
+    val fg = if (editing && selected) scheme.onPrimary else scheme.onSurfaceVariant
+
+    Row(
+        Modifier
+            .align(BiasAlignment(x * 2f - 1f, y * 2f - 1f))
+            .graphicsLayer { scaleX = scale; scaleY = scale }
+            .clip(CircleShape)
+            .background(bg)
+            .then(if (editing) Modifier.pressBounce(scaleDown = 0.9f, onClick = onTap) else Modifier)
+            .padding(horizontal = 13.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Text("100%", style = MaterialTheme.typography.titleSmall, color = fg)
+        Text(side, style = MaterialTheme.typography.labelSmall, color = fg.copy(alpha = 0.75f))
     }
 }

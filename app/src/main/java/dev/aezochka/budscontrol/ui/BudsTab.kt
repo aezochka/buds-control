@@ -91,7 +91,7 @@ fun BudsTab(vm: BudsViewModel) {
     }
     val foundPhoto by vm.foundPhoto.collectAsState()
     val photoLayout by vm.photoLayout.collectAsState()
-    val chipOffset by vm.chipOffset.collectAsState()
+    val chipTweak by vm.chipTweak.collectAsState()
 
     var showEq by remember { mutableStateOf(false) }
     var showAddDevice by remember { mutableStateOf(false) }
@@ -140,7 +140,7 @@ fun BudsTab(vm: BudsViewModel) {
                     inCaseRight = live.budInCaseRight,
                     foundPhoto = foundPhoto,
                     photoLayout = photoLayout,
-                    chipOffset = chipOffset,
+                    chipTweak = chipTweak,
                     onPhotoClick = { showPhoto = true },
                     onPhotoLoaded = vm::onPhotoLoaded,
                     connecting = live.connecting,
@@ -172,7 +172,7 @@ private fun ProductHero(
     inCaseRight: Boolean,
     foundPhoto: String?,
     photoLayout: ImageProbe.Layout,
-    chipOffset: Pair<Float, Float>,
+    chipTweak: BudsViewModel.ChipTweak,
     onPhotoClick: () -> Unit,
     onPhotoLoaded: (androidx.compose.ui.graphics.ImageBitmap) -> Unit,
     connecting: Boolean,
@@ -302,18 +302,20 @@ private fun ProductHero(
                     percent = if (connected) left else null,
                     side = "L",
                     inCase = inCaseLeft || !connected,
+                    scale = chipTweak.scale,
                     modifier = Modifier.align(BiasAlignment(
-                        horizontalBias = (photoLayout.left.x + chipOffset.first) * 2f - 1f,
-                        verticalBias = (photoLayout.left.y + chipOffset.second) * 2f - 1f,
+                        horizontalBias = (photoLayout.left.x + chipTweak.leftDx) * 2f - 1f,
+                        verticalBias = (photoLayout.left.y + chipTweak.leftDy) * 2f - 1f,
                     )),
                 )
                 BatteryChip(
                     percent = if (connected) right else null,
                     side = "R",
                     inCase = inCaseRight || !connected,
+                    scale = chipTweak.scale,
                     modifier = Modifier.align(BiasAlignment(
-                        horizontalBias = (photoLayout.right.x + chipOffset.first) * 2f - 1f,
-                        verticalBias = (photoLayout.right.y + chipOffset.second) * 2f - 1f,
+                        horizontalBias = (photoLayout.right.x + chipTweak.rightDx) * 2f - 1f,
+                        verticalBias = (photoLayout.right.y + chipTweak.rightDy) * 2f - 1f,
                     )),
                 )
             }
@@ -361,10 +363,16 @@ private fun ProductHero(
 }
 
 @Composable
-private fun BatteryChip(percent: Int?, side: String, inCase: Boolean, modifier: Modifier = Modifier) {
+private fun BatteryChip(
+    percent: Int?,
+    side: String,
+    inCase: Boolean,
+    scale: Float = 1f,
+    modifier: Modifier = Modifier,
+) {
     val scheme = MaterialTheme.colorScheme
-    if (percent == null && !inCase) return
-    // В кейсе — приглушённая «пимба»: сразу видно, что наушник не на связи.
+    // Чип виден ВСЕГДА: раньше при отсутствии данных он исчезал целиком,
+    // и было непонятно, где вообще индикатор.
     val container by animateColorAsState(
         if (inCase) scheme.surfaceContainerLow else scheme.surfaceContainerHigh,
         Motion.effects(), label = "chipBg",
@@ -375,22 +383,33 @@ private fun BatteryChip(percent: Int?, side: String, inCase: Boolean, modifier: 
     )
     Row(
         modifier
+            .graphicsLayer { scaleX = scale; scaleY = scale }
             .clip(CircleShape)
             .background(container)
             .padding(horizontal = 14.dp, vertical = 9.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
+        // Вместо слова «в кейсе» — иконка кейса: короче и понятнее.
         AnimatedContent(
-            percent?.let { "$it%" } ?: "в кейсе",
+            targetState = percent,
             transitionSpec = { fadeIn(Motion.effects()) togetherWith fadeOut(Motion.effects()) },
             label = "pct",
-        ) { label ->
-            Text(
-                label,
-                style = if (percent != null) MaterialTheme.typography.titleSmall else MaterialTheme.typography.labelMedium,
-                color = labelColor,
-            )
+        ) { value ->
+            if (value != null) {
+                Text(
+                    "$value%",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = labelColor,
+                )
+            } else {
+                Icon(
+                    Icons.Outlined.Inventory2,
+                    contentDescription = "В кейсе",
+                    tint = labelColor,
+                    modifier = Modifier.size(15.dp),
+                )
+            }
         }
         Text(
             side,
@@ -424,24 +443,6 @@ private fun BentoGrid(
             TileContent("case", vm, live, editing, onEq, onSleep, onVolume)
         }
 
-        // Разделитель: отделяет главное от дополнительного.
-        Row(
-            Modifier.fillMaxWidth().padding(top = 5.dp, bottom = 1.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            Text(
-                "Дополнительно",
-                style = MaterialTheme.typography.labelSmall,
-                color = scheme.onSurfaceVariant,
-            )
-            Box(
-                Modifier
-                    .weight(1f)
-                    .height(1.dp)
-                    .background(scheme.surfaceContainerHighest),
-            )
-        }
 
         // Дополнительные — компактный ряд из четырёх.
         Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {

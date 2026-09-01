@@ -63,7 +63,7 @@ fun BoxScope.TileContent(
             // Есть звук — полосы идут под музыку, нет — обычная анимация.
             LiveEqBars(
                 live = levels,
-                fallback = live.eqPreset?.bars ?: listOf(0.4f, 0.6f, 0.9f, 0.5f, 0.45f),
+                fallback = listOf(0.4f, 0.6f, 0.9f, 0.5f, 0.45f),
                 color = primary,
             )
             Spacer(Modifier.height(6.dp))

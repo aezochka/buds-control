@@ -114,21 +114,21 @@ fun SettingsTab(vm: BudsViewModel) {
                     title = "Отклик при нажатии",
                     subtitle = "Виброотдача на плитках",
                     checked = settings.hapticFeedback,
-                    onChange = { vm.setHaptic(it) },
+                    onToggle = { vm.setHaptic(it) },
                 )
                 SettingsToggle(
                     icon = Icons.Outlined.Bolt,
                     title = "Подключать автоматически",
                     subtitle = "Как только гарнитура рядом",
                     checked = settings.autoConnect,
-                    onChange = { vm.setAutoConnect(it) },
+                    onToggle = { vm.setAutoConnect(it) },
                 )
                 SettingsToggle(
                     icon = Icons.Outlined.BatteryAlert,
                     title = "Уведомлять о низком заряде",
                     subtitle = "Когда наушник ниже 20%",
                     checked = settings.lowBatteryAlert,
-                    onChange = { vm.setLowBatteryAlert(it) },
+                    onToggle = { vm.setLowBatteryAlert(it) },
                 )
                 SettingsRow(
                     Icons.Outlined.Palette, "Тема",

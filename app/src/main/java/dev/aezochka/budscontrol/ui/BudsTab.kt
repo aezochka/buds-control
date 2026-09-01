@@ -77,6 +77,7 @@ import dev.aezochka.budscontrol.data.ProductCatalog
 fun BudsTab(vm: BudsViewModel) {
     val live by vm.live.collectAsState()
     val profiles by vm.profiles.collectAsState()
+    val tileSettings by vm.settings.collectAsState()
     val selected = profiles.firstOrNull { it.isSelected }
 
     // Ключ только по адресу: раньше эффект перезапускался на каждое изменение
@@ -99,7 +100,7 @@ fun BudsTab(vm: BudsViewModel) {
     }
     if (showTiles) {
         CustomizeTilesSheet(
-            settings = settings,
+            settings = tileSettings,
             onReorder = vm::setTileOrderList,
             onSpan = vm::setTileSpan,
             onToggle = vm::toggleTile,

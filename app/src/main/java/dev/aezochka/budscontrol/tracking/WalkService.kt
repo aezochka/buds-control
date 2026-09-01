@@ -32,7 +32,9 @@ import dev.aezochka.budscontrol.data.WalkSession
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.util.UUID
 
@@ -50,6 +52,7 @@ class WalkService : Service(), SensorEventListener {
     private lateinit var fused: FusedLocationProviderClient
 
     @Volatile private var session: WalkSession? = null
+    private var heartbeat: kotlinx.coroutines.Job? = null
     private var latestSteps: Long? = null
     private var baselineSteps: Long? = null
 
@@ -132,9 +135,33 @@ class WalkService : Service(), SensorEventListener {
                 sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_NORMAL)
             }
         }
+
+        startHeartbeat()
+    }
+
+    /**
+     * Пульс раз в 10 секунд. Раньше сессия писалась только при смещении >= 4 м,
+     * поэтому стоя на месте время и шаги на экране не двигались вообще —
+     * данные оживали лишь после перезапуска приложения.
+     */
+    private fun startHeartbeat() {
+        if (heartbeat != null) return
+        heartbeat = scope.launch {
+            while (isActive) {
+                delay(10_000)
+                val current = session ?: continue
+                val alive = current.copy(
+                    endSteps = latestSteps,
+                    lastSeenMillis = System.currentTimeMillis(),
+                )
+                session = alive
+                store.upsertSession(alive)
+            }
+        }
     }
 
     private fun stopTracking() {
+        heartbeat?.cancel(); heartbeat = null
         runCatching { fused.removeLocationUpdates(locationCallback) }
         runCatching { sensorManager.unregisterListener(this) }
         val finished = session?.copy(
@@ -158,7 +185,13 @@ class WalkService : Service(), SensorEventListener {
         val last = current.points.lastOrNull()
         if (last != null) {
             val prev = Location("").apply { latitude = last.latitude; longitude = last.longitude }
-            if (location.distanceTo(prev) < 4f) return
+            if (location.distanceTo(prev) < 4f) {
+                // Стоим на месте: точку не добавляем, но отмечаем, что живы.
+                val touched = current.copy(lastSeenMillis = System.currentTimeMillis(), endSteps = latestSteps)
+                session = touched
+                scope.launch { store.upsertSession(touched) }
+                return
+            }
         }
         val point = TrackPoint(
             latitude = location.latitude,

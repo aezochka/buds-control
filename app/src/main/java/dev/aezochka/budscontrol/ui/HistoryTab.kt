@@ -46,6 +46,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.LaunchedEffect
+import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -75,6 +77,16 @@ fun HistoryTab(vm: BudsViewModel) {
     val ordered = remember(sessions) { sessions.sortedByDescending { it.startedAtMillis } }
     var selectedIndex by remember(ordered.size) { mutableStateOf(0) }
     val current = ordered.getOrNull(selectedIndex)
+
+    // Тик раз в секунду: без него длительность на экране не двигалась,
+    // пока не перезапустишь приложение.
+    var now by remember { mutableStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(current?.id, current?.endedAtMillis) {
+        while (current != null && current.endedAtMillis == null) {
+            now = System.currentTimeMillis()
+            delay(1000)
+        }
+    }
 
     LazyColumn(Modifier.fillMaxSize()) {
         item {
@@ -135,7 +147,7 @@ fun HistoryTab(vm: BudsViewModel) {
         }
 
         // Плитки статистики — bento как на главной.
-        item { StatsGrid(current) }
+        item { StatsGrid(current, now) }
         item { BottomSpacer() }
     }
 }
@@ -154,7 +166,7 @@ private fun BigRouteMap(session: WalkSession?, enabled: Boolean, onEnable: () ->
         contentAlignment = Alignment.Center,
     ) {
         when {
-            points.size >= 2 -> RouteCanvas(points, scheme.primary, scheme.surfaceContainerHighest, scheme.secondary)
+            (session?.points?.size ?: 0) >= 2 -> RouteMapView(session!!.points, Modifier.fillMaxSize())
             else -> Column(
                 Modifier.padding(28.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -183,49 +195,11 @@ private fun BigRouteMap(session: WalkSession?, enabled: Boolean, onEnable: () ->
     }
 }
 
-/** Маршрут по реальным GPS-точкам: пунктир + пульсирующая точка «сейчас». */
 @Composable
-private fun RouteCanvas(points: List<Pair<Float, Float>>, line: Color, grid: Color, marker: Color) {
-    val draw by animateFloatAsState(1f, tween(1100, easing = FastOutSlowInEasing), label = "draw")
-    val transition = rememberInfiniteTransition(label = "pulse")
-    val pulse by transition.animateFloat(
-        initialValue = 8f, targetValue = 15f,
-        animationSpec = infiniteRepeatable(tween(1200, easing = FastOutSlowInEasing), RepeatMode.Reverse),
-        label = "markerPulse",
-    )
-    Canvas(Modifier.fillMaxSize().padding(26.dp)) {
-        val w = size.width
-        val h = size.height
-        val stepY = h / 5f
-        val stepX = w / 5f
-        for (i in 1..4) {
-            drawLine(grid, Offset(0f, stepY * i), Offset(w, stepY * i), strokeWidth = 1f)
-            drawLine(grid, Offset(stepX * i, 0f), Offset(stepX * i, h), strokeWidth = 1f)
-        }
-        val mapped = points.map { (x, y) -> Offset(x * w, y * h) }
-        val shown = (mapped.size * draw).toInt().coerceIn(2, mapped.size)
-        val path = Path().apply {
-            moveTo(mapped[0].x, mapped[0].y)
-            for (i in 1 until shown) lineTo(mapped[i].x, mapped[i].y)
-        }
-        drawPath(
-            path, color = line,
-            style = Stroke(
-                width = 6f, cap = StrokeCap.Round,
-                pathEffect = PathEffect.dashPathEffect(floatArrayOf(3f, 16f), 0f),
-            ),
-        )
-        drawCircle(line, radius = 11f, center = mapped.first())
-        drawCircle(marker.copy(alpha = 0.28f), radius = pulse + 8f, center = mapped[shown - 1])
-        drawCircle(marker, radius = 12f, center = mapped[shown - 1])
-    }
-}
-
-@Composable
-private fun StatsGrid(session: WalkSession?) {
+private fun StatsGrid(session: WalkSession?, now: Long) {
     val scheme = MaterialTheme.colorScheme
     val distance = remember(session?.points) { HistoryMath.totalDistance(session?.points.orEmpty()) }
-    val duration = remember(session) { session?.let { HistoryMath.durationMillis(it) } ?: 0L }
+    val duration = remember(session, now) { session?.let { HistoryMath.durationMillis(it, now) } ?: 0L }
     val steps = remember(session) { session?.let { HistoryMath.steps(it) } }
 
     Column(

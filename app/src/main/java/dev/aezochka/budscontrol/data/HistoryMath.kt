@@ -30,9 +30,20 @@ object HistoryMath {
         return sum
     }
 
-    fun durationMillis(session: WalkSession): Long {
-        val end = session.endedAtMillis ?: session.points.lastOrNull()?.timeMillis ?: session.startedAtMillis
+    fun durationMillis(session: WalkSession, nowMillis: Long = System.currentTimeMillis()): Long {
+        // Активная прогулка тикает до «сейчас», иначе время замирало на месте.
+        val end = session.endedAtMillis
+            ?: maxOf(session.lastSeenMillis ?: 0L, session.points.lastOrNull()?.timeMillis ?: 0L, nowMillis)
         return (end - session.startedAtMillis).coerceAtLeast(0)
+    }
+
+    /** Границы маршрута для подбора зума карты. */
+    fun bounds(points: List<TrackPoint>): DoubleArray? {
+        if (points.isEmpty()) return null
+        return doubleArrayOf(
+            points.minOf { it.latitude }, points.maxOf { it.latitude },
+            points.minOf { it.longitude }, points.maxOf { it.longitude },
+        )
     }
 
     fun steps(session: WalkSession): Long? {

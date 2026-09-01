@@ -53,6 +53,8 @@ data class WalkSession(
     val endSteps: Long? = null,
     val points: List<TrackPoint> = emptyList(),
     val playback: List<PlaybackSegment> = emptyList(),
+    /** Последний признак жизни — обновляется раз в 10 с, даже если стоим. */
+    val lastSeenMillis: Long? = null,
 )
 
 @Serializable
@@ -90,4 +92,6 @@ data class RealHistorySummary(
     val tracks: Int = 0,
     val points: List<TrackPoint> = emptyList(),
     val playback: List<PlaybackSegment> = emptyList(),
+    /** Последний признак жизни — обновляется раз в 10 с, даже если стоим. */
+    val lastSeenMillis: Long? = null,
 )

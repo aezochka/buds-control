@@ -321,7 +321,7 @@ private fun DeviceRow(device: BluetoothScanner.Found, added: Boolean, onAdd: () 
             )
         }
         Text(
-            if (added) "Добавлен" else "Добавить",
+            if (added) "Убрать" else "Добавить",
             style = MaterialTheme.typography.labelMedium,
             color = if (added) scheme.onPrimary else scheme.primary,
         )

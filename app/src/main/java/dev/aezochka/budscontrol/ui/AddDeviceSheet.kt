@@ -12,11 +12,13 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Headphones
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -87,7 +89,7 @@ fun AddDeviceSheet(vm: BudsViewModel, onDismiss: () -> Unit) {
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(22.dp))
                                 .background(bg)
-                                .pressBounce { vm.addProfile(device) }
+                                .pressBounce { if (added) vm.removeProfileByAddress(device.address) else vm.addProfile(device) }
                                 .padding(15.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(13.dp),
@@ -116,11 +118,22 @@ fun AddDeviceSheet(vm: BudsViewModel, onDismiss: () -> Unit) {
                                     color = if (added) scheme.onPrimary.copy(alpha = 0.8f) else scheme.onSurfaceVariant,
                                 )
                             }
-                            Text(
-                                if (added) "Добавлен" else "Добавить",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = if (added) scheme.onPrimary else scheme.primary,
-                            )
+                            // Добавленное можно снять тем же тапом — раньше
+                            // выбор был необратимым.
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    if (added) "Убрать" else "Добавить",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = if (added) scheme.onPrimary else scheme.primary,
+                                )
+                                if (added) {
+                                    Spacer(Modifier.width(6.dp))
+                                    Icon(
+                                        Icons.Outlined.Close, null,
+                                        tint = scheme.onPrimary, modifier = Modifier.size(16.dp),
+                                    )
+                                }
+                            }
                         }
                     }
                 }

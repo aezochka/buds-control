@@ -33,6 +33,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Bedtime
+import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.DashboardCustomize
 import androidx.compose.material.icons.outlined.BluetoothConnected
 import androidx.compose.material.icons.outlined.Devices
 import androidx.compose.material.icons.outlined.Headphones
@@ -80,6 +82,7 @@ fun BudsTab(vm: BudsViewModel) {
 
     var showEq by remember { mutableStateOf(false) }
     var showAddDevice by remember { mutableStateOf(false) }
+    var editTiles by remember { mutableStateOf(false) }
     var showSleep by remember { mutableStateOf(false) }
     var showVolume by remember { mutableStateOf(false) }
 
@@ -121,7 +124,12 @@ fun BudsTab(vm: BudsViewModel) {
     LazyColumn(Modifier.fillMaxWidth()) {
         item {
             Column(Modifier.statusBarsPadding().padding(horizontal = 20.dp, vertical = 8.dp)) {
-                ProfileChips(vm) { showAddDevice = true }
+                ProfileRow(
+                    profiles = profiles,
+                    onSelect = { vm.selectProfile(it) },
+                    onReorder = { vm.reorderProfiles(it) },
+                    onAdd = { showAddDevice = true },
+                )
                 Spacer(Modifier.height(10.dp))
                 ProductHero(
                     name = selected?.displayName ?: "Наушники не выбраны",
@@ -138,57 +146,22 @@ fun BudsTab(vm: BudsViewModel) {
                 )
             }
         }
-        item { BentoGrid(vm, onEq = { showEq = true }, onSleep = { showSleep = true }, onVolume = { showVolume = true }) }
-        item { BottomSpacer() }
-    }
-}
-
-@Composable
-private fun ProfileChips(vm: BudsViewModel, onAdd: () -> Unit) {
-    val profiles by vm.profiles.collectAsState()
-    if (profiles.isEmpty()) return
-    val scheme = MaterialTheme.colorScheme
-    Row(verticalAlignment = Alignment.CenterVertically) {
-    Row(
-        Modifier.weight(1f).horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        profiles.forEach { profile ->
-            val active = profile.isSelected
-            Row(
-                Modifier
-                    .clip(CircleShape)
-                    .background(if (active) scheme.primary else scheme.surfaceContainer)
-                    .pressBounce { vm.selectProfile(profile.id) }
-                    .padding(horizontal = 16.dp, vertical = 10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Icon(
-                    Icons.Outlined.Headphones, null,
-                    tint = if (active) scheme.onPrimary else scheme.onSurfaceVariant,
-                    modifier = Modifier.size(18.dp),
-                )
-                Text(
-                    profile.displayName.removePrefix("realme ").removePrefix("OnePlus "),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = if (active) scheme.onPrimary else scheme.onSurfaceVariant,
-                )
-            }
+        item {
+            EditBar(
+                editing = editTiles,
+                onToggle = { editTiles = !editTiles },
+            )
         }
-    }
-    Spacer(Modifier.width(8.dp))
-    // Плюсик: добавить ещё одну гарнитуру через Bluetooth-скан.
-    Box(
-        Modifier
-            .size(42.dp)
-            .clip(CircleShape)
-            .background(scheme.surfaceContainerHigh)
-            .pressBounce(scaleDown = 0.88f) { onAdd() },
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(Icons.Outlined.Add, "Добавить наушники", tint = scheme.primary, modifier = Modifier.size(21.dp))
-    }
+        item {
+            BentoGrid(
+                vm = vm,
+                editing = editTiles,
+                onEq = { showEq = true },
+                onSleep = { showSleep = true },
+                onVolume = { showVolume = true },
+            )
+        }
+        item { BottomSpacer() }
     }
 }
 
@@ -326,6 +299,7 @@ private fun BatteryChip(percent: Int?, side: String, inCase: Boolean, modifier: 
 @Composable
 private fun BentoGrid(
     vm: BudsViewModel,
+    editing: Boolean,
     onEq: () -> Unit,
     onSleep: () -> Unit,
     onVolume: () -> Unit,
@@ -338,8 +312,9 @@ private fun BentoGrid(
         Row(horizontalArrangement = Arrangement.spacedBy(11.dp)) {
             if ("eq" !in hidden) {
                 BentoTile(
-                    Modifier.weight(1f), active = live.eqPreset != null, minHeight = 150.dp,
-                    onClick = onEq,
+                    Modifier.weight(spanWeight(settings, "eq")).wobble(editing),
+                    active = live.eqPreset != null, minHeight = 150.dp,
+                    onClick = if (editing) ({ vm.cycleTileSpan("eq") }) else onEq,
                 ) { primary, secondary ->
                     EqBars(
                         bars = live.eqPreset?.bars ?: listOf(0.4f, 0.6f, 0.9f, 0.5f, 0.45f),
@@ -356,10 +331,10 @@ private fun BentoGrid(
                 }
             }
             if ("game" !in hidden) BentoTile(
-                Modifier.weight(1f),
+                Modifier.weight(spanWeight(settings, "game")).wobble(editing),
                 active = live.gameMode,
                 minHeight = 150.dp,
-                onClick = { vm.setGameMode(!live.gameMode) },
+                onClick = if (editing) ({ vm.cycleTileSpan("game") }) else ({ vm.setGameMode(!live.gameMode) }),
             ) { primary, secondary ->
                 MorphIcon(active = live.gameMode, icon = Icons.Outlined.SportsEsports, tint = primary)
                 Spacer(Modifier.height(6.dp))
@@ -369,7 +344,10 @@ private fun BentoGrid(
         }
 
         Row(horizontalArrangement = Arrangement.spacedBy(11.dp)) {
-            if ("case" !in hidden) BentoTile(Modifier.weight(3f)) { primary, secondary ->
+            if ("case" !in hidden) BentoTile(
+                Modifier.weight(spanWeight(settings, "case", 3f)).wobble(editing),
+                onClick = if (editing) ({ vm.cycleTileSpan("case") }) else null,
+            ) { primary, secondary ->
                 Icon(Icons.Outlined.Inventory2, null, tint = secondary, modifier = Modifier.size(24.dp))
                 TileLabel(
                     if (live.caseFromMemory) "Кейс · последнее" else "Кейс",
@@ -388,11 +366,12 @@ private fun BentoGrid(
             if ("find" !in hidden) {
                 var ringing by remember { mutableStateOf(false) }
                 BentoTile(
-                    Modifier.weight(1f), active = ringing,
-                    onClick = {
+                    Modifier.weight(spanWeight(settings, "find")).wobble(editing),
+                    active = ringing,
+                    onClick = if (editing) ({ vm.cycleTileSpan("find") }) else ({
                         ringing = !ringing
                         vm.findDevice(ringing)
-                    },
+                    }),
                 ) { primary, secondary ->
                     Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -410,7 +389,10 @@ private fun BentoGrid(
         }
 
         Row(horizontalArrangement = Arrangement.spacedBy(11.dp)) {
-            if ("firmware" !in hidden) BentoTile(Modifier.weight(1f)) { primary, secondary ->
+            if ("firmware" !in hidden) BentoTile(
+                Modifier.weight(spanWeight(settings, "firmware")).wobble(editing),
+                onClick = if (editing) ({ vm.cycleTileSpan("firmware") }) else null,
+            ) { primary, secondary ->
                 Icon(Icons.Outlined.BluetoothConnected, null, tint = secondary, modifier = Modifier.size(23.dp))
                 TileLabel("Прошивка", secondary)
                 Text(live.firmware ?: "—", style = MaterialTheme.typography.titleMedium, color = primary)
@@ -488,3 +470,67 @@ private fun MorphIcon(active: Boolean, icon: androidx.compose.ui.graphics.vector
             .rotate(rotation),
     )
 }
+
+
+/** Полоска режима правки плиток: включается на самом главном экране. */
+@Composable
+private fun EditBar(editing: Boolean, onToggle: () -> Unit) {
+    val scheme = MaterialTheme.colorScheme
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        AnimatedContent(
+            targetState = editing,
+            transitionSpec = { fadeIn(Motion.effects()) togetherWith fadeOut(Motion.effects()) },
+            label = "editHint",
+        ) { on ->
+            Text(
+                if (on) "Тапни плитку, чтобы изменить размер" else "Плитки",
+                style = MaterialTheme.typography.bodySmall,
+                color = scheme.onSurfaceVariant,
+            )
+        }
+        Spacer(Modifier.weight(1f))
+        Row(
+            Modifier
+                .clip(CircleShape)
+                .background(if (editing) scheme.primary else scheme.surfaceContainer)
+                .pressBounce(onClick = onToggle)
+                .padding(horizontal = 14.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Icon(
+                if (editing) Icons.Outlined.Check else Icons.Outlined.DashboardCustomize,
+                null,
+                tint = if (editing) scheme.onPrimary else scheme.onSurfaceVariant,
+                modifier = Modifier.size(17.dp),
+            )
+            Text(
+                if (editing) "Готово" else "Настроить",
+                style = MaterialTheme.typography.labelMedium,
+                color = if (editing) scheme.onPrimary else scheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+/** Покачивание плитки в режиме правки — как в макете. */
+@Composable
+private fun Modifier.wobble(active: Boolean): Modifier {
+    if (!active) return this
+    val transition = rememberInfiniteTransition(label = "tileWobble")
+    val angle by transition.animateFloat(
+        initialValue = -0.9f, targetValue = 0.9f,
+        animationSpec = infiniteRepeatable(tween(380, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+        label = "wobbleAngle",
+    )
+    return this.graphicsLayer { rotationZ = angle }
+}
+
+/** Вес плитки в ряду: 1..4 колонки, сохраняется в настройках. */
+private fun spanWeight(settings: dev.aezochka.budscontrol.data.UserSettings, key: String, default: Float = 1f): Float =
+    (settings.tileSpans[key] ?: default.toInt()).coerceIn(1, 4).toFloat()

@@ -105,6 +105,22 @@ class BudsViewModel(app: Application) : AndroidViewModel(app) {
         list.firstOrNull { it.isSelected }?.let { session.connect(it.address, it.displayName) }
     }
 
+    fun removeProfileByAddress(address: String) = viewModelScope.launch {
+        val list = store.profiles.first().filterNot { it.address == address }
+        // Если сняли активный — активируем первый оставшийся.
+        val fixed = if (list.none { it.isSelected } && list.isNotEmpty()) {
+            list.mapIndexed { i, p -> p.copy(isSelected = i == 0) }
+        } else list
+        store.saveProfiles(fixed)
+    }
+
+    /** Порядок профилей на главной — перетаскиванием. */
+    fun reorderProfiles(order: List<String>) = viewModelScope.launch {
+        val current = store.profiles.first()
+        val sorted = order.mapNotNull { id -> current.firstOrNull { it.id == id } }
+        store.saveProfiles(sorted + current.filterNot { it.id in order })
+    }
+
     fun removeProfile(id: String) = viewModelScope.launch {
         store.saveProfiles(store.profiles.first().filterNot { it.id == id })
     }
@@ -136,6 +152,13 @@ class BudsViewModel(app: Application) : AndroidViewModel(app) {
     fun setTileOrder(order: List<String>) = viewModelScope.launch {
         store.saveSettings(settings.value.copy(tileOrder = order))
     }
+    /** Тап в режиме правки: 1 → 2 → 3 → 4 → 1 колонки. */
+    fun cycleTileSpan(key: String) = viewModelScope.launch {
+        val current = settings.value.tileSpans[key] ?: 1
+        val next = if (current >= 4) 1 else current + 1
+        store.saveSettings(settings.value.copy(tileSpans = settings.value.tileSpans + (key to next)))
+    }
+
     fun setTileSpan(key: String, span: Int) = viewModelScope.launch {
         store.saveSettings(settings.value.copy(tileSpans = settings.value.tileSpans + (key to span)))
     }

@@ -2,8 +2,10 @@ package dev.aezochka.budscontrol.ui
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -11,7 +13,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -32,12 +33,17 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import dev.aezochka.budscontrol.data.EarbudProfile
+import kotlin.math.abs
 import kotlin.math.roundToInt
 
 /**
- * Список профилей сверху главного экрана. Зажал чип — можно тащить и менять
- * порядок; тап переключает активную гарнитуру. Справа плюсик.
+ * Список профилей сверху главного экрана.
+ *
+ * Перетаскивание: зажал чип — он поднимается и следует за пальцем, пока
+ * палец не отпущен. Остальные чипы РАЗЪЕЗЖАЮТСЯ, освобождая место, а не
+ * меняются местами скачком. Пока тащим, свайп между вкладками блокируется.
  */
 @Composable
 fun ProfileRow(
@@ -45,71 +51,108 @@ fun ProfileRow(
     onSelect: (String) -> Unit,
     onReorder: (List<String>) -> Unit,
     onAdd: () -> Unit,
+    onDragActive: (Boolean) -> Unit = {},
 ) {
     val scheme = MaterialTheme.colorScheme
     val density = LocalDensity.current
-    var order by remember(profiles.map { it.id }) { mutableStateOf(profiles.map { it.id }) }
-    var dragging by remember { mutableStateOf<String?>(null) }
-    var dragOffset by remember { mutableStateOf(0f) }
-    val chipWidthPx = with(density) { 128.dp.toPx() }
 
+    // Локальный порядок — двигаем визуально, наружу отдаём только при отпускании.
+    var order by remember(profiles.map { it.id }) { mutableStateOf(profiles.map { it.id }) }
+    var dragId by remember { mutableStateOf<String?>(null) }
+    var dragOffset by remember { mutableStateOf(0f) }
+    // На сколько позиций уехал палец от исходного места.
+    var slots by remember { mutableStateOf(0) }
+    var startIndex by remember { mutableStateOf(0) }
+
+    val chipWidthPx = with(density) { 132.dp.toPx() }
     val ordered = order.mapNotNull { id -> profiles.firstOrNull { it.id == id } }
 
     Row(verticalAlignment = Alignment.CenterVertically) {
         Row(
-            Modifier.weight(1f).horizontalScroll(rememberScrollState()),
+            Modifier
+                .weight(1f)
+                // Прокрутку выключаем во время перетаскивания, иначе список
+                // уезжает вместе с пальцем.
+                .horizontalScroll(rememberScrollState(), enabled = dragId == null),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            ordered.forEach { profile ->
+            ordered.forEachIndexed { index, profile ->
                 val active = profile.isSelected
-                val isDragging = dragging == profile.id
-                val bg by animateColorAsState(
-                    if (active) scheme.primary else scheme.surfaceContainer, Motion.effects(), label = "chipBg",
-                )
-                val lift by animateFloatAsState(if (isDragging) 1.08f else 1f, Motion.spatialFast(), label = "lift")
+                val dragging = dragId == profile.id
 
-                // Наклон только у перетаскиваемого чипа. Раньше бесконечная
-                // анимация создавалась для КАЖДОГО чипа и крутилась всегда —
-                // это и был источник микрофризов.
-                val angle by animateFloatAsState(
-                    targetValue = if (isDragging) 1.4f else 0f,
-                    animationSpec = Motion.spatialFast(),
-                    label = "angle",
+                // Смещение соседей: они уступают место перетаскиваемому чипу.
+                val targetShift = when {
+                    dragId == null -> 0
+                    dragging -> 0
+                    // чип уехал вправо — те, кто между старым и новым местом, сдвигаются влево
+                    slots > 0 && index > startIndex && index <= startIndex + slots -> -1
+                    slots < 0 && index < startIndex && index >= startIndex + slots -> 1
+                    else -> 0
+                }
+                val shift by animateIntAsState(targetShift, Motion.spatial(), label = "neighbourShift")
+                val lift by animateFloatAsState(if (dragging) 1.07f else 1f, Motion.spatialFast(), label = "lift")
+                val bg by animateColorAsState(
+                    when {
+                        active -> scheme.primary
+                        dragging -> scheme.surfaceContainerHighest
+                        else -> scheme.surfaceContainer
+                    },
+                    Motion.effects(), label = "chipBg",
                 )
 
                 Row(
                     Modifier
+                        .zIndex(if (dragging) 1f else 0f)
                         .graphicsLayer {
-                            scaleX = lift; scaleY = lift
-                            rotationZ = angle
-                            translationX = if (isDragging) dragOffset else 0f
-                            shadowElevation = if (isDragging) 16f else 0f
+                            scaleX = lift
+                            scaleY = lift
+                            translationX = if (dragging) dragOffset else shift * (chipWidthPx * 0.34f)
+                            shadowElevation = if (dragging) 20f else 0f
                         }
                         .clip(CircleShape)
                         .background(bg)
                         .pointerInput(order) {
                             detectDragGesturesAfterLongPress(
-                                onDragStart = { dragging = profile.id; dragOffset = 0f },
-                                onDragEnd = { dragging = null; dragOffset = 0f; onReorder(order) },
-                                onDragCancel = { dragging = null; dragOffset = 0f },
+                                onDragStart = {
+                                    dragId = profile.id
+                                    startIndex = order.indexOf(profile.id)
+                                    slots = 0
+                                    dragOffset = 0f
+                                    onDragActive(true)
+                                },
+                                onDragEnd = {
+                                    // Вставляем чип на новое место ОДИН раз, при отпускании.
+                                    val from = order.indexOf(profile.id)
+                                    val to = (startIndex + slots).coerceIn(0, order.lastIndex)
+                                    if (from >= 0 && to != from) {
+                                        val list = order.toMutableList()
+                                        list.removeAt(from)
+                                        list.add(to, profile.id)
+                                        order = list
+                                        onReorder(list)
+                                    }
+                                    dragId = null
+                                    dragOffset = 0f
+                                    slots = 0
+                                    onDragActive(false)
+                                },
+                                onDragCancel = {
+                                    dragId = null
+                                    dragOffset = 0f
+                                    slots = 0
+                                    onDragActive(false)
+                                },
                                 onDrag = { _, amount ->
                                     dragOffset += amount.x
-                                    val shift = (dragOffset / chipWidthPx).roundToInt()
-                                    if (shift != 0) {
-                                        val from = order.indexOf(profile.id)
-                                        val to = (from + shift).coerceIn(0, order.lastIndex)
-                                        if (to != from) {
-                                            val list = order.toMutableList()
-                                            list.removeAt(from)
-                                            list.add(to, profile.id)
-                                            order = list
-                                            dragOffset -= shift * chipWidthPx
-                                        }
-                                    }
+                                    // Считаем, через сколько позиций уехали, но список
+                                    // не трогаем — только показываем сдвиг соседей.
+                                    val moved = (dragOffset / (chipWidthPx * 0.6f)).roundToInt()
+                                    val limited = moved.coerceIn(-startIndex, order.lastIndex - startIndex)
+                                    if (limited != slots) slots = limited
                                 },
                             )
                         }
-                        .pressBounce { onSelect(profile.id) }
+                        .pressBounce(enabled = dragId == null) { onSelect(profile.id) }
                         .padding(horizontal = 16.dp, vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp),

@@ -53,6 +53,45 @@ object PhotoFinder {
      * Несколько вариантов картинки для выбора в шторке.
      * Каждый сохраняется отдельным файлом, фон уже вырезан.
      */
+    /**
+     * Потоковый вариант: каждая готовая картинка отдаётся сразу через [onFound].
+     * Раньше список появлялся только после загрузки всех — ждать приходилось долго.
+     */
+    suspend fun variantsStreaming(
+        context: Context,
+        address: String,
+        deviceName: String,
+        limit: Int = 8,
+        onFound: suspend (String) -> Unit,
+    ) = withContext(Dispatchers.IO) {
+        val clean = cleanName(deviceName)
+        if (clean.isBlank()) return@withContext
+        val key = address.replace(":", "").lowercase(Locale.ROOT)
+
+        // Сначала отдаём то, что уже в кеше — мгновенно.
+        var index = 0
+        while (index < limit) {
+            val cached = File(context.cacheDir, "photo_${key}_$index.png")
+            if (!cached.exists() || cached.length() == 0L) break
+            onFound(cached.absolutePath)
+            index++
+        }
+        if (index >= limit) return@withContext
+
+        // Дальше ищем и сохраняем по одной.
+        for (query in listOf("$clean earbuds png transparent background", "$clean earbuds product")) {
+            if (index >= limit) break
+            collectStreaming(query, limit - index) { bitmap ->
+                val file = File(context.cacheDir, "photo_${key}_$index.png")
+                runCatching {
+                    file.outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
+                    onFound(file.absolutePath)
+                    index++
+                }
+            }
+        }
+    }
+
     suspend fun variants(
         context: Context,
         address: String,
@@ -90,6 +129,40 @@ object PhotoFinder {
 
     private fun pickedFile(context: Context, address: String) =
         File(context.cacheDir, "picked_${address.replace(":", "").lowercase(Locale.ROOT)}.png")
+
+    /** Как collect, но отдаёт картинки по мере готовности. */
+    private suspend fun collectStreaming(query: String, limit: Int, onEach: suspend (Bitmap) -> Unit) {
+        val encoded = URLEncoder.encode(query, "UTF-8")
+        val page = fetchText("https://duckduckgo.com/?q=$encoded&iax=images&ia=images") ?: return
+        val token = Regex("""vqd=["']?([\d-]+)""").find(page)?.groupValues?.get(1) ?: return
+        val json = fetchText(
+            "https://duckduckgo.com/i.js?l=us-en&o=json&q=$encoded&vqd=$token",
+            referer = "https://duckduckgo.com/",
+        ) ?: return
+        val items = JSONObject(json).optJSONArray("results") ?: return
+
+        var done = 0
+        for (i in 0 until minOf(items.length(), 24)) {
+            if (done >= limit) break
+            val item = items.optJSONObject(i) ?: continue
+            val raw = item.optString("image")
+            val url = when {
+                raw.startsWith("https://") -> raw
+                raw.startsWith("http://") -> "https://" + raw.removePrefix("http://")
+                else -> continue
+            }
+            val w = item.optInt("width")
+            val h = item.optInt("height")
+            if (w < 600) continue
+            val ratio = if (h == 0) 0f else w.toFloat() / h
+            if (ratio !in 0.8f..1.25f) continue
+            val bytes = fetchBytes(url) ?: continue
+            val decoded = runCatching { BitmapFactory.decodeByteArray(bytes, 0, bytes.size) }.getOrNull() ?: continue
+            val prepared = prepare(decoded) ?: continue
+            onEach(prepared)
+            done++
+        }
+    }
 
     /** Собирает до [limit] подходящих картинок по запросу. */
     private fun collect(query: String, limit: Int): List<Bitmap> {
@@ -236,7 +309,27 @@ object PhotoFinder {
             Log.i(TAG, "В центре появились дырки — продукт светлый, картинка не подходит")
             return null
         }
-        return Bitmap.createBitmap(out, w, h, Bitmap.Config.ARGB_8888)
+
+        // Убираем светлую кайму: пиксели на границе с прозрачностью были
+        // сглажены на белом фоне, из-за чего оставался заметный ореол.
+        val cleaned = out.copyOf()
+        for (y in 1 until h - 1) {
+            for (x in 1 until w - 1) {
+                val idx = y * w + x
+                if ((out[idx] ushr 24) < 16) continue
+                val nearTransparent =
+                    (out[idx - 1] ushr 24) < 16 || (out[idx + 1] ushr 24) < 16 ||
+                        (out[idx - w] ushr 24) < 16 || (out[idx + w] ushr 24) < 16
+                if (!nearTransparent) continue
+                // Край, похожий на фон, гасим до полупрозрачного.
+                if (diff(out[idx], bgR, bgG, bgB) < TOLERANCE * 2) {
+                    cleaned[idx] = out[idx] and 0x00FFFFFF
+                } else {
+                    cleaned[idx] = (out[idx] and 0x00FFFFFF) or (0xB0 shl 24)
+                }
+            }
+        }
+        return Bitmap.createBitmap(cleaned, w, h, Bitmap.Config.ARGB_8888)
     }
 
     private inline fun median(list: List<Int>, selector: (Int) -> Int): Int =

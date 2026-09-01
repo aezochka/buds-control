@@ -6,6 +6,13 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.material.icons.outlined.Headphones
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -75,6 +82,7 @@ fun PhotoSheet(
     val current by vm.foundPhoto.collectAsState()
     val layout by vm.photoLayout.collectAsState()
     val tweak by vm.chipTweak.collectAsState()
+    val loading by vm.variantsLoading.collectAsState()
 
     var editing by remember { mutableStateOf(false) }
     // Что двигаем: по умолчанию оба, тапом можно оставить один.
@@ -268,37 +276,30 @@ fun PhotoSheet(
             Text("Найденные варианты", style = MaterialTheme.typography.titleSmall, color = scheme.onSurfaceVariant)
             Spacer(Modifier.height(10.dp))
 
-            if (variants.isEmpty()) {
-                Row(
-                    Modifier.fillMaxWidth().padding(vertical = 18.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp, color = scheme.primary)
-                    Text("Ищу картинки…", style = MaterialTheme.typography.bodyMedium, color = scheme.onSurfaceVariant)
-                }
-            } else {
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    items(variants, key = { it }) { path ->
-                        val active = path == current
-                        Box(
-                            Modifier
-                                .size(104.dp)
-                                .clip(RoundedCornerShape(22.dp))
-                                .background(scheme.surfaceContainerLow)
-                                .border(if (active) 3.dp else 0.dp, scheme.primary, RoundedCornerShape(22.dp))
-                                .pressBounce { vm.choosePhoto(address, path) },
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            AsyncImage(
-                                model = File(path),
-                                contentDescription = null,
-                                contentScale = ContentScale.Fit,
-                                modifier = Modifier.fillMaxWidth(0.84f),
-                            )
-                        }
+            // Готовые картинки + скелетоны на те, что ещё грузятся.
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                items(variants, key = { it }) { path ->
+                    val active = path == current
+                    VariantCard(active = active, onClick = { vm.choosePhoto(address, path) }) {
+                        AsyncImage(
+                            model = File(path),
+                            contentDescription = null,
+                            contentScale = ContentScale.Fit,
+                            modifier = Modifier.fillMaxWidth(0.84f),
+                        )
                     }
                 }
+                if (loading) {
+                    items(List(3) { "skeleton_$it" }, key = { it }) {
+                        SkeletonCard()
+                    }
+                }
+            }
+            if (!loading && variants.isEmpty()) {
+                Text(
+                    "Ничего не нашлось. Попробуй обновить.",
+                    style = MaterialTheme.typography.bodyMedium, color = scheme.onSurfaceVariant,
+                )
             }
             Spacer(Modifier.height(22.dp))
         }
@@ -340,5 +341,79 @@ private fun androidx.compose.foundation.layout.BoxScope.EditableChip(
     ) {
         Text("100%", style = MaterialTheme.typography.titleSmall, color = fg)
         Text(side, style = MaterialTheme.typography.labelSmall, color = fg.copy(alpha = 0.75f))
+    }
+}
+
+/**
+ * Карточка варианта. Рамка выбора нарисована ПОДЛОЖКОЙ, а не border:
+ * тонкий border давал заметные пиксельные ступеньки на скруглении.
+ */
+@Composable
+private fun VariantCard(
+    active: Boolean,
+    onClick: () -> Unit,
+    content: @Composable () -> Unit,
+) {
+    val scheme = MaterialTheme.colorScheme
+    val ring by animateColorAsState(
+        if (active) scheme.primary else scheme.surfaceContainerHighest,
+        Motion.effects(), label = "ring",
+    )
+    Box(
+        Modifier
+            .size(112.dp)
+            .clip(RoundedCornerShape(26.dp))
+            .background(ring)
+            .pressBounce(scaleDown = 0.94f, onClick = onClick)
+            .padding(if (active) 4.dp else 2.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .aspectRatio(1f)
+                .clip(RoundedCornerShape(23.dp))
+                .background(scheme.surfaceContainerLow),
+            contentAlignment = Alignment.Center,
+        ) {
+            content()
+        }
+    }
+}
+
+/** Скелетон вместо спиннера: карточка уже есть, картинка ещё грузится. */
+@Composable
+private fun SkeletonCard() {
+    val scheme = MaterialTheme.colorScheme
+    val shimmer = rememberInfiniteTransition(label = "shimmer")
+    val alpha by shimmer.animateFloat(
+        initialValue = 0.35f, targetValue = 0.75f,
+        animationSpec = infiniteRepeatable(tween(900, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+        label = "shimmerAlpha",
+    )
+    Box(
+        Modifier
+            .size(112.dp)
+            .clip(RoundedCornerShape(26.dp))
+            .background(scheme.surfaceContainerHighest)
+            .padding(2.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .aspectRatio(1f)
+                .clip(RoundedCornerShape(23.dp))
+                .background(scheme.surfaceContainerLow),
+            contentAlignment = Alignment.Center,
+        ) {
+            // Силуэт наушников, как будто карточка уже загрузилась.
+            Icon(
+                Icons.Outlined.Headphones,
+                contentDescription = null,
+                tint = scheme.surfaceContainerHighest.copy(alpha = alpha),
+                modifier = Modifier.size(44.dp),
+            )
+        }
     }
 }

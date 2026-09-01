@@ -30,6 +30,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -70,12 +72,16 @@ private fun Tab.label(): String {
 fun BudsApp(vm: BudsViewModel) {
     val pager = rememberPagerState(pageCount = { Tab.entries.size })
     val scope = rememberCoroutineScope()
+    // Пока пользователь тащит чип профиля, свайп между вкладками выключен —
+    // раньше жест перехватывался пейджером и экран уезжал в сторону.
+    var dragLock by remember { mutableStateOf(false) }
 
     Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         HorizontalPager(
             state = pager,
             modifier = Modifier.fillMaxSize(),
             beyondViewportPageCount = 0,
+            userScrollEnabled = !dragLock,
         ) { page ->
             val offset = (pager.currentPage - page) + pager.currentPageOffsetFraction
             Box(
@@ -94,7 +100,7 @@ fun BudsApp(vm: BudsViewModel) {
                     .background(MaterialTheme.colorScheme.background)
             ) {
                 when (Tab.entries[page]) {
-                    Tab.Buds -> BudsTab(vm)
+                    Tab.Buds -> BudsTab(vm, onDragActive = { dragLock = it })
                     Tab.Sound -> SoundTab(vm)
                     Tab.Gestures -> GesturesTab(vm)
                     Tab.Settings -> SettingsTab(vm)

@@ -272,10 +272,25 @@ class BudsViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    /** Грузит варианты для шторки выбора. */
-    fun loadPhotoVariants(address: String, deviceName: String) = viewModelScope.launch {
+    /** Сколько плейсхолдеров показывать в шторке. */
+    private val _variantsLoading = MutableStateFlow(false)
+    val variantsLoading: StateFlow<Boolean> = _variantsLoading.asStateFlow()
+    private var variantsJob: Job? = null
+
+    /**
+     * Грузит варианты ПОТОКОВО: каждая картинка появляется в списке сразу,
+     * не дожидаясь остальных.
+     */
+    fun loadPhotoVariants(address: String, deviceName: String) {
+        variantsJob?.cancel()
         _photoVariants.value = emptyList()
-        _photoVariants.value = PhotoFinder.variants(getApplication(), address, deviceName)
+        _variantsLoading.value = true
+        variantsJob = viewModelScope.launch {
+            PhotoFinder.variantsStreaming(getApplication(), address, deviceName) { path ->
+                _photoVariants.value = _photoVariants.value + path
+            }
+            _variantsLoading.value = false
+        }
     }
 
     /** Пользователь выбрал картинку руками. */

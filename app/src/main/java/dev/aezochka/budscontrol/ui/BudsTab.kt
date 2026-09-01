@@ -77,7 +77,7 @@ import dev.aezochka.budscontrol.BudsViewModel
 
 /** Главная вкладка: фото продукта, живой заряд, bento-плитки. */
 @Composable
-fun BudsTab(vm: BudsViewModel) {
+fun BudsTab(vm: BudsViewModel, onDragActive: (Boolean) -> Unit = {}) {
     val live by vm.live.collectAsState()
     val profiles by vm.profiles.collectAsState()
     val selected = profiles.firstOrNull { it.isSelected }
@@ -127,6 +127,7 @@ fun BudsTab(vm: BudsViewModel) {
                     onSelect = { vm.selectProfile(it) },
                     onReorder = { vm.reorderProfiles(it) },
                     onAdd = { showAddDevice = true },
+                    onDragActive = onDragActive,
                 )
                 Spacer(Modifier.height(10.dp))
                 ProductHero(

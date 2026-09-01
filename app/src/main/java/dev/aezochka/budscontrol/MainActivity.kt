@@ -73,9 +73,9 @@ class MainActivity : ComponentActivity() {
                     }
                 }
             }
+            }
         }
-        // ОДНИМ вызовом: раньше запрос микрофона из LaunchedEffect перебивался
-        // этим вызовом BT-разрешений, и диалог про звук вообще не появлялся.
+        // Один вызов: Bluetooth и уведомления сразу, без конфликта диалогов.
         permissionLauncher.launch(startupPermissions())
     }
 

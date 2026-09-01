@@ -28,6 +28,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.outlined.Bluetooth
 import androidx.compose.material.icons.outlined.Circle
@@ -67,7 +68,8 @@ fun OnboardingScreen(
     onRequestBluetooth: () -> Unit,
 ) {
     var step by remember { mutableStateOf(0) }
-    var language by remember { mutableStateOf("ru") }
+    val s = LocalStrings.current
+    val language by vm.uiLanguage.collectAsState()
     val scheme = MaterialTheme.colorScheme
 
     Column(

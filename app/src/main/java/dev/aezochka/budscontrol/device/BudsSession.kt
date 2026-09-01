@@ -41,6 +41,9 @@ data class LiveState(
     val gameMode: Boolean = false,
     val spatialAudio: Boolean = false,
     val multipoint: Boolean = false,
+    /** Наушник не отвечает по заряду — обычно лежит в кейсе. */
+    val budInCaseLeft: Boolean = false,
+    val budInCaseRight: Boolean = false,
     val ancMode: AncMode? = null,
     val eqPreset: EqPreset? = null,
     /** Гарнитура подтвердила команду поиска. */
@@ -94,7 +97,19 @@ class BudsSession(private val context: Context) {
             conn = c
             observe(c)
             observeClose(c)
+            // Таймаут: без него состояние «подключаюсь» висело бесконечно,
+            // и серый кружок крутился до перезапуска приложения.
+            val timeout = launch {
+                delay(12_000)
+                if (_state.value.connecting) {
+                    _state.update {
+                        it.copy(connecting = false, connected = false, error = "Наушники не отвечают")
+                    }
+                    c.close()
+                }
+            }
             c.connect().onFailure { e ->
+                timeout.cancel()
                 _state.update {
                     it.copy(
                         connecting = false,
@@ -106,6 +121,7 @@ class BudsSession(private val context: Context) {
                 }
                 return@launch
             }
+            timeout.cancel()
             _state.update { it.copy(connecting = false, connected = true) }
             c.send(OppoProtocol.subscribe(setOf(SubType.BATTERY, SubType.STATUS, SubType.ANC_SELECTOR, SubType.GAME_MODE)))
             probe(c)
@@ -141,20 +157,29 @@ class BudsSession(private val context: Context) {
     }
 
     private suspend fun probe(c: SppConnection) {
-        val supported = mutableSetOf<String>()
-        c.send(OppoProtocol.firmwareReq()); supported += "firmware"
-        c.send(OppoProtocol.batteryReq()); supported += "battery"
+        // Только отправляем запросы. supported наполняется в обработчиках
+        // ответов — раньше функции помечались поддерживаемыми заранее,
+        // из-за чего эквалайзер выглядел рабочим, хотя ответа не было.
+        c.send(OppoProtocol.firmwareReq())
+        c.send(OppoProtocol.batteryReq())
         c.send(OppoProtocol.miscConfigReq(listOf(MiscType.GAME_MODE, MiscType.MULTIPOINT, MiscType.LDAC, MiscType.SPATIAL_AUDIO)))
         c.send(OppoProtocol.touchConfigReq())
         c.send(OppoProtocol.ancConfigReq())
         c.send(OppoProtocol.equalizerReq())
-        _state.update { it.copy(supported = supported, probed = true) }
+        _state.update { it.copy(probed = true) }
     }
 
     private fun observeClose(c: SppConnection) = scope.launch {
         c.closed.collect {
             _state.update {
-                if (it.connected) it.copy(connected = false, error = "Соединение разорвано") else it
+                if (!it.connected && !it.connecting) it
+                else it.copy(
+                    connected = false,
+                    connecting = false,
+                    batteryLeft = null,
+                    batteryRight = null,
+                    error = "Наушники отключились",
+                )
             }
         }
     }
@@ -162,8 +187,14 @@ class BudsSession(private val context: Context) {
     private fun observe(c: SppConnection) = scope.launch {
         c.frames.collect { frame ->
             when (frame.cmd) {
-                Cmd.BATTERY_RET, Cmd.SUBSCRIPTION_RET -> applyBattery(frame.payload, frame.cmd == Cmd.SUBSCRIPTION_RET)
-                Cmd.FIRMWARE_RET -> applyFirmware(frame.payload)
+                Cmd.BATTERY_RET, Cmd.SUBSCRIPTION_RET -> {
+                    _state.update { it.copy(supported = it.supported + "battery") }
+                    applyBattery(frame.payload, frame.cmd == Cmd.SUBSCRIPTION_RET)
+                }
+                Cmd.FIRMWARE_RET -> {
+                    _state.update { it.copy(supported = it.supported + "firmware") }
+                    applyFirmware(frame.payload)
+                }
                 Cmd.MISC_CONFIG_RET -> applyMisc(frame.payload)
                 Cmd.ANC_CONFIG_RET -> applyAnc(frame.payload)
                 Cmd.TOUCH_CONFIG_RET -> applyTouch(frame.payload)
@@ -185,14 +216,18 @@ class BudsSession(private val context: Context) {
         var l = _state.value.batteryLeft; var r = _state.value.batteryRight
         var cs = _state.value.batteryCase; var chg = _state.value.chargingCase
         var caseFresh = false
+        var lMissing = false
+        var rMissing = false
         while (i + 1 < p.size) {
             val idx = p[i].toInt() and 0xFF
             if (idx != 0xFF) {
                 val level = p[i + 1].toInt() and 0x7F
                 val charging = (p[i + 1].toInt() and 0x80) != 0
+                // level == 0 у наушника означает «не на связи» (лежит в кейсе),
+                // а не разряжен в ноль. Раньше это показывалось как 0%.
                 when (idx - 1) {
-                    0 -> { l = level; }
-                    1 -> { r = level; }
+                    0 -> if (level > 0) l = level else lMissing = true
+                    1 -> if (level > 0) r = level else rMissing = true
                     2 -> { cs = level; chg = charging; caseFresh = true }
                 }
             }
@@ -200,7 +235,10 @@ class BudsSession(private val context: Context) {
         }
         _state.update {
             it.copy(
-                batteryLeft = l, batteryRight = r, batteryCase = cs, chargingCase = chg,
+                batteryLeft = if (lMissing) null else l,
+                batteryRight = if (rMissing) null else r,
+                budInCaseLeft = lMissing, budInCaseRight = rMissing,
+                batteryCase = cs, chargingCase = chg,
                 caseReportedAt = if (caseFresh) System.currentTimeMillis() else it.caseReportedAt,
                 caseFromMemory = if (caseFresh) false else it.caseFromMemory,
             )
@@ -312,8 +350,20 @@ class BudsSession(private val context: Context) {
             }
         }
     }
+    /**
+     * Обновление. Если сокет уже мёртв — переподключаемся, а не молча
+     * пишем в закрытый поток: именно поэтому кнопка казалась нерабочей.
+     */
     fun refresh() {
-        val c = conn ?: return
+        val c = conn
+        val st = _state.value
+        if (c == null || !c.isConnected) {
+            if (st.address.isNotEmpty()) {
+                _state.update { it.copy(connected = false, connecting = false) }
+                connect(st.address, st.deviceName)
+            }
+            return
+        }
         scope.launch {
             // Кейс рапортует заряд не всегда с первого раза — просим дважды.
             c.send(OppoProtocol.batteryReq())

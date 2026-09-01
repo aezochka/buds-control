@@ -58,6 +58,7 @@ fun EqualizerSheet(
     current: EqPreset?,
     gains: List<Int>,
     connected: Boolean,
+    supported: Boolean,
     onPick: (EqPreset) -> Unit,
     onGains: (List<Int>) -> Unit,
     onDismiss: () -> Unit,
@@ -82,8 +83,13 @@ fun EqualizerSheet(
                 Column(Modifier.fillMaxWidth(0.8f)) {
                     Text("Эквалайзер", style = MaterialTheme.typography.headlineSmall, color = scheme.onSurface)
                     Text(
-                        if (connected) "Тяни полосы вверх и вниз" else "Наушники не подключены",
-                        style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant,
+                        when {
+                            !connected -> "Наушники не подключены"
+                            !supported -> "Гарнитура не ответила на запрос EQ"
+                            else -> "Тяни полосы вверх и вниз"
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (connected && !supported) scheme.error else scheme.onSurfaceVariant,
                     )
                 }
                 Box(
@@ -105,6 +111,24 @@ fun EqualizerSheet(
             BandSliders(local, connected) { index, value ->
                 local = local.toMutableList().also { it[index] = value }
                 onGains(local)
+            }
+
+            if (connected && !supported) {
+                Spacer(Modifier.height(14.dp))
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(18.dp))
+                        .background(scheme.surfaceContainer)
+                        .padding(14.dp),
+                ) {
+                    Text(
+                        "T110 не подтвердила поддержку эквалайзера по протоколу. " +
+                            "Команды отправляются, но гарнитура их может игнорировать — " +
+                            "в realme Link EQ у этой модели тоже ограничен.",
+                        style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant,
+                    )
+                }
             }
 
             Spacer(Modifier.height(20.dp))

@@ -91,6 +91,7 @@ fun BudsTab(vm: BudsViewModel) {
             current = live.eqPreset,
             gains = live.eqGains,
             connected = live.connected,
+            supported = "eq" in live.supported,
             onPick = { vm.setEqualizer(it) },
             onGains = { vm.setEqualizerGains(it) },
             onDismiss = { showEq = false },
@@ -126,7 +127,11 @@ fun BudsTab(vm: BudsViewModel) {
                     name = selected?.displayName ?: "Наушники не выбраны",
                     left = live.batteryLeft,
                     right = live.batteryRight,
-                    charging = live.chargingCase,
+                    // Раньше свечение зависело только от chargingCase, который
+                    // приходит лишь при открытом кейсе — поэтому его не было видно.
+                    charging = live.chargingCase || live.budInCaseLeft || live.budInCaseRight,
+                    inCaseLeft = live.budInCaseLeft,
+                    inCaseRight = live.budInCaseRight,
                     connecting = live.connecting,
                     connected = live.connected,
                     onRefresh = vm::refresh,
@@ -193,6 +198,8 @@ private fun ProductHero(
     left: Int?,
     right: Int?,
     charging: Boolean,
+    inCaseLeft: Boolean,
+    inCaseRight: Boolean,
     connecting: Boolean,
     connected: Boolean,
     onRefresh: () -> Unit,
@@ -208,8 +215,8 @@ private fun ProductHero(
 
     // Пульсирующее свечение, когда кейс на зарядке.
     val glow by transition.animateFloat(
-        initialValue = 0.18f, targetValue = if (charging) 0.55f else 0.18f,
-        animationSpec = infiniteRepeatable(tween(1400, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+        initialValue = 0.25f, targetValue = if (charging) 1f else 0.25f,
+        animationSpec = infiniteRepeatable(tween(1100, easing = FastOutSlowInEasing), RepeatMode.Reverse),
         label = "chargeGlow",
     )
 
@@ -217,12 +224,20 @@ private fun ProductHero(
         Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
             Box(Modifier.fillMaxWidth(0.82f).aspectRatio(1.05f), contentAlignment = Alignment.Center) {
                 if (charging) {
+                    // Два круга: внешний дышит сильнее, внутренний мягче.
                     Box(
                         Modifier
-                            .fillMaxWidth(0.7f)
+                            .fillMaxWidth(0.88f)
                             .aspectRatio(1f)
                             .clip(CircleShape)
-                            .background(scheme.primary.copy(alpha = glow * 0.28f)),
+                            .background(scheme.primary.copy(alpha = glow * 0.16f)),
+                    )
+                    Box(
+                        Modifier
+                            .fillMaxWidth(0.62f)
+                            .aspectRatio(1f)
+                            .clip(CircleShape)
+                            .background(scheme.primary.copy(alpha = glow * 0.22f)),
                     )
                 }
                 if (asset != null) {
@@ -241,8 +256,8 @@ private fun ProductHero(
                         modifier = Modifier.size(150.dp).scale(1f + offset / 260f),
                     )
                 }
-                if (left != null) BatteryChip(left, "L", Modifier.align(Alignment.CenterStart))
-                if (right != null) BatteryChip(right, "R", Modifier.align(Alignment.TopEnd))
+                BatteryChip(left, "L", inCase = inCaseLeft, modifier = Modifier.align(Alignment.CenterStart))
+                BatteryChip(right, "R", inCase = inCaseRight, modifier = Modifier.align(Alignment.TopEnd))
             }
 
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(9.dp)) {
@@ -282,8 +297,9 @@ private fun ProductHero(
 }
 
 @Composable
-private fun BatteryChip(percent: Int, side: String, modifier: Modifier = Modifier) {
+private fun BatteryChip(percent: Int?, side: String, inCase: Boolean, modifier: Modifier = Modifier) {
     val scheme = MaterialTheme.colorScheme
+    if (percent == null && !inCase) return
     Row(
         modifier
             .clip(CircleShape)
@@ -292,8 +308,16 @@ private fun BatteryChip(percent: Int, side: String, modifier: Modifier = Modifie
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        AnimatedContent(percent, transitionSpec = { fadeIn(Motion.effects()) togetherWith fadeOut(Motion.effects()) }, label = "pct") {
-            Text("$it%", style = MaterialTheme.typography.titleSmall, color = scheme.onSurface)
+        AnimatedContent(
+            percent?.let { "$it%" } ?: "в кейсе",
+            transitionSpec = { fadeIn(Motion.effects()) togetherWith fadeOut(Motion.effects()) },
+            label = "pct",
+        ) { label ->
+            Text(
+                label,
+                style = if (percent != null) MaterialTheme.typography.titleSmall else MaterialTheme.typography.labelMedium,
+                color = if (percent != null) scheme.onSurface else scheme.onSurfaceVariant,
+            )
         }
         Text(side, style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant)
     }

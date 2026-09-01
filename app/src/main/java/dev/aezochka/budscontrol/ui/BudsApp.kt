@@ -33,6 +33,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
@@ -67,14 +68,17 @@ fun BudsApp(vm: BudsViewModel) {
             Box(
                 Modifier
                     .fillMaxSize()
+                    // clipToBounds режет содержимое по границам страницы.
+                    // graphicsLayer{clip} этого не делал для LazyColumn, из-за
+                    // чего текст соседней вкладки заезжал в кадр при свайпе.
+                    .clipToBounds()
                     .graphicsLayer {
-                        clip = true
-                        // Сдвиг только у соседних страниц. Раньше при переходе
-                        // 1→4 промежуточные мелькали и анимация выглядела рвано.
                         val near = offset.absoluteValue <= 1f
-                        translationX = if (near) size.width * offset * 0.16f else 0f
-                        alpha = if (near) 1f - (offset.absoluteValue * 0.45f).coerceIn(0f, 0.5f) else 0f
+                        translationX = if (near) size.width * offset * 0.12f else 0f
+                        alpha = if (near) 1f - (offset.absoluteValue * 0.4f).coerceIn(0f, 0.45f) else 0f
                     }
+                    // Непрозрачный фон: иначе просвечивает соседняя страница.
+                    .background(MaterialTheme.colorScheme.background)
             ) {
                 when (Tab.entries[page]) {
                     Tab.Buds -> BudsTab(vm)

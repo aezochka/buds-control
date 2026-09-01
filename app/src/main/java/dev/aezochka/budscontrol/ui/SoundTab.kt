@@ -58,16 +58,8 @@ fun SoundTab(vm: BudsViewModel) {
     if (showVolume) VolumeLimitSheet(vm) { showVolume = false }
 
     LazyColumn(Modifier.fillMaxSize()) {
-        item {
-            Column(Modifier.statusBarsPadding().padding(horizontal = 20.dp, vertical = 10.dp)) {
-                Text("Звук", style = MaterialTheme.typography.displayMedium, color = scheme.onSurface)
-                Text(
-                    if (ready) "Работает через системный эффект" else "Системный эквалайзер недоступен",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = if (ready) scheme.onSurfaceVariant else scheme.error,
-                )
-            }
-        }
+        // Как на главной: без крупного заголовка-«воды», сразу содержимое.
+        item { Spacer(Modifier.statusBarsPadding().height(14.dp)) }
 
         // Эквалайзер: показываем текущие полосы прямо в списке.
         item {
@@ -120,6 +112,8 @@ fun SoundTab(vm: BudsViewModel) {
             }
         }
 
+        // Сон и лимит — в одном фоне, отдельно от эквалайзера.
+        item { GroupLabel("Тише и по времени") }
         item {
             SoundRow(
                 icon = Icons.Outlined.Bedtime,
@@ -180,5 +174,19 @@ private fun SoundRow(
                 color = if (active) scheme.onPrimary.copy(alpha = 0.85f) else scheme.onSurfaceVariant,
             )
         }
+    }
+}
+
+/** Подпись группы: разделяет блоки без крупных заголовков. */
+@Composable
+private fun GroupLabel(text: String) {
+    val scheme = MaterialTheme.colorScheme
+    Row(
+        Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(top = 18.dp, bottom = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Text(text, style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant)
+        Box(Modifier.weight(1f).height(1.dp).background(scheme.surfaceContainerHighest))
     }
 }

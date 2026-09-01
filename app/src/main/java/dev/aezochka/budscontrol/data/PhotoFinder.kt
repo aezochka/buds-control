@@ -34,29 +34,96 @@ object PhotoFinder {
         "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/122 Mobile Safari/537.36"
     private const val TAG = "PhotoFinder"
 
-    /** Путь к готовому файлу или null. */
-    suspend fun find(context: Context, deviceName: String): String? = withContext(Dispatchers.IO) {
-        val clean = cleanName(deviceName)
-        if (clean.isBlank()) return@withContext null
+    /**
+     * Фото для устройства. Ключ — АДРЕС, а не имя: у двух профилей может быть
+     * одинаковое имя, и раньше картинки путались между собой.
+     *
+     * Если пользователь выбрал вариант руками, возвращаем его.
+     */
+    suspend fun find(context: Context, address: String, deviceName: String): String? =
+        withContext(Dispatchers.IO) {
+            val picked = pickedFile(context, address)
+            if (picked.exists() && picked.length() > 0) return@withContext picked.absolutePath
 
-        val key = clean.lowercase(Locale.ROOT).replace(Regex("[^a-z0-9]+"), "_")
-        val ready = File(context.cacheDir, "photo_$key.png")
-        val miss = File(context.cacheDir, "photo_$key.miss")
-        if (ready.exists() && ready.length() > 0) return@withContext ready.absolutePath
-        if (miss.exists()) return@withContext null
-
-        // Первый проход — ищем сразу прозрачные PNG.
-        val bitmap = tryQuery("$clean earbuds png transparent background")
-            ?: tryQuery("$clean earbuds product")
-            ?: run {
-                runCatching { miss.createNewFile() }
-                return@withContext null
-            }
-
-        runCatching {
-            ready.outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
+            val variants = variants(context, address, deviceName, limit = 1)
+            variants.firstOrNull()
         }
-        if (ready.exists() && ready.length() > 0) ready.absolutePath else null
+
+    /**
+     * Несколько вариантов картинки для выбора в шторке.
+     * Каждый сохраняется отдельным файлом, фон уже вырезан.
+     */
+    suspend fun variants(
+        context: Context,
+        address: String,
+        deviceName: String,
+        limit: Int = 6,
+    ): List<String> = withContext(Dispatchers.IO) {
+        val clean = cleanName(deviceName)
+        if (clean.isBlank()) return@withContext emptyList()
+        val key = address.replace(":", "").lowercase(Locale.ROOT)
+
+        val cached = (0 until limit).mapNotNull { i ->
+            File(context.cacheDir, "photo_${key}_$i.png").takeIf { it.exists() && it.length() > 0 }
+        }
+        if (cached.size >= limit) return@withContext cached.map { it.absolutePath }
+
+        val bitmaps = collect("$clean earbuds png transparent background", limit) +
+            collect("$clean earbuds product", limit)
+        val saved = mutableListOf<String>()
+        bitmaps.take(limit).forEachIndexed { index, bitmap ->
+            val file = File(context.cacheDir, "photo_${key}_$index.png")
+            runCatching {
+                file.outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
+                saved += file.absolutePath
+            }
+        }
+        saved
+    }
+
+    /** Запоминает выбор пользователя. */
+    suspend fun pick(context: Context, address: String, path: String) = withContext(Dispatchers.IO) {
+        runCatching {
+            File(path).copyTo(pickedFile(context, address), overwrite = true)
+        }
+    }
+
+    private fun pickedFile(context: Context, address: String) =
+        File(context.cacheDir, "picked_${address.replace(":", "").lowercase(Locale.ROOT)}.png")
+
+    /** Собирает до [limit] подходящих картинок по запросу. */
+    private fun collect(query: String, limit: Int): List<Bitmap> {
+        val encoded = URLEncoder.encode(query, "UTF-8")
+        val page = fetchText("https://duckduckgo.com/?q=$encoded&iax=images&ia=images") ?: return emptyList()
+        val token = Regex("""vqd=["']?([\d-]+)""").find(page)?.groupValues?.get(1) ?: return emptyList()
+        val json = fetchText(
+            "https://duckduckgo.com/i.js?l=us-en&o=json&q=$encoded&vqd=$token",
+            referer = "https://duckduckgo.com/",
+        ) ?: return emptyList()
+        val items = JSONObject(json).optJSONArray("results") ?: return emptyList()
+
+        val result = mutableListOf<Bitmap>()
+        for (i in 0 until minOf(items.length(), 20)) {
+            if (result.size >= limit) break
+            val item = items.optJSONObject(i) ?: continue
+            val raw = item.optString("image")
+            val url = when {
+                raw.startsWith("https://") -> raw
+                raw.startsWith("http://") -> "https://" + raw.removePrefix("http://")
+                else -> continue
+            }
+            val w = item.optInt("width")
+            val h = item.optInt("height")
+            if (w < 600) continue
+            val ratio = if (h == 0) 0f else w.toFloat() / h
+            if (ratio !in 0.8f..1.25f) continue
+            val bytes = fetchBytes(url) ?: continue
+            val decoded = runCatching { BitmapFactory.decodeByteArray(bytes, 0, bytes.size) }.getOrNull() ?: continue
+            val prepared = prepare(decoded) ?: continue
+            result += prepared
+        }
+        Log.i(TAG, "По запросу «$query» подошло ${result.size}")
+        return result
     }
 
     private fun tryQuery(query: String): Bitmap? {

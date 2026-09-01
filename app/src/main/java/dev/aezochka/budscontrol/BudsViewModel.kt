@@ -249,9 +249,48 @@ class BudsViewModel(app: Application) : AndroidViewModel(app) {
         _photoLayout.value = ImageProbe.analyze(image)
     }
 
-    fun ensurePhoto(deviceName: String) = viewModelScope.launch {
+    private val _photoVariants = MutableStateFlow<List<String>>(emptyList())
+    val photoVariants: StateFlow<List<String>> = _photoVariants.asStateFlow()
+    private var photoJob: Job? = null
+
+    /**
+     * Ищет фото для КОНКРЕТНОГО устройства.
+     *
+     * Прошлый запрос отменяется: при быстром свайпе между профилями старый
+     * результат перезаписывал новый, и картинка «залипала» от другой модели.
+     */
+    fun ensurePhoto(address: String, deviceName: String) {
+        photoJob?.cancel()
         _foundPhoto.value = null
-        _foundPhoto.value = PhotoFinder.find(getApplication(), deviceName)
+        _photoLayout.value = ImageProbe.Layout.Default
+        photoJob = viewModelScope.launch {
+            val found = PhotoFinder.find(getApplication(), address, deviceName)
+            // Проверяем, что профиль не сменился, пока шёл запрос.
+            if (profiles.value.firstOrNull { it.isSelected }?.address == address) {
+                _foundPhoto.value = found
+            }
+        }
+    }
+
+    /** Грузит варианты для шторки выбора. */
+    fun loadPhotoVariants(address: String, deviceName: String) = viewModelScope.launch {
+        _photoVariants.value = emptyList()
+        _photoVariants.value = PhotoFinder.variants(getApplication(), address, deviceName)
+    }
+
+    /** Пользователь выбрал картинку руками. */
+    fun choosePhoto(address: String, path: String) = viewModelScope.launch {
+        PhotoFinder.pick(getApplication(), address, path)
+        _foundPhoto.value = path
+        _photoLayout.value = ImageProbe.Layout.Default
+    }
+
+    /** Ручное смещение индикаторов заряда. */
+    private val _chipOffset = MutableStateFlow(0f to 0f)
+    val chipOffset: StateFlow<Pair<Float, Float>> = _chipOffset.asStateFlow()
+
+    fun setChipOffset(dx: Float, dy: Float) {
+        _chipOffset.value = dx.coerceIn(-0.3f, 0.3f) to dy.coerceIn(-0.3f, 0.3f)
     }
 
 

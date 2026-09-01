@@ -86,11 +86,12 @@ fun BudsTab(vm: BudsViewModel) {
     // live.connected и уходил в бесконечный цикл подключений.
     LaunchedEffect(selected?.address) { if (selected != null) vm.connectSelected() }
     // Само определяет модель и ищет фото, если её нет в каталоге.
-    LaunchedEffect(selected?.displayName) {
-        selected?.displayName?.let { vm.ensurePhoto(it) }
+    LaunchedEffect(selected?.address) {
+        selected?.let { vm.ensurePhoto(it.address, it.displayName) }
     }
     val foundPhoto by vm.foundPhoto.collectAsState()
     val photoLayout by vm.photoLayout.collectAsState()
+    val chipOffset by vm.chipOffset.collectAsState()
 
     var showEq by remember { mutableStateOf(false) }
     var showAddDevice by remember { mutableStateOf(false) }
@@ -99,6 +100,13 @@ fun BudsTab(vm: BudsViewModel) {
 
     if (showAddDevice) {
         AddDeviceSheet(vm) { showAddDevice = false }
+    }
+    if (showPhoto && selected != null) {
+        PhotoSheet(
+            vm = vm,
+            address = selected.address,
+            deviceName = selected.displayName,
+        ) { showPhoto = false }
     }
     if (showEq) {
         EqualizerSheet(vm) { showEq = false }
@@ -131,6 +139,8 @@ fun BudsTab(vm: BudsViewModel) {
                     inCaseRight = live.budInCaseRight,
                     foundPhoto = foundPhoto,
                     photoLayout = photoLayout,
+                    chipOffset = chipOffset,
+                    onPhotoClick = { showPhoto = true },
                     onPhotoLoaded = vm::onPhotoLoaded,
                     connecting = live.connecting,
                     connected = live.connected,
@@ -161,6 +171,8 @@ private fun ProductHero(
     inCaseRight: Boolean,
     foundPhoto: String?,
     photoLayout: ImageProbe.Layout,
+    chipOffset: Pair<Float, Float>,
+    onPhotoClick: () -> Unit,
     onPhotoLoaded: (androidx.compose.ui.graphics.ImageBitmap) -> Unit,
     connecting: Boolean,
     connected: Boolean,
@@ -217,7 +229,14 @@ private fun ProductHero(
 
     Box(Modifier.fillMaxWidth()) {
         Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-            Box(Modifier.fillMaxWidth(0.82f).aspectRatio(1.05f), contentAlignment = Alignment.Center) {
+            Box(
+                Modifier
+                    .fillMaxWidth(0.82f)
+                    .aspectRatio(1.05f)
+                    // Тап по фото — выбор картинки и настройка индикаторов.
+                    .pressBounce(scaleDown = 0.985f, onClick = onPhotoClick),
+                contentAlignment = Alignment.Center,
+            ) {
                 if (charging) {
                     // Два круга: внешний дышит сильнее, внутренний мягче.
                     Box(
@@ -283,8 +302,8 @@ private fun ProductHero(
                     side = "L",
                     inCase = inCaseLeft || !connected,
                     modifier = Modifier.align(BiasAlignment(
-                        horizontalBias = photoLayout.left.x * 2f - 1f,
-                        verticalBias = photoLayout.left.y * 2f - 1f,
+                        horizontalBias = (photoLayout.left.x + chipOffset.first) * 2f - 1f,
+                        verticalBias = (photoLayout.left.y + chipOffset.second) * 2f - 1f,
                     )),
                 )
                 BatteryChip(
@@ -292,8 +311,8 @@ private fun ProductHero(
                     side = "R",
                     inCase = inCaseRight || !connected,
                     modifier = Modifier.align(BiasAlignment(
-                        horizontalBias = photoLayout.right.x * 2f - 1f,
-                        verticalBias = photoLayout.right.y * 2f - 1f,
+                        horizontalBias = (photoLayout.right.x + chipOffset.first) * 2f - 1f,
+                        verticalBias = (photoLayout.right.y + chipOffset.second) * 2f - 1f,
                     )),
                 )
             }
@@ -388,27 +407,48 @@ private fun BentoGrid(
     onSleep: () -> Unit,
     onVolume: () -> Unit,
 ) {
+    val scheme = MaterialTheme.colorScheme
     val live by vm.live.collectAsState()
 
-    // Симметричная сетка 2 колонки: все плитки одного размера и вида.
-    val keys = listOf("eq", "game", "sleep", "volume", "find", "firmware")
     Column(
         Modifier.padding(horizontal = 20.dp),
         verticalArrangement = Arrangement.spacedBy(11.dp),
     ) {
-        keys.chunked(2).forEach { row ->
-            Row(horizontalArrangement = Arrangement.spacedBy(11.dp)) {
-                row.forEach { key ->
-                    Box(Modifier.weight(1f)) {
-                        TileContent(key, vm, live, editing, onEq, onSleep, onVolume)
-                    }
-                }
-                if (row.size == 1) Spacer(Modifier.weight(1f))
-            }
+        // Главные функции — крупные плитки.
+        Row(horizontalArrangement = Arrangement.spacedBy(11.dp)) {
+            Box(Modifier.weight(1f)) { TileContent("eq", vm, live, editing, onEq, onSleep, onVolume) }
+            Box(Modifier.weight(1f)) { TileContent("game", vm, live, editing, onEq, onSleep, onVolume) }
         }
-        // Кейс — во всю ширину, у него есть полоска заряда.
         Box(Modifier.fillMaxWidth()) {
             TileContent("case", vm, live, editing, onEq, onSleep, onVolume)
+        }
+
+        // Разделитель: отделяет главное от дополнительного.
+        Row(
+            Modifier.fillMaxWidth().padding(top = 5.dp, bottom = 1.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Text(
+                "Дополнительно",
+                style = MaterialTheme.typography.labelSmall,
+                color = scheme.onSurfaceVariant,
+            )
+            Box(
+                Modifier
+                    .weight(1f)
+                    .height(1.dp)
+                    .background(scheme.surfaceContainerHighest),
+            )
+        }
+
+        // Дополнительные — компактный ряд из четырёх.
+        Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+            listOf("sleep", "volume", "find", "firmware").forEach { key ->
+                Box(Modifier.weight(1f)) {
+                    TileContent(key, vm, live, editing, onEq, onSleep, onVolume, compact = true)
+                }
+            }
         }
     }
 }

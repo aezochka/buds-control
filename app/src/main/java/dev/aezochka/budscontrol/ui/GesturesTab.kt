@@ -50,19 +50,7 @@ fun GesturesTab(vm: BudsViewModel) {
     val live by vm.live.collectAsState()
 
     LazyColumn(Modifier.fillMaxSize()) {
-        item {
-            Column(Modifier.statusBarsPadding().padding(horizontal = 20.dp, vertical = 10.dp)) {
-                Text("Жесты", style = MaterialTheme.typography.displayMedium, color = scheme.onSurface)
-                Text(
-                    when {
-                        !live.connected -> "Наушники не подключены"
-                        live.touch.isEmpty() -> "Гарнитура ещё не прислала настройки"
-                        else -> "Применяется сразу"
-                    },
-                    style = MaterialTheme.typography.bodyMedium, color = scheme.onSurfaceVariant,
-                )
-            }
-        }
+        item { Spacer(Modifier.statusBarsPadding().height(14.dp)) }
         listOf(
             TouchSide.LEFT to "Левый наушник",
             TouchSide.RIGHT to "Правый наушник",

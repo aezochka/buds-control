@@ -52,6 +52,7 @@ fun TileContent(
     onEq: () -> Unit,
     onSleep: () -> Unit,
     onVolume: () -> Unit,
+    compact: Boolean = false,
 ) {
     when (key) {
         "eq" -> {
@@ -99,32 +100,57 @@ fun TileContent(
         "sleep" -> {
             val minutes by vm.sleepMinutes.collectAsState()
             val left by vm.sleepLeft.collectAsState()
-            StatTile(
-                icon = Icons.Outlined.Bedtime,
-                label = "Таймер сна",
-                value = when {
-                    left > 0 -> "%d:%02d".format(left / 60, left % 60)
-                    minutes > 0 -> "$minutes мин"
-                    else -> "Выключен"
-                },
-                active = minutes > 0,
-                onClick = { vm.tick(); onSleep() },
-            )
+            val short = when {
+                left > 0 -> "%d:%02d".format(left / 60, left % 60)
+                minutes > 0 -> "$minutes м"
+                else -> "Сон"
+            }
+            if (compact) {
+                MiniTile(Icons.Outlined.Bedtime, short, minutes > 0) { vm.tick(); onSleep() }
+            } else {
+                StatTile(
+                    icon = Icons.Outlined.Bedtime,
+                    label = "Таймер сна",
+                    value = if (minutes > 0) short else "Выключен",
+                    active = minutes > 0,
+                    onClick = { vm.tick(); onSleep() },
+                )
+            }
         }
 
         "volume" -> {
             val limit by vm.volumeLimit.collectAsState()
-            StatTile(
-                icon = Icons.Outlined.VolumeUp,
-                label = "Лимит громкости",
-                value = if (limit > 0) "$limit%" else "Без лимита",
-                active = limit > 0,
-                onClick = { vm.tick(); onVolume() },
-            )
+            if (compact) {
+                MiniTile(
+                    Icons.Outlined.VolumeUp,
+                    if (limit > 0) "$limit%" else "Лимит",
+                    limit > 0,
+                ) { vm.tick(); onVolume() }
+            } else {
+                StatTile(
+                    icon = Icons.Outlined.VolumeUp,
+                    label = "Лимит громкости",
+                    value = if (limit > 0) "$limit%" else "Без лимита",
+                    active = limit > 0,
+                    onClick = { vm.tick(); onVolume() },
+                )
+            }
         }
 
         "find" -> {
             var ringing by remember { mutableStateOf(false) }
+            if (compact) {
+                MiniTile(
+                    Icons.Outlined.NotificationsActive,
+                    if (ringing) "Стоп" else "Найти",
+                    ringing,
+                ) {
+                    ringing = !ringing
+                    vm.tick(if (ringing) Feedback.Kind.On else Feedback.Kind.Off)
+                    vm.findDevice(ringing)
+                }
+                return
+            }
             StatTile(
                 icon = Icons.Outlined.NotificationsActive,
                 label = "Найти наушники",
@@ -138,13 +164,17 @@ fun TileContent(
             )
         }
 
-        "firmware" -> StatTile(
-            icon = Icons.Outlined.Memory,
-            label = "Прошивка",
-            value = live.firmware ?: "—",
-            active = false,
-            onClick = null,
-        )
+        "firmware" -> if (compact) {
+            MiniTile(Icons.Outlined.Memory, live.firmware?.take(6) ?: "—", false, null)
+        } else {
+            StatTile(
+                icon = Icons.Outlined.Memory,
+                label = "Прошивка",
+                value = live.firmware ?: "—",
+                active = false,
+                onClick = null,
+            )
+        }
     }
 }
 
@@ -211,5 +241,41 @@ private fun eqCurve(gains: List<Int>): List<Float> {
     return (0 until 5).map { i ->
         val idx = (i * step).toInt().coerceAtMost(gains.lastIndex)
         ((gains[idx] + 12) / 24f).coerceIn(0.18f, 1f)
+    }
+}
+
+/**
+ * Компактная плитка для дополнительных функций: иконка и короткая подпись
+ * по центру. Нужна, чтобы главные плитки визуально отличались от мелких —
+ * когда все были одного размера, экран выглядел плоско.
+ */
+@Composable
+private fun MiniTile(
+    icon: ImageVector,
+    label: String,
+    active: Boolean,
+    onClick: (() -> Unit)?,
+) {
+    BentoTile(
+        Modifier.fillMaxWidth(),
+        active = active,
+        minHeight = 84.dp,
+        onClick = onClick,
+    ) { primary, secondary ->
+        Column(
+            Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+        ) {
+            Icon(icon, null, tint = primary, modifier = Modifier.size(22.dp))
+            Spacer(Modifier.height(6.dp))
+            Text(
+                label,
+                style = MaterialTheme.typography.labelMedium,
+                color = secondary,
+                maxLines = 1,
+                textAlign = TextAlign.Center,
+            )
+        }
     }
 }

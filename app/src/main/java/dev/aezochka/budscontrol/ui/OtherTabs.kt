@@ -83,16 +83,7 @@ fun SettingsTab(vm: BudsViewModel) {
     }
 
     LazyColumn(Modifier.fillMaxSize()) {
-        item {
-            Column(Modifier.statusBarsPadding().padding(20.dp)) {
-                Text("Настройки", style = MaterialTheme.typography.displayMedium, color = scheme.onSurface)
-                Spacer(Modifier.height(6.dp))
-                Text(
-                    live.firmware?.let { "Прошивка $it" } ?: "Прошивка неизвестна",
-                    style = MaterialTheme.typography.bodyMedium, color = scheme.onSurfaceVariant,
-                )
-            }
-        }
+        item { Spacer(Modifier.statusBarsPadding().height(14.dp)) }
         item {
             Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
                 SettingsRow(

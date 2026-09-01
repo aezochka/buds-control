@@ -42,6 +42,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
@@ -157,14 +158,17 @@ private fun BandSliders(
                         // себе после пары пикселей — отсюда «чуть тянулось и всё».
                         .pointerInput(index, minDb, maxDb, trackPx) {
                             awaitEachGesture {
-                                val down = awaitFirstDown(requireUnconsumed = false)
+                                val down = awaitFirstDown(
+                                    requireUnconsumed = false,
+                                    pass = PointerEventPass.Initial,
+                                )
                                 down.consume()
                                 var moves = 0
                                 val first = valueAt(down.position.y, trackPx, minDb, span)
                                 Log.d(TAG, "band=$index DOWN y=${down.position.y} track=$trackPx -> $first дБ")
                                 onChange(index, first)
                                 while (true) {
-                                    val event = awaitPointerEvent()
+                                    val event = awaitPointerEvent(PointerEventPass.Initial)
                                     val change = event.changes.firstOrNull { it.id == down.id }
                                     if (change == null) {
                                         Log.d(TAG, "band=$index указатель потерян после $moves движений")

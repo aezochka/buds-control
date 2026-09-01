@@ -14,6 +14,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.collectAsState
@@ -35,21 +36,22 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             val vm: BudsViewModel = viewModel(factory = BudsViewModel.Factory)
-            val settings by vm.settings.collectAsState()
-            BudsControlTheme(accentKey = settings.accent) {
-
+            // null = DataStore ещё читается. Показываем нейтральный фон,
+            // иначе на старте моргает онбординг — это и был баг после рестарта.
+            val loaded by vm.settingsOrNull.collectAsState()
+            BudsControlTheme(accentKey = loaded?.accent ?: "lime") {
                 AnimatedContent(
-                    targetState = settings.onboardingFinished,
+                    targetState = loaded?.onboardingFinished,
                     transitionSpec = {
-                        (fadeIn(tween(320)) + scaleIn(initialScale = 0.96f)) togetherWith fadeOut(tween(200))
+                        (fadeIn(tween(280)) + scaleIn(initialScale = 0.97f)) togetherWith fadeOut(tween(180))
                     },
                     modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background),
                     label = "root",
                 ) { finished ->
-                    if (finished) {
-                        BudsApp(vm)
-                    } else {
-                        OnboardingScreen(
+                    when (finished) {
+                        null -> Box(Modifier.fillMaxSize()) // короткий пустой кадр вместо мигания
+                        true -> BudsApp(vm)
+                        false -> OnboardingScreen(
                             vm = vm,
                             onRequestBluetooth = { permissionLauncher.launch(bluetoothPermissions()) },
                             onRequestHistory = { permissionLauncher.launch(historyPermissions()) },

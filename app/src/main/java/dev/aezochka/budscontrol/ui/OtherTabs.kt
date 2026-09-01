@@ -51,54 +51,6 @@ import dev.aezochka.budscontrol.proto.TouchAction
 import dev.aezochka.budscontrol.proto.TouchSide
 import dev.aezochka.budscontrol.proto.TouchType
 
-/** История: пока честно показывает, что данных нет, если трекинг выключен. */
-@Composable
-fun HistoryTab(vm: BudsViewModel) {
-    val scheme = MaterialTheme.colorScheme
-    val settings by vm.settings.collectAsState()
-
-    LazyColumn(Modifier.fillMaxSize()) {
-        item {
-            Column(Modifier.statusBarsPadding().padding(20.dp)) {
-                Text("История", style = MaterialTheme.typography.displayMedium, color = scheme.onSurface)
-                Spacer(Modifier.height(6.dp))
-                Text(
-                    if (settings.historyEnabled) "Записываю маршрут, шаги и треки"
-                    else "Запись выключена — включи в настройках",
-                    style = MaterialTheme.typography.bodyMedium, color = scheme.onSurfaceVariant,
-                )
-            }
-        }
-        item {
-            Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(11.dp)) {
-                Row(horizontalArrangement = Arrangement.spacedBy(11.dp)) {
-                    BentoTile(Modifier.weight(1f)) { primary, secondary ->
-                        Icon(Icons.Outlined.DirectionsWalk, null, tint = secondary, modifier = Modifier.size(23.dp))
-                        TileLabel("Шаги", secondary)
-                        Text("—", style = MaterialTheme.typography.headlineSmall, color = primary)
-                    }
-                    BentoTile(Modifier.weight(1f)) { primary, secondary ->
-                        Icon(Icons.Outlined.GraphicEq, null, tint = secondary, modifier = Modifier.size(23.dp))
-                        TileLabel("Треков", secondary)
-                        Text("—", style = MaterialTheme.typography.headlineSmall, color = primary)
-                    }
-                }
-                BentoTile(Modifier.fillMaxWidth(), minHeight = 150.dp) { primary, secondary ->
-                    Icon(Icons.Outlined.History, null, tint = secondary, modifier = Modifier.size(24.dp))
-                    Spacer(Modifier.height(8.dp))
-                    Text("Пока нет записанных прогулок", style = MaterialTheme.typography.titleMedium, color = primary)
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        "Как только включишь запись и выйдешь с наушниками, здесь появится карта маршрута, треки и расход заряда.",
-                        style = MaterialTheme.typography.bodyMedium, color = secondary,
-                    )
-                }
-            }
-        }
-        item { BottomSpacer() }
-    }
-}
-
 /** Звук: жесты по данным гарнитуры. */
 @Composable
 fun SoundTab(vm: BudsViewModel) {

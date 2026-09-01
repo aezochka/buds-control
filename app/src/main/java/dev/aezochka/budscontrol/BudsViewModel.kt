@@ -10,6 +10,9 @@ import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.AP
 import dev.aezochka.budscontrol.data.EarbudProfile
 import dev.aezochka.budscontrol.data.LocalStore
 import dev.aezochka.budscontrol.data.UserSettings
+import dev.aezochka.budscontrol.data.WalkSession
+import dev.aezochka.budscontrol.tracking.WalkService
+import android.content.Intent
 import dev.aezochka.budscontrol.device.BluetoothScanner
 import dev.aezochka.budscontrol.device.BudsSession
 import dev.aezochka.budscontrol.device.LiveState
@@ -20,6 +23,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -32,10 +36,17 @@ class BudsViewModel(app: Application) : AndroidViewModel(app) {
     private val session = BudsSession(app)
 
     val live: StateFlow<LiveState> = session.state
+    /** null пока DataStore не прочитан — MainActivity на это время держит сплэш. */
+    val settingsOrNull: StateFlow<UserSettings?> =
+        store.settings.stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
     val settings: StateFlow<UserSettings> =
-        store.settings.stateIn(viewModelScope, SharingStarted.Eagerly, UserSettings())
+        store.settings.filterNotNull().stateIn(viewModelScope, SharingStarted.Eagerly, UserSettings())
     val profiles: StateFlow<List<EarbudProfile>> =
         store.profiles.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    val sessions: StateFlow<List<WalkSession>> =
+        store.sessions.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     private val _found = MutableStateFlow<List<BluetoothScanner.Found>>(emptyList())
     val found: StateFlow<List<BluetoothScanner.Found>> = _found.asStateFlow()
@@ -110,6 +121,15 @@ class BudsViewModel(app: Application) : AndroidViewModel(app) {
 
     fun setHistoryEnabled(on: Boolean) = viewModelScope.launch {
         store.saveSettings(settings.value.copy(historyEnabled = on))
+        val app = getApplication<Application>()
+        val intent = Intent(app, WalkService::class.java).apply {
+            action = if (on) WalkService.ACTION_START else WalkService.ACTION_STOP
+        }
+        if (on) app.startForegroundService(intent) else app.startService(intent)
+    }
+
+    fun deleteSession(id: String) = viewModelScope.launch {
+        store.saveSessions(store.sessions.first().filterNot { it.id == id })
     }
     fun setTileOrder(order: List<String>) = viewModelScope.launch {
         store.saveSettings(settings.value.copy(tileOrder = order))

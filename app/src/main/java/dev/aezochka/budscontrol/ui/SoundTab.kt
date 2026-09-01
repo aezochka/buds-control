@@ -119,6 +119,7 @@ private fun EqualizerSection(current: EqPreset?, connected: Boolean, onPick: (Eq
                             EqPreset.Balanced -> "Без окраски, как задумано"
                             EqPreset.BassBoost -> "Больше низов, 10 мм драйвер"
                             EqPreset.TrebleBoost -> "Ярче верх и детали"
+                            EqPreset.Custom -> "Настроено вручную"
                         },
                         style = MaterialTheme.typography.bodySmall,
                         color = if (active) scheme.onPrimary.copy(alpha = 0.8f) else scheme.onSurfaceVariant,

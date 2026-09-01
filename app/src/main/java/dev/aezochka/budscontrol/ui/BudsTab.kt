@@ -69,6 +69,10 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import androidx.compose.ui.BiasAlignment
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.core.graphics.drawable.toBitmap
+import dev.aezochka.budscontrol.data.ImageProbe
 import dev.aezochka.budscontrol.BudsViewModel
 
 /** Главная вкладка: фото продукта, живой заряд, bento-плитки. */
@@ -86,6 +90,7 @@ fun BudsTab(vm: BudsViewModel) {
         selected?.displayName?.let { vm.ensurePhoto(it) }
     }
     val foundPhoto by vm.foundPhoto.collectAsState()
+    val photoLayout by vm.photoLayout.collectAsState()
 
     var showEq by remember { mutableStateOf(false) }
     var showAddDevice by remember { mutableStateOf(false) }
@@ -125,6 +130,8 @@ fun BudsTab(vm: BudsViewModel) {
                     inCaseLeft = live.budInCaseLeft,
                     inCaseRight = live.budInCaseRight,
                     foundPhoto = foundPhoto,
+                    photoLayout = photoLayout,
+                    onPhotoLoaded = vm::onPhotoLoaded,
                     connecting = live.connecting,
                     connected = live.connected,
                     onRefresh = vm::refresh,
@@ -153,6 +160,8 @@ private fun ProductHero(
     inCaseLeft: Boolean,
     inCaseRight: Boolean,
     foundPhoto: String?,
+    photoLayout: ImageProbe.Layout,
+    onPhotoLoaded: (androidx.compose.ui.graphics.ImageBitmap) -> Unit,
     connecting: Boolean,
     connected: Boolean,
     onRefresh: () -> Unit,
@@ -236,6 +245,10 @@ private fun ProductHero(
                         model = photoModel,
                         contentDescription = name,
                         contentScale = ContentScale.Fit,
+                        // Разбираем картинку, чтобы понять, где наушники.
+                        onSuccess = { state ->
+                            onPhotoLoaded(state.result.drawable.toBitmap().asImageBitmap())
+                        },
                         modifier = Modifier
                             .fillMaxWidth()
                             .graphicsLayer {
@@ -247,6 +260,7 @@ private fun ProductHero(
                             },
                     )
                 } else {
+                    // Пока фото ищется — силуэт, а не пустота.
                     Icon(
                         Icons.Outlined.Headphones, null,
                         tint = scheme.surfaceContainerHighest,
@@ -261,17 +275,25 @@ private fun ProductHero(
                             },
                     )
                 }
+                // Позиции считаются по самому фото: чип стоит рядом со своим
+                // наушником, а не в фиксированном углу картинки.
                 BatteryChip(
                     percent = if (connected) left else null,
                     side = "L",
                     inCase = inCaseLeft || !connected,
-                    modifier = Modifier.align(Alignment.CenterStart),
+                    modifier = Modifier.align(BiasAlignment(
+                        horizontalBias = photoLayout.left.x * 2f - 1f,
+                        verticalBias = photoLayout.left.y * 2f - 1f,
+                    )),
                 )
                 BatteryChip(
                     percent = if (connected) right else null,
                     side = "R",
                     inCase = inCaseRight || !connected,
-                    modifier = Modifier.align(Alignment.TopEnd),
+                    modifier = Modifier.align(BiasAlignment(
+                        horizontalBias = photoLayout.right.x * 2f - 1f,
+                        verticalBias = photoLayout.right.y * 2f - 1f,
+                    )),
                 )
             }
 
@@ -367,40 +389,25 @@ private fun BentoGrid(
 ) {
     val live by vm.live.collectAsState()
 
-    // Ровная сетка: две крупные плитки одинаковой высоты сверху,
-    // широкая плитка кейса, затем ряд одинаковых квадратов.
-    // Раньше размеры плиток скакали и раскладка выглядела рвано.
+    // Симметричная сетка 2 колонки: все плитки одного размера и вида.
+    val keys = listOf("eq", "game", "sleep", "volume", "find", "firmware")
     Column(
         Modifier.padding(horizontal = 20.dp),
         verticalArrangement = Arrangement.spacedBy(11.dp),
     ) {
-        Row(horizontalArrangement = Arrangement.spacedBy(11.dp)) {
-            Box(Modifier.weight(1f)) {
-                TileContent("eq", vm, live, editing, onEq, onSleep, onVolume)
-            }
-            Box(Modifier.weight(1f)) {
-                TileContent("game", vm, live, editing, onEq, onSleep, onVolume)
+        keys.chunked(2).forEach { row ->
+            Row(horizontalArrangement = Arrangement.spacedBy(11.dp)) {
+                row.forEach { key ->
+                    Box(Modifier.weight(1f)) {
+                        TileContent(key, vm, live, editing, onEq, onSleep, onVolume)
+                    }
+                }
+                if (row.size == 1) Spacer(Modifier.weight(1f))
             }
         }
-
+        // Кейс — во всю ширину, у него есть полоска заряда.
         Box(Modifier.fillMaxWidth()) {
             TileContent("case", vm, live, editing, onEq, onSleep, onVolume)
-        }
-
-        Row(horizontalArrangement = Arrangement.spacedBy(11.dp)) {
-            listOf("sleep", "volume").forEach { key ->
-                Box(Modifier.weight(1f)) {
-                    TileContent(key, vm, live, editing, onEq, onSleep, onVolume)
-                }
-            }
-        }
-
-        Row(horizontalArrangement = Arrangement.spacedBy(11.dp)) {
-            listOf("find", "firmware").forEach { key ->
-                Box(Modifier.weight(1f)) {
-                    TileContent(key, vm, live, editing, onEq, onSleep, onVolume)
-                }
-            }
         }
     }
 }

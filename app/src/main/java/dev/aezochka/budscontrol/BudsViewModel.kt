@@ -13,6 +13,7 @@ import dev.aezochka.budscontrol.notify.SleepNotifier
 import dev.aezochka.budscontrol.audio.SystemAudioFx
 import kotlinx.coroutines.Job
 import dev.aezochka.budscontrol.data.CaseBatteryMemo
+import dev.aezochka.budscontrol.data.ImageProbe
 import dev.aezochka.budscontrol.data.PhotoFinder
 import dev.aezochka.budscontrol.data.EarbudProfile
 import dev.aezochka.budscontrol.data.LocalStore
@@ -239,6 +240,14 @@ class BudsViewModel(app: Application) : AndroidViewModel(app) {
     /** Найденное в сети фото для модели, которой нет в каталоге. */
     private val _foundPhoto = MutableStateFlow<String?>(null)
     val foundPhoto: StateFlow<String?> = _foundPhoto.asStateFlow()
+
+    /** Куда ставить индикаторы заряда — считается по самому фото. */
+    private val _photoLayout = MutableStateFlow(ImageProbe.Layout.Default)
+    val photoLayout: StateFlow<ImageProbe.Layout> = _photoLayout.asStateFlow()
+
+    fun onPhotoLoaded(image: androidx.compose.ui.graphics.ImageBitmap) = viewModelScope.launch {
+        _photoLayout.value = ImageProbe.analyze(image)
+    }
 
     fun ensurePhoto(deviceName: String) = viewModelScope.launch {
         _foundPhoto.value = null

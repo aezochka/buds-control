@@ -335,5 +335,3 @@ private fun DeviceRow(device: BluetoothScanner.Found, added: Boolean, onAdd: () 
         )
     }
 }
-
-@Composable

@@ -7,8 +7,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -42,16 +41,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
-import android.util.Log
 import dev.aezochka.budscontrol.BudsViewModel
 import dev.aezochka.budscontrol.i18n.tr
 import kotlin.math.roundToInt
-
-private const val TAG = "EqUi"
 
 /**
  * Эквалайзер: вертикальные полосы по частотам, без пресетов.
@@ -153,41 +148,22 @@ private fun BandSliders(
                         .height(trackHeight)
                         .clip(RoundedCornerShape(20.dp))
                         .background(scheme.surfaceContainer)
-                        // Один обработчик на тап и протяжку. consume() обязателен:
-                        // без него ModalBottomSheet забирает вертикальный жест
-                        // себе после пары пикселей — отсюда «чуть тянулось и всё».
+                        // Считаем положение из pointer position ровно как TuneX:
+                        // Delta нельзя использовать без начальной координаты — иначе
+                        // полоса всегда получает почти нулевое движение.
                         .pointerInput(index, minDb, maxDb, trackPx) {
-                            awaitEachGesture {
-                                val down = awaitFirstDown(
-                                    requireUnconsumed = false,
-                                    pass = PointerEventPass.Initial,
-                                )
-                                down.consume()
-                                var moves = 0
-                                val first = valueAt(down.position.y, trackPx, minDb, span)
-                                Log.d(TAG, "band=$index DOWN y=${down.position.y} track=$trackPx -> $first дБ")
-                                onChange(index, first)
-                                while (true) {
-                                    val event = awaitPointerEvent(PointerEventPass.Initial)
-                                    val change = event.changes.firstOrNull { it.id == down.id }
-                                    if (change == null) {
-                                        Log.d(TAG, "band=$index указатель потерян после $moves движений")
-                                        break
-                                    }
-                                    if (!change.pressed) {
-                                        change.consume()
-                                        Log.d(TAG, "band=$index UP, движений=$moves")
-                                        break
-                                    }
+                            detectDragGestures(
+                                onDrag = { change, _ ->
                                     change.consume()
-                                    moves++
-                                    val value = valueAt(change.position.y, trackPx, minDb, span)
-                                    if (moves % 5 == 0) {
-                                        Log.d(TAG, "band=$index MOVE#$moves y=${change.position.y} -> $value дБ")
-                                    }
+                                    val value = valueAt(
+                                        change.position.y.coerceIn(0f, trackPx),
+                                        trackPx,
+                                        minDb,
+                                        span,
+                                    )
                                     onChange(index, value)
-                                }
-                            }
+                                },
+                            )
                         },
                     contentAlignment = Alignment.BottomCenter,
                 ) {

@@ -8,6 +8,12 @@
     <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
     <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />
 
+    <!-- Нужен для автоподбора фото незнакомой модели -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- Нужно системному Visualizer, чтобы полосы двигались под музыку -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+
     <uses-feature android:name="android.hardware.bluetooth" android:required="true" />
 
     <application

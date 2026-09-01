@@ -64,6 +64,7 @@ fun SettingsTab(vm: BudsViewModel) {
         CustomizeTilesSheet(
             settings = settings,
             onReorder = vm::setTileOrderList,
+            onSpan = vm::setTileSpan,
             onToggle = vm::toggleTile,
             onDismiss = { showTiles = false },
         )
@@ -71,7 +72,9 @@ fun SettingsTab(vm: BudsViewModel) {
     if (showTheme) {
         ThemeSheet(
             current = settings.accent,
+            customAccent = settings.customAccent,
             onPick = { vm.setAccent(it) },
+            onCustom = { vm.setCustomAccent(it) },
             onDismiss = { showTheme = false },
         )
     }

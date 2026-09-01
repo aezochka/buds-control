@@ -31,9 +31,10 @@ data class UserSettings(
     val language: String = "system",
     val pauseOnRemoval: Boolean = false,
     val accent: String = "lime",
+    /** Свой цвет акцента в ARGB. 0 — не задан, используется accent. */
+    val customAccent: Long = 0L,
     val tileOrder: List<String> = defaultTileOrder,
     val tileSpans: Map<String, Int> = emptyMap(),
-    val lowBatteryAlert: Boolean = false,
     val hiddenTiles: Set<String> = emptySet(),
 )
 
@@ -45,7 +46,14 @@ enum class Accent(val key: String, val title: String, val seed: Long) {
     Rose("rose", "Розовый", 0xFFFFB0C8),
     Amber("amber", "Янтарный", 0xFFF2BE8C),
     Ice("ice", "Ледяной", 0xFF9CD8FF),
-    Violet("violet", "Фиолетовый", 0xFFD0BCFF);
+    Violet("violet", "Фиолетовый", 0xFFD0BCFF),
+    Mint("mint", "Мятный", 0xFF7BE0C3),
+    Coral("coral", "Коралловый", 0xFFFF9E80),
+    Sky("sky", "Небесный", 0xFF82B1FF),
+    Sand("sand", "Песочный", 0xFFE8D5A3),
+    Magenta("magenta", "Пурпурный", 0xFFF48FB1),
+    Emerald("emerald", "Изумрудный", 0xFF69D98A),
+    Steel("steel", "Стальной", 0xFFB0BEC5);
 
     companion object {
         fun from(key: String): Accent = entries.firstOrNull { it.key == key } ?: Lime

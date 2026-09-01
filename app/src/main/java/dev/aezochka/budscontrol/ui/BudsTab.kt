@@ -5,6 +5,8 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsStateAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
@@ -82,10 +84,14 @@ fun BudsTab(vm: BudsViewModel) {
     // Ключ только по адресу: раньше эффект перезапускался на каждое изменение
     // live.connected и уходил в бесконечный цикл подключений.
     LaunchedEffect(selected?.address) { if (selected != null) vm.connectSelected() }
+    // Само определяет модель и ищет фото, если её нет в каталоге.
+    LaunchedEffect(selected?.displayName) {
+        selected?.displayName?.let { vm.ensurePhoto(it) }
+    }
+    val foundPhoto by vm.foundPhoto.collectAsState()
 
     var showEq by remember { mutableStateOf(false) }
     var showAddDevice by remember { mutableStateOf(false) }
-    var editTiles by remember { mutableStateOf(false) }
     var showSleep by remember { mutableStateOf(false) }
     var showVolume by remember { mutableStateOf(false) }
 
@@ -143,18 +149,17 @@ fun BudsTab(vm: BudsViewModel) {
                     charging = live.chargingCase || live.budInCaseLeft || live.budInCaseRight,
                     inCaseLeft = live.budInCaseLeft,
                     inCaseRight = live.budInCaseRight,
+                    foundPhoto = foundPhoto,
                     connecting = live.connecting,
                     connected = live.connected,
                     onRefresh = vm::refresh,
-                    editing = editTiles,
-                    onToggleEdit = { editTiles = !editTiles },
                 )
             }
         }
         item {
             BentoGrid(
                 vm = vm,
-                editing = editTiles,
+                editing = false,
                 onEq = { showEq = true },
                 onSleep = { showSleep = true },
                 onVolume = { showVolume = true },
@@ -172,19 +177,45 @@ private fun ProductHero(
     charging: Boolean,
     inCaseLeft: Boolean,
     inCaseRight: Boolean,
+    foundPhoto: String?,
     connecting: Boolean,
     connected: Boolean,
     onRefresh: () -> Unit,
-    editing: Boolean,
-    onToggleEdit: () -> Unit,
 ) {
     val scheme = MaterialTheme.colorScheme
-    val asset = ProductCatalog.localAsset(name)
     val transition = rememberInfiniteTransition(label = "float")
     val offset by transition.animateFloat(
         initialValue = 0f, targetValue = -11f,
         animationSpec = infiniteRepeatable(tween(2600, easing = FastOutSlowInEasing), RepeatMode.Reverse),
         label = "floatY",
+    )
+
+    // Состояния кейса: оба внутри — фото «спит» и сжимается,
+    // достали один — выезжает вверх и разворачивается.
+    val bothInCase = inCaseLeft && inCaseRight
+    val oneOut = inCaseLeft != inCaseRight
+    val restScale by animateFloatAsState(
+        targetValue = when {
+            bothInCase -> 0.84f
+            oneOut -> 1.06f
+            else -> 1f
+        },
+        animationSpec = Motion.spatial(),
+        label = "restScale",
+    )
+    val restLift by animateFloatAsState(
+        targetValue = when {
+            bothInCase -> 16f
+            oneOut -> -14f
+            else -> 0f
+        },
+        animationSpec = Motion.spatial(),
+        label = "restLift",
+    )
+    val restTilt by animateFloatAsState(
+        targetValue = if (oneOut) -4.5f else 0f,
+        animationSpec = Motion.spatial(),
+        label = "restTilt",
     )
 
     // Пульсирующее свечение, когда кейс на зарядке.
@@ -214,20 +245,37 @@ private fun ProductHero(
                             .background(scheme.primary.copy(alpha = glow * 0.22f)),
                     )
                 }
-                if (asset != null) {
+                // Автоподбор: локальный ассет, иначе CDN вендора по имени
+                // устройства, иначе нейтральный силуэт. Никаких ручных правок.
+                val photoModel = ProductCatalog.localAsset(name)
+                    ?.let { "file:///android_asset/$it" }
+                    ?: foundPhoto
+                if (photoModel != null) {
                     AsyncImage(
-                        model = "file:///android_asset/$asset",
+                        model = photoModel,
                         contentDescription = name,
                         contentScale = ContentScale.Fit,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(top = (-offset).dp),
+                            .graphicsLayer {
+                                translationY = offset + restLift
+                                scaleX = restScale
+                                scaleY = restScale
+                                rotationZ = restTilt
+                            },
                     )
                 } else {
                     Icon(
                         Icons.Outlined.Headphones, null,
                         tint = scheme.surfaceContainerHighest,
-                        modifier = Modifier.size(150.dp).scale(1f + offset / 260f),
+                        modifier = Modifier
+                            .size(150.dp)
+                            .graphicsLayer {
+                                translationY = offset + restLift
+                                scaleX = restScale
+                                scaleY = restScale
+                                rotationZ = restTilt
+                            },
                     )
                 }
                 BatteryChip(left, "L", inCase = inCaseLeft, modifier = Modifier.align(Alignment.CenterStart))
@@ -265,22 +313,6 @@ private fun ProductHero(
                         contentAlignment = Alignment.Center,
                     ) {
                         Icon(Icons.Outlined.Refresh, "Обновить", tint = scheme.onSurfaceVariant, modifier = Modifier.size(19.dp))
-                    }
-                    // Правка плиток рядом с обновлением, а не полосой над сеткой.
-                    Box(
-                        Modifier
-                            .size(38.dp)
-                            .clip(CircleShape)
-                            .background(if (editing) scheme.primary else scheme.surfaceContainerHigh)
-                            .pressBounce(onClick = onToggleEdit),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(
-                            if (editing) Icons.Outlined.Check else Icons.Outlined.DashboardCustomize,
-                            "Настроить плитки",
-                            tint = if (editing) scheme.onPrimary else scheme.onSurfaceVariant,
-                            modifier = Modifier.size(19.dp),
-                        )
                     }
                 }
             }

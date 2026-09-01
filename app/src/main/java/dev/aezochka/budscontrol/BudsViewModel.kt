@@ -7,7 +7,10 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
+import dev.aezochka.budscontrol.audio.MusicPulse
 import dev.aezochka.budscontrol.data.CaseBatteryMemo
+import dev.aezochka.budscontrol.data.PhotoFinder
+import dev.aezochka.budscontrol.data.ProductCatalog
 import dev.aezochka.budscontrol.data.EarbudProfile
 import dev.aezochka.budscontrol.data.LocalStore
 import dev.aezochka.budscontrol.data.UserSettings
@@ -176,7 +179,13 @@ class BudsViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun setAccent(key: String) = viewModelScope.launch {
-        store.saveSettings(settings.value.copy(accent = key))
+        // Выбор пресета сбрасывает свой цвет.
+        store.saveSettings(settings.value.copy(accent = key, customAccent = 0L))
+    }
+
+    /** Свой цвет темы: ARGB, перебивает пресет. */
+    fun setCustomAccent(argb: Long) = viewModelScope.launch {
+        store.saveSettings(settings.value.copy(customAccent = argb))
     }
 
     fun toggleTile(key: String) = viewModelScope.launch {
@@ -198,60 +207,22 @@ class BudsViewModel(app: Application) : AndroidViewModel(app) {
     fun setSpatialAudio(on: Boolean) = session.setSpatialAudio(on)
     fun setMultipoint(on: Boolean) = session.setMultipoint(on)
 
-    fun setLowBatteryAlert(on: Boolean) = viewModelScope.launch {
-        store.saveSettings(settings.value.copy(lowBatteryAlert = on))
+    /** Найденное в сети фото для модели, которой нет в каталоге. */
+    private val _foundPhoto = MutableStateFlow<String?>(null)
+    val foundPhoto: StateFlow<String?> = _foundPhoto.asStateFlow()
+
+    fun ensurePhoto(deviceName: String) = viewModelScope.launch {
+        if (ProductCatalog.localAsset(deviceName) != null) return@launch
+        _foundPhoto.value = PhotoFinder.find(getApplication(), deviceName)
     }
 
-    /**
-     * Прогноз работы по паспортным 6.5 ч у T110 и текущему заряду.
-     * Это оценка, не телеметрия — так и подписано в UI.
-     */
-    fun batteryForecast(): String {
-        val level = listOfNotNull(live.value.batteryLeft, live.value.batteryRight).minOrNull()
-            ?: return "Нужен хотя бы один наушник на связи"
-        val hours = level / 100.0 * 6.5
-        val h = hours.toInt()
-        val m = ((hours - h) * 60).toInt()
-        return "Осталось примерно ${'$'}h ч ${'$'}m мин при среднем громкости"
-    }
+    /** Уровни звука для полос на плитке эквалайзера. */
+    val musicLevels: StateFlow<List<Float>?> = MusicPulse(application)
+        .levels()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(2_000), null)
 
-    /** Короткий тон в один канал — проверка, что оба наушника играют. */
-    fun playChannelTest(left: Boolean) {
-        val sampleRate = 44100
-        val seconds = 1.2
-        val frames = (sampleRate * seconds).toInt()
-        val buffer = ShortArray(frames * 2)
-        for (i in 0 until frames) {
-            val t = i.toDouble() / sampleRate
-            val envelope = kotlin.math.min(1.0, kotlin.math.min(t * 8, (seconds - t) * 8))
-            val value = (kotlin.math.sin(2 * Math.PI * 440 * t) * envelope * Short.MAX_VALUE * 0.4).toInt().toShort()
-            buffer[i * 2] = if (left) value else 0
-            buffer[i * 2 + 1] = if (left) 0 else value
-        }
-        val track = android.media.AudioTrack.Builder()
-            .setAudioAttributes(
-                android.media.AudioAttributes.Builder()
-                    .setUsage(android.media.AudioAttributes.USAGE_MEDIA)
-                    .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                    .build()
-            )
-            .setAudioFormat(
-                android.media.AudioFormat.Builder()
-                    .setEncoding(android.media.AudioFormat.ENCODING_PCM_16BIT)
-                    .setSampleRate(sampleRate)
-                    .setChannelMask(android.media.AudioFormat.CHANNEL_OUT_STEREO)
-                    .build()
-            )
-            .setBufferSizeInBytes(buffer.size * 2)
-            .build()
-        track.write(buffer, 0, buffer.size)
-        track.setNotificationMarkerPosition(frames)
-        track.play()
-        viewModelScope.launch {
-            delay((seconds * 1000).toLong() + 200)
-            runCatching { track.stop(); track.release() }
-        }
-    }
+
+
     fun startAddDevice() = startScan()
 
     // Таймер сна и лимит громкости живут в приложении: гарнитура их не хранит.

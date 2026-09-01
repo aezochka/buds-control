@@ -37,8 +37,9 @@ val BudsType = Typography(
  * Тёмная схема с выбираемым акцентом. onPrimary считается из яркости акцента,
  * поэтому подписи на активных плитках читаются при любом цвете.
  */
-private fun schemeFor(accent: Accent) = run {
-    val primary = Color(accent.seed)
+private fun schemeFor(accent: Accent, customArgb: Long = 0L) = run {
+    // Свой цвет перебивает пресет, если задан.
+    val primary = if (customArgb != 0L) Color(customArgb) else Color(accent.seed)
     val onPrimary = if (primary.luminance() > 0.45f) Color(0xFF16210A) else Color(0xFFFFFFFF)
     darkColorScheme(
         primary = primary,
@@ -70,9 +71,13 @@ private fun Color.compositeOverDark(): Color {
 }
 
 @Composable
-fun BudsControlTheme(accentKey: String = "lime", content: @Composable () -> Unit) {
+fun BudsControlTheme(
+    accentKey: String = "lime",
+    customAccent: Long = 0L,
+    content: @Composable () -> Unit,
+) {
     MaterialTheme(
-        colorScheme = schemeFor(Accent.from(accentKey)),
+        colorScheme = schemeFor(Accent.from(accentKey), customAccent),
         typography = BudsType,
         content = content,
     )

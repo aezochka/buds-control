@@ -44,7 +44,10 @@ class MainActivity : ComponentActivity() {
             // null = DataStore ещё читается. Показываем нейтральный фон,
             // иначе на старте моргает онбординг — это и был баг после рестарта.
             val loaded by vm.settingsOrNull.collectAsState()
-            BudsControlTheme(accentKey = loaded?.accent ?: "lime") {
+            BudsControlTheme(
+                accentKey = loaded?.accent ?: "lime",
+                customAccent = loaded?.customAccent ?: 0L,
+            ) {
                 AnimatedContent(
                     targetState = loaded?.onboardingFinished,
                     transitionSpec = {

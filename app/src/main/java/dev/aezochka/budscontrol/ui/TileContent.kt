@@ -26,6 +26,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -49,13 +50,17 @@ fun BoxScope.TileContent(
 ) {
     val scheme = MaterialTheme.colorScheme
     when (key) {
-        "eq" -> BentoTile(
+        "eq" -> {
+            val levels by vm.musicLevels.collectAsState()
+            BentoTile(
             Modifier.fillMaxWidth(), active = live.eqPreset != null, minHeight = 150.dp,
             onClick = if (editing) null else onEq,
         ) { primary, secondary ->
-            EqBars(
-                bars = live.eqPreset?.bars ?: listOf(0.4f, 0.6f, 0.9f, 0.5f, 0.45f),
-                animated = live.eqPreset != null, color = primary,
+            // Есть звук — полосы идут под музыку, нет — обычная анимация.
+            LiveEqBars(
+                live = levels,
+                fallback = live.eqPreset?.bars ?: listOf(0.4f, 0.6f, 0.9f, 0.5f, 0.45f),
+                color = primary,
             )
             Spacer(Modifier.height(6.dp))
             TileLabel("Эквалайзер", secondary)
@@ -64,6 +69,7 @@ fun BoxScope.TileContent(
                 transitionSpec = { fadeIn(Motion.effects()) togetherWith fadeOut(Motion.effects()) },
                 label = "eqName",
             ) { name -> Text(name, style = MaterialTheme.typography.titleMedium, color = primary) }
+            }
         }
 
         "game" -> BentoTile(

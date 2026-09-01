@@ -133,13 +133,15 @@ fun OnboardingScreen(
                 else -> true
             }
             val label = when {
-                step == 1 && profiles.isEmpty() -> "Выбери наушники"
+                step == 1 && profiles.isEmpty() -> "Сначала выбери наушники"
                 step == LAST_STEP -> "Поехали"
                 else -> "Далее"
             }
             PillButton(
                 text = label,
-                filled = true,
+                // Заблокированная кнопка больше не притворяется активной:
+                // она и выглядит выключенной, и не реагирует на тап.
+                filled = canContinue,
                 enabled = canContinue,
                 modifier = Modifier.weight(1f),
             ) {
@@ -160,6 +162,7 @@ private fun PillButton(
     val scheme = MaterialTheme.colorScheme
     // Раньше кнопка выглядела серой, но всё равно нажималась. Теперь вид
     // и поведение совпадают: выключенная не реагирует вообще.
+    // Серый вид только когда кнопка реально заблокирована.
     val container = when {
         !enabled -> scheme.surfaceContainer
         filled -> scheme.primary

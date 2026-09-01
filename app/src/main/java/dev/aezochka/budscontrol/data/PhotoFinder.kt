@@ -1,6 +1,8 @@
 package dev.aezochka.budscontrol.data
 
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -12,71 +14,65 @@ import java.net.URLEncoder
 import java.util.Locale
 
 /**
- * Универсальный поиск фото ЛЮБЫХ наушников по имени Bluetooth-устройства.
+ * Ищет фото наушников по имени Bluetooth-устройства и готовит его к показу
+ * на тёмном фоне: белый фон вырезается.
  *
- * Встроенных картинок в APK больше нет: держать базу под каждую модель мира
- * бессмысленно, а без неё владелец AirPods или Sony остался бы без фото.
- * Проверено вживую: поиск отдаёт результаты для realme, Apple, Samsung,
- * Sony, JBL, Huawei.
+ * Порядок: сначала запрос с «png transparent background» — вендорские PNG
+ * уже идут с альфой и их не нужно обрабатывать. Если такого нет, берём фото
+ * с однородным фоном и вырезаем его заливкой от краёв.
  *
- * Кеш на диске: одна модель ищется один раз.
+ * Результат — готовый PNG на диске, поэтому обработка делается один раз.
  */
 object PhotoFinder {
+    /**
+     * Порог совпадения с цветом фона. 120 был слишком велик: у белых наушников
+     * корпус попадал в допуск и выедался вместе с фоном. 42 держит белый продукт.
+     */
+    private const val TOLERANCE = 42
+
     private const val UA =
         "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/122 Mobile Safari/537.36"
     private const val TAG = "PhotoFinder"
 
-    /** Найденный URL или null. Ничего не выдумывает. */
+    /** Путь к готовому файлу или null. */
     suspend fun find(context: Context, deviceName: String): String? = withContext(Dispatchers.IO) {
         val clean = cleanName(deviceName)
         if (clean.isBlank()) return@withContext null
 
         val key = clean.lowercase(Locale.ROOT).replace(Regex("[^a-z0-9]+"), "_")
-        val cache = File(context.cacheDir, "photo_$key.txt")
-        if (cache.exists()) {
-            val cached = cache.readText().trim()
-            return@withContext cached.ifEmpty { null }
+        val ready = File(context.cacheDir, "photo_$key.png")
+        val miss = File(context.cacheDir, "photo_$key.miss")
+        if (ready.exists() && ready.length() > 0) return@withContext ready.absolutePath
+        if (miss.exists()) return@withContext null
+
+        // Первый проход — ищем сразу прозрачные PNG.
+        val bitmap = tryQuery("$clean earbuds png transparent background")
+            ?: tryQuery("$clean earbuds product")
+            ?: run {
+                runCatching { miss.createNewFile() }
+                return@withContext null
+            }
+
+        runCatching {
+            ready.outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
         }
-
-        val found = search(clean)
-        runCatching { cache.writeText(found.orEmpty()) }
-        found
+        if (ready.exists() && ready.length() > 0) ready.absolutePath else null
     }
 
-    /**
-     * Готовит имя к поиску: убирает служебные суффиксы, которые гарнитуры
-     * добавляют в имя Bluetooth и которые ломают выдачу.
-     */
-    private fun cleanName(raw: String): String {
-        var name = raw.trim()
-        // «realme Buds T110-L», «Galaxy Buds3 Pro (2A4F)», «AirPods Pro - Найти»
-        name = name.replace(Regex("""\s*\((?:[0-9A-Fa-f]{2,4}|[LR])\)\s*$"""), "")
-        name = name.replace(Regex("""[-_\s]+(?:L|R|LE|Left|Right|Stereo|Hands?-?free)$""", RegexOption.IGNORE_CASE), "")
-        name = name.replace(Regex("""\s*-\s*(?:Find|Найти)$""", RegexOption.IGNORE_CASE), "")
-        name = name.replace(Regex("""\s{2,}"""), " ").trim()
-        return name
-    }
-
-    private fun search(name: String): String? = runCatching {
-        // Добавляем «earbuds», чтобы не ловить обзоры и коробки.
-        val query = URLEncoder.encode("$name earbuds product", "UTF-8")
-
-        val page = fetch("https://duckduckgo.com/?q=$query&iax=images&ia=images") ?: return@runCatching null
-        val token = Regex("""vqd=["']?([\d-]+)""").find(page)?.groupValues?.get(1) ?: return@runCatching null
-
-        val json = fetch(
-            "https://duckduckgo.com/i.js?l=us-en&o=json&q=$query&vqd=$token",
+    private fun tryQuery(query: String): Bitmap? {
+        val encoded = URLEncoder.encode(query, "UTF-8")
+        val page = fetchText("https://duckduckgo.com/?q=$encoded&iax=images&ia=images") ?: return null
+        val token = Regex("""vqd=["']?([\d-]+)""").find(page)?.groupValues?.get(1) ?: return null
+        val json = fetchText(
+            "https://duckduckgo.com/i.js?l=us-en&o=json&q=$encoded&vqd=$token",
             referer = "https://duckduckgo.com/",
-        ) ?: return@runCatching null
+        ) ?: return null
+        val items = JSONObject(json).optJSONArray("results") ?: return null
 
-        val items = JSONObject(json).optJSONArray("results") ?: return@runCatching null
-        // Ищем достаточно крупную и желательно квадратную картинку продукта.
-        var fallback: String? = null
-        for (i in 0 until minOf(items.length(), 16)) {
+        for (i in 0 until minOf(items.length(), 10)) {
             val item = items.optJSONObject(i) ?: continue
             val raw = item.optString("image")
-            // http:// блокируется политикой usesCleartextTraffic=false,
-            // поэтому апгрейдим до https и отбрасываем всё, что не http(s).
+            // http блокируется политикой cleartext — апгрейдим до https.
             val url = when {
                 raw.startsWith("https://") -> raw
                 raw.startsWith("http://") -> "https://" + raw.removePrefix("http://")
@@ -86,37 +82,138 @@ object PhotoFinder {
             val h = item.optInt("height")
             if (w < 600) continue
             val ratio = if (h == 0) 0f else w.toFloat() / h
-            if (ratio in 0.8f..1.25f && reachable(url)) return@runCatching url
-            if (fallback == null && reachable(url)) fallback = url
+            if (ratio !in 0.8f..1.25f) continue
+
+            val bytes = fetchBytes(url) ?: continue
+            val decoded = runCatching { BitmapFactory.decodeByteArray(bytes, 0, bytes.size) }.getOrNull() ?: continue
+            val prepared = prepare(decoded) ?: continue
+            Log.i(TAG, "Фото принято: $url")
+            return prepared
         }
-        fallback
-    }.getOrElse {
-        Log.i(TAG, "Поиск фото не удался: ${it.message}")
-        null
+        return null
     }
 
-    /** Быстрая проверка, что ссылка реально отдаёт картинку. */
-    private fun reachable(url: String): Boolean = runCatching {
-        val conn = (URL(url).openConnection() as HttpURLConnection).apply {
-            requestMethod = "HEAD"
-            instanceFollowRedirects = true
-            setRequestProperty("User-Agent", UA)
-            connectTimeout = 6_000
-            readTimeout = 6_000
-        }
-        val ok = conn.responseCode in 200..299
-        val type = conn.contentType ?: ""
-        conn.disconnect()
-        ok && type.startsWith("image")
-    }.getOrDefault(false)
+    /**
+     * Готовит картинку: если альфы нет — вырезает однородный фон.
+     * Возвращает null, если фон вырезать не удалось (коллаж, сложный фон).
+     */
+    private fun prepare(source: Bitmap): Bitmap? {
+        val scaled = scaleDown(source, 720)
+        val w = scaled.width
+        val h = scaled.height
+        val pixels = IntArray(w * h)
+        scaled.getPixels(pixels, 0, w, 0, 0, w, h)
 
-    private fun fetch(url: String, referer: String? = null): String? = runCatching {
-        val conn = (URL(url).openConnection() as HttpURLConnection).apply {
+        val transparent = pixels.count { (it ushr 24) < 16 }
+        if (transparent > pixels.size / 12) {
+            // Уже с прозрачностью — ничего не трогаем.
+            return scaled.copy(Bitmap.Config.ARGB_8888, false)
+        }
+
+        // Цвет фона — медиана рамки. Если рамка неоднородна, это коллаж.
+        val border = ArrayList<Int>(2 * (w + h))
+        for (x in 0 until w) { border.add(pixels[x]); border.add(pixels[(h - 1) * w + x]) }
+        for (y in 0 until h) { border.add(pixels[y * w]); border.add(pixels[y * w + w - 1]) }
+        val bgR = median(border) { (it shr 16) and 0xFF }
+        val bgG = median(border) { (it shr 8) and 0xFF }
+        val bgB = median(border) { it and 0xFF }
+        val uniform = border.count { diff(it, bgR, bgG, bgB) < TOLERANCE }.toFloat() / border.size
+        if (uniform < 0.9f) {
+            Log.i(TAG, "Фон неоднородный — картинка не подходит")
+            return null
+        }
+
+        // Заливка от краёв: не выедает светлые части внутри продукта.
+        val out = pixels.copyOf()
+        val queue = ArrayDeque<Int>()
+        val seen = BooleanArray(pixels.size)
+        fun push(index: Int) {
+            if (seen[index]) return
+            if (diff(pixels[index], bgR, bgG, bgB) >= TOLERANCE) return
+            seen[index] = true
+            queue.addLast(index)
+        }
+        for (x in 0 until w) { push(x); push((h - 1) * w + x) }
+        for (y in 0 until h) { push(y * w); push(y * w + w - 1) }
+        while (queue.isNotEmpty()) {
+            val idx = queue.removeFirst()
+            out[idx] = out[idx] and 0x00FFFFFF
+            val x = idx % w
+            val y = idx / w
+            if (x > 0) push(idx - 1)
+            if (x < w - 1) push(idx + 1)
+            if (y > 0) push(idx - w)
+            if (y < h - 1) push(idx + w)
+        }
+
+        val cleared = out.count { (it ushr 24) < 16 }
+        // Фон должен занимать разумную долю: иначе вырезали не то.
+        if (cleared < pixels.size / 12 || cleared > pixels.size * 9 / 10) {
+            Log.i(TAG, "Обтравка дала странный результат — пропускаем")
+            return null
+        }
+
+        // Проверка на «прогрызание» продукта: считаем прозрачные пиксели
+        // в центральной зоне. Там должен быть продукт, а не дырки.
+        var centerHoles = 0
+        var centerTotal = 0
+        val x0 = w / 3; val x1 = w * 2 / 3
+        val y0 = h / 3; val y1 = h * 2 / 3
+        for (y in y0 until y1) {
+            for (x in x0 until x1) {
+                centerTotal++
+                if ((out[y * w + x] ushr 24) < 16) centerHoles++
+            }
+        }
+        if (centerTotal > 0 && centerHoles > centerTotal / 4) {
+            Log.i(TAG, "В центре появились дырки — продукт светлый, картинка не подходит")
+            return null
+        }
+        return Bitmap.createBitmap(out, w, h, Bitmap.Config.ARGB_8888)
+    }
+
+    private inline fun median(list: List<Int>, selector: (Int) -> Int): Int =
+        list.map(selector).sorted()[list.size / 2]
+
+    private fun diff(argb: Int, r: Int, g: Int, b: Int): Int {
+        val pr = (argb shr 16) and 0xFF
+        val pg = (argb shr 8) and 0xFF
+        val pb = argb and 0xFF
+        return kotlin.math.abs(pr - r) + kotlin.math.abs(pg - g) + kotlin.math.abs(pb - b)
+    }
+
+    private fun scaleDown(bitmap: Bitmap, max: Int): Bitmap {
+        val side = maxOf(bitmap.width, bitmap.height)
+        if (side <= max) return bitmap
+        val scale = max.toFloat() / side
+        return Bitmap.createScaledBitmap(
+            bitmap, (bitmap.width * scale).toInt(), (bitmap.height * scale).toInt(), true,
+        )
+    }
+
+    private fun cleanName(raw: String): String {
+        var name = raw.trim()
+        name = name.replace(Regex("""\s*\((?:[0-9A-Fa-f]{2,4}|[LR])\)\s*$"""), "")
+        name = name.replace(
+            Regex("""[-_\s]+(?:L|R|LE|Left|Right|Stereo|Hands?-?free)$""", RegexOption.IGNORE_CASE), "",
+        )
+        name = name.replace(Regex("""\s*-\s*(?:Find|Найти)$""", RegexOption.IGNORE_CASE), "")
+        return name.replace(Regex("""\s{2,}"""), " ").trim()
+    }
+
+    private fun fetchText(url: String, referer: String? = null): String? = runCatching {
+        open(url, referer).inputStream.bufferedReader().use { it.readText() }
+    }.getOrNull()
+
+    private fun fetchBytes(url: String): ByteArray? = runCatching {
+        open(url, null).inputStream.use { it.readBytes() }
+    }.getOrNull()
+
+    private fun open(url: String, referer: String?): HttpURLConnection =
+        (URL(url).openConnection() as HttpURLConnection).apply {
             setRequestProperty("User-Agent", UA)
             referer?.let { setRequestProperty("Referer", it) }
             connectTimeout = 10_000
-            readTimeout = 10_000
+            readTimeout = 12_000
         }
-        conn.inputStream.bufferedReader().use { it.readText() }
-    }.getOrNull()
 }

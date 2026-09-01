@@ -17,6 +17,7 @@ class Strings(private val code: String) {
     val next get() = get("next")
     val back get() = get("back")
     val go get() = get("go")
+    val pickBudsFirst get() = get("pickBuds")
     val languageTitle get() = get("language")
     val languageHint get() = get("languageHint")
     val devicesTitle get() = get("budsTitle")

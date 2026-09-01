@@ -69,16 +69,22 @@ class SystemAudioFx(private val context: android.content.Context) {
         }
     }
 
-    /** Текущие уровни полос в дБ. Пустым не возвращает. */
+    /**
+     * Единственный источник истины после первого движения — ручной массив.
+     *
+     * На телефоне локальный Equalizer создаётся, но setBandLevel() падает.
+     * Раньше currentGainsDb() всё равно читал его первым: пользователь двигал
+     * полосу, а сервис каждый раз получал старые [3,0,0,0,3].
+     */
     fun currentGainsDb(): List<Int> {
+        if (manualGains.isNotEmpty()) return manualGains
         val eq = equalizer
-        if (eq == null) return manualGains.ifEmpty { List(bandCount) { 0 } }
-        return runCatching {
+        return if (eq == null) List(bandCount) { 0 } else runCatching {
             (0 until bandCount).map { eq.getBandLevel(it.toShort()) / 100 }
-        }.getOrElse { manualGains.ifEmpty { List(bandCount) { 0 } } }
+        }.getOrElse { List(bandCount) { 0 } }
     }
 
-    /** Уровни, выставленные вручную, когда системный объект недоступен. */
+    /** Уровни, выставленные вручную — именно их отправляем в EqService. */
     private var manualGains: List<Int> = emptyList()
 
     /**
@@ -104,7 +110,7 @@ class SystemAudioFx(private val context: android.content.Context) {
             EqLog.log("Уровни пустые — сервису нечего отправлять")
             return
         }
-        EqLog.log("Отправляю в EqService: $levels дБ")
+        EqLog.log("Отправляю в EqService (ручной массив): $levels дБ")
         EqService.apply(context, levels)
     }
 

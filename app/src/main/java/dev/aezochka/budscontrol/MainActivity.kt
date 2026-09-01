@@ -34,7 +34,6 @@ class MainActivity : ComponentActivity() {
         ActivityResultContracts.RequestMultiplePermissions()
     ) { result ->
         // Как только выдан обычный доступ к локации — просим фоновый отдельным шагом.
-        if (result[Manifest.permission.ACCESS_FINE_LOCATION] == true) requestBackgroundLocationIfNeeded()
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -63,7 +62,6 @@ class MainActivity : ComponentActivity() {
                         false -> OnboardingScreen(
                             vm = vm,
                             onRequestBluetooth = { permissionLauncher.launch(bluetoothPermissions()) },
-                            onRequestHistory = { permissionLauncher.launch(historyPermissions()) },
                         )
                     }
                 }
@@ -82,31 +80,15 @@ class MainActivity : ComponentActivity() {
         }
 
     /** Микрофон нужен системному Visualizer, иначе полосы EQ не двигаются. */
-    /** Всё, что нужно на старте: Bluetooth + микрофон для визуализации звука. */
+    /**
+     * На старте нужен только Bluetooth и уведомления для таймера сна.
+     * Микрофон убран: приложение им не пользуется — визуализацию звука
+     * через Visualizer я убрала, она требовала записи звука и давала фризы.
+     */
     private fun startupPermissions(): Array<String> = buildList {
         addAll(bluetoothPermissions())
-        add(Manifest.permission.RECORD_AUDIO)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) add(Manifest.permission.POST_NOTIFICATIONS)
     }.toTypedArray()
 
-    private fun historyPermissions(): Array<String> = buildList {
-        add(Manifest.permission.ACCESS_FINE_LOCATION)
-        add(Manifest.permission.ACCESS_COARSE_LOCATION)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) add(Manifest.permission.ACTIVITY_RECOGNITION)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) add(Manifest.permission.POST_NOTIFICATIONS)
-    }.toTypedArray()
 
-    /**
-     * Фоновую геолокацию Android разрешает просить только ОТДЕЛЬНО и лишь после
-     * того, как выдан обычный доступ. Без неё маршрут обрывается при
-     * потушенном экране — именно поэтому карта оставалась пустой.
-     */
-    private fun requestBackgroundLocationIfNeeded() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return
-        val fine = ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
-        if (fine != PackageManager.PERMISSION_GRANTED) return
-        val background = ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_BACKGROUND_LOCATION)
-        if (background == PackageManager.PERMISSION_GRANTED) return
-        permissionLauncher.launch(arrayOf(Manifest.permission.ACCESS_BACKGROUND_LOCATION))
-    }
 }

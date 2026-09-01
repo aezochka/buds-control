@@ -1,13 +1,7 @@
 package dev.aezochka.budscontrol.ui
 
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.Arrangement
@@ -74,12 +68,12 @@ fun ProfileRow(
                 )
                 val lift by animateFloatAsState(if (isDragging) 1.08f else 1f, Motion.spatialFast(), label = "lift")
 
-                // Пока тащим — чип покачивается, как в режиме правки.
-                val wobble = rememberInfiniteTransition(label = "wobble")
-                val angle by wobble.animateFloat(
-                    initialValue = if (isDragging) -1.6f else 0f,
-                    targetValue = if (isDragging) 1.6f else 0f,
-                    animationSpec = infiniteRepeatable(tween(420, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+                // Наклон только у перетаскиваемого чипа. Раньше бесконечная
+                // анимация создавалась для КАЖДОГО чипа и крутилась всегда —
+                // это и был источник микрофризов.
+                val angle by animateFloatAsState(
+                    targetValue = if (isDragging) 1.4f else 0f,
+                    animationSpec = Motion.spatialFast(),
                     label = "angle",
                 )
 

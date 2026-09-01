@@ -1,6 +1,5 @@
 package dev.aezochka.budscontrol.audio
 
-import android.media.audiofx.BassBoost
 import android.media.audiofx.Equalizer
 import android.media.audiofx.LoudnessEnhancer
 import android.util.Log
@@ -18,7 +17,6 @@ import android.util.Log
  */
 class SystemAudioFx {
     private var equalizer: Equalizer? = null
-    private var bassBoost: BassBoost? = null
     private var loudness: LoudnessEnhancer? = null
 
     /** Частоты полос в Гц, как их сообщает само устройство. */
@@ -45,7 +43,6 @@ class SystemAudioFx {
             maxGainMb = range[1]
             equalizer = eq
 
-            bassBoost = runCatching { BassBoost(0, 0) }.getOrNull()
             loudness = runCatching { LoudnessEnhancer(0) }.getOrNull()
             Log.i(TAG, "Эквалайзер подключён: $bands полос, ${bandFrequencies}")
             true
@@ -76,17 +73,7 @@ class SystemAudioFx {
         runCatching { equalizer?.enabled = on }
     }
 
-    /** Усиление басов 0..1000 — то самое «Bass Boost+». */
-    fun setBassBoost(strength: Int) {
-        runCatching {
-            bassBoost?.apply {
-                enabled = strength > 0
-                if (strengthSupported) setStrength(strength.coerceIn(0, 1000).toShort())
-            }
-        }
-    }
 
-    fun bassBoostStrength(): Int = runCatching { bassBoost?.roundedStrength?.toInt() ?: 0 }.getOrDefault(0)
 
     /** Дополнительная громкость в мБ — компенсация тихих записей. */
     fun setLoudness(gainMb: Int) {
@@ -104,9 +91,8 @@ class SystemAudioFx {
 
     fun release() {
         runCatching { equalizer?.release() }
-        runCatching { bassBoost?.release() }
         runCatching { loudness?.release() }
-        equalizer = null; bassBoost = null; loudness = null
+        equalizer = null; loudness = null
     }
 
     companion object { private const val TAG = "SystemAudioFx" }

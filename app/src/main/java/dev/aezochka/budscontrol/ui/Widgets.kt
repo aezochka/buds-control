@@ -75,18 +75,12 @@ fun BentoTile(
         animationSpec = Motion.effects(), label = "tileAlpha",
     )
 
-    // Активная плитка мягко «дышит» — заметно, но не раздражает.
-    val breathe = rememberInfiniteTransition(label = "breathe")
-    val pulse by breathe.animateFloat(
-        initialValue = 1f, targetValue = if (active) 1.012f else 1f,
-        animationSpec = infiniteRepeatable(tween(1800, easing = FastOutSlowInEasing), RepeatMode.Reverse),
-        label = "tilePulse",
-    )
-
+    // Бесконечное «дыхание» убрано: каждая плитка держала свою анимацию,
+    // на экране их было под десяток — отсюда микрофризы.
     var base = modifier
         .graphicsLayer {
-            scaleX = enter * pulse
-            scaleY = enter * pulse
+            scaleX = enter
+            scaleY = enter
             this.alpha = alpha
         }
         .defaultMinSize(minHeight = minHeight)
@@ -102,34 +96,6 @@ fun BentoTile(
     }
 }
 
-/** Столбики эквалайзера: бесконечная плавная анимация, когда активно. */
-@Composable
-fun EqualizerBars(active: Boolean, color: Color, modifier: Modifier = Modifier) {
-    val transition = rememberInfiniteTransition(label = "eq")
-    val bases = listOf(0.42f, 0.78f, 1f, 0.6f, 0.5f)
-    Row(modifier.height(36.dp), horizontalArrangement = Arrangement.spacedBy(5.dp), verticalAlignment = Alignment.Bottom) {
-        bases.forEachIndexed { index, base ->
-            val target = if (active) (base * 0.42f).coerceAtLeast(0.16f) else base
-            val h by transition.animateFloat(
-                initialValue = base, targetValue = target,
-                animationSpec = infiniteRepeatable(
-                    animation = tween(600 + index * 140, easing = FastOutSlowInEasing),
-                    repeatMode = RepeatMode.Reverse,
-                ),
-                label = "bar$index",
-            )
-            Box(
-                Modifier
-                    .weight(1f)
-                    .fillMaxHeight(h.coerceIn(0.12f, 1f))
-                    .clip(CircleShape)
-                    .background(color),
-            )
-        }
-    }
-}
-
-/** Пульсирующая точка статуса. */
 @Composable
 fun PulsingDot(color: Color, size: Dp = 8.dp) {
     val transition = rememberInfiniteTransition(label = "dot")

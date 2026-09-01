@@ -40,6 +40,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -273,27 +275,36 @@ fun StrengthBar(value: Int, max: Int, onChange: (Int) -> Unit) {
 }
 
 /** Полосы на плитке: под музыку, если есть звук. */
+/**
+ * Полосы эквалайзера. ОДНА анимация фазы на весь виджет вместо пяти
+ * бесконечных — раньше каждая плитка держала свои и появлялись микрофризы.
+ */
 @Composable
 fun EqBars(bars: List<Float>, animated: Boolean, color: Color) {
-    val transition = rememberInfiniteTransition(label = "eqBars")
+    val phase by if (animated) {
+        rememberInfiniteTransition(label = "eqPhase").animateFloat(
+            initialValue = 0f, targetValue = 1f,
+            animationSpec = infiniteRepeatable(tween(900, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+            label = "phase",
+        )
+    } else {
+        remember { mutableStateOf(0f) }
+    }
     Row(
         Modifier.size(width = 54.dp, height = 40.dp),
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalAlignment = Alignment.Bottom,
     ) {
         bars.forEachIndexed { index, base ->
-            val target = if (animated) (base * 0.44f).coerceAtLeast(0.16f) else base
-            val h by transition.animateFloat(
-                initialValue = base, targetValue = target,
-                animationSpec = infiniteRepeatable(
-                    tween(560 + index * 120, easing = FastOutSlowInEasing), RepeatMode.Reverse,
-                ),
-                label = "bar$index",
-            )
+            // Смещение по фазе даёт «волну» без отдельных анимаций.
+            val shift = if (animated) {
+                val local = (phase + index * 0.18f) % 1f
+                1f - 0.42f * kotlin.math.abs(local * 2f - 1f)
+            } else 1f
             Box(
                 Modifier
                     .width(6.dp)
-                    .fillMaxHeight(h.coerceIn(0.12f, 1f))
+                    .fillMaxHeight((base * shift).coerceIn(0.12f, 1f))
                     .clip(CircleShape)
                     .background(color),
             )

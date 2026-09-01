@@ -70,7 +70,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import dev.aezochka.budscontrol.BudsViewModel
-import dev.aezochka.budscontrol.data.ProductCatalog
 
 /** Главная вкладка: фото продукта, живой заряд, bento-плитки. */
 @Composable
@@ -229,9 +228,9 @@ private fun ProductHero(
                 }
                 // Автоподбор: локальный ассет, иначе CDN вендора по имени
                 // устройства, иначе нейтральный силуэт. Никаких ручных правок.
-                val photoModel = ProductCatalog.localAsset(name)
-                    ?.let { "file:///android_asset/$it" }
-                    ?: foundPhoto
+                // Фото всегда из автопоиска: заготовок в APK больше нет,
+                // поэтому работает для любой модели, включая AirPods.
+                val photoModel = foundPhoto
                 if (photoModel != null) {
                     AsyncImage(
                         model = photoModel,
@@ -389,7 +388,7 @@ private fun BentoGrid(
         }
 
         Row(horizontalArrangement = Arrangement.spacedBy(11.dp)) {
-            listOf("sleep", "volume", "lowlatency").forEach { key ->
+            listOf("sleep", "volume").forEach { key ->
                 Box(Modifier.weight(1f)) {
                     TileContent(key, vm, live, editing, onEq, onSleep, onVolume)
                 }

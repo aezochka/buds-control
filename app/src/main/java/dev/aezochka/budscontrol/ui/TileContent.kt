@@ -53,17 +53,16 @@ fun TileContent(
     val scheme = MaterialTheme.colorScheme
     when (key) {
         "eq" -> {
-            val levels by vm.musicLevels.collectAsState()
             val fxOn by vm.fxReady.collectAsState()
             val eqGains by vm.eqGains.collectAsState()
             BentoTile(
             Modifier.fillMaxWidth(), active = eqGains.any { it != 0 }, minHeight = 152.dp,
             onClick = if (editing) null else ({ vm.tick(); onEq() }),
         ) { primary, secondary ->
-            // Есть звук — полосы идут под музыку, нет — обычная анимация.
-            LiveEqBars(
-                live = levels,
-                fallback = listOf(0.4f, 0.6f, 0.9f, 0.5f, 0.45f),
+            // Форма полос — по текущим уровням системного эквалайзера.
+            EqBars(
+                bars = eqCurve(eqGains),
+                animated = eqGains.any { it != 0 },
                 color = primary,
             )
             Spacer(Modifier.height(6.dp))
@@ -167,19 +166,15 @@ fun TileContent(
                 onClick = { vm.tick(); onVolume() },
             )
         }
+    }
+}
 
-        // 4-я плитка: игровой режим низкой задержки по протоколу.
-        "lowlatency" -> ActionSquare(
-            Icons.Outlined.Bolt,
-            "Задержка",
-            active = live.gameMode,
-            supported = live.connected,
-            modifier = Modifier.fillMaxWidth(),
-            minHeight = 112.dp,
-            onClick = {
-                vm.tick(if (live.gameMode) Feedback.Kind.Off else Feedback.Kind.On)
-                vm.setGameMode(!live.gameMode)
-            },
-        )
+/** Форма полос на плитке — по текущим уровням системного эквалайзера. */
+private fun eqCurve(gains: List<Int>): List<Float> {
+    if (gains.isEmpty()) return listOf(0.4f, 0.6f, 0.9f, 0.5f, 0.45f)
+    val step = (gains.size / 5f).coerceAtLeast(1f)
+    return (0 until 5).map { i ->
+        val idx = (i * step).toInt().coerceAtMost(gains.lastIndex)
+        ((gains[idx] + 12) / 24f).coerceIn(0.18f, 1f)
     }
 }

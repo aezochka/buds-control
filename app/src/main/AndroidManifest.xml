@@ -10,9 +10,6 @@
 
     <!-- Нужен для автоподбора фото незнакомой модели -->
     <uses-permission android:name="android.permission.INTERNET" />
-
-    <!-- Нужно системному Visualizer, чтобы полосы двигались под музыку -->
-    <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <!-- Уведомление о срабатывании таймера сна -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.VIBRATE" />

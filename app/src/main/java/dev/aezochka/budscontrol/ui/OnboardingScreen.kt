@@ -58,13 +58,12 @@ import dev.aezochka.budscontrol.device.BluetoothScanner
  * Начальный экран: язык → поиск наушников по Bluetooth → доступы.
  * Профили добавляются только из результатов реального скана.
  */
-private const val LAST_STEP = 2
+private const val LAST_STEP = 1
 
 @Composable
 fun OnboardingScreen(
     vm: BudsViewModel,
     onRequestBluetooth: () -> Unit,
-    onRequestHistory: () -> Unit,
 ) {
     var step by remember { mutableStateOf(0) }
     var language by remember { mutableStateOf("ru") }
@@ -81,7 +80,7 @@ fun OnboardingScreen(
             Modifier.fillMaxWidth().padding(vertical = 18.dp),
             horizontalArrangement = Arrangement.Center,
         ) {
-            repeat(3) { index ->
+            repeat(2) { index ->
                 val active = index == step
                 val width by animateDpAsState(if (active) 26.dp else 8.dp, Motion.spatial(), label = "dotW")
                 val color by animateColorAsState(
@@ -113,8 +112,7 @@ fun OnboardingScreen(
         ) { current ->
             when (current) {
                 0 -> LanguageStep(language) { language = it }
-                1 -> DevicesStep(vm, onRequestBluetooth)
-                else -> PermissionsStep(onRequestHistory)
+                else -> DevicesStep(vm, onRequestBluetooth)
             }
         }
 
@@ -132,8 +130,9 @@ fun OnboardingScreen(
                 1 -> profiles.isNotEmpty()
                 else -> true
             }
+            // Короткая подпись: длинная строка ломалась переносом в узкой кнопке.
             val label = when {
-                step == 1 && profiles.isEmpty() -> "Сначала выбери наушники"
+                step == 1 && profiles.isEmpty() -> "Выбери наушники"
                 step == LAST_STEP -> "Поехали"
                 else -> "Далее"
             }
@@ -181,7 +180,13 @@ private fun PillButton(
             .padding(vertical = 18.dp),
         contentAlignment = Alignment.Center,
     ) {
-        Text(text, style = MaterialTheme.typography.labelLarge, color = label)
+        Text(
+            text,
+            style = MaterialTheme.typography.labelLarge,
+            color = label,
+            maxLines = 1,
+            softWrap = false,
+        )
     }
 }
 
@@ -332,42 +337,3 @@ private fun DeviceRow(device: BluetoothScanner.Found, added: Boolean, onAdd: () 
 }
 
 @Composable
-private fun PermissionsStep(onRequestHistory: () -> Unit) {
-    val scheme = MaterialTheme.colorScheme
-    LaunchedEffect(Unit) { onRequestHistory() }
-    Column {
-        Text("Доступы", style = MaterialTheme.typography.displayMedium, color = scheme.onSurface)
-        Spacer(Modifier.height(10.dp))
-        Text(
-            "Bluetooth обязателен. Остальное нужно только для истории прогулок — можно не давать.",
-            style = MaterialTheme.typography.bodyLarge, color = scheme.onSurfaceVariant,
-        )
-        Spacer(Modifier.height(18.dp))
-        listOf(
-            Triple(Icons.Outlined.Bluetooth, "Bluetooth", "Канал управления наушниками"),
-            Triple(Icons.Outlined.DirectionsWalk, "Шагомер", "Шаги на маршруте"),
-            Triple(Icons.Outlined.LocationOn, "Геолокация", "Карта прогулки"),
-            Triple(Icons.Outlined.MusicNote, "Уведомления", "Названия треков"),
-        ).forEach { (icon, title, subtitle) ->
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 10.dp)
-                    .clip(RoundedCornerShape(24.dp))
-                    .background(scheme.surfaceContainer)
-                    .padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(14.dp),
-            ) {
-                Box(
-                    Modifier.size(46.dp).clip(RoundedCornerShape(16.dp)).background(scheme.surfaceContainerHighest),
-                    contentAlignment = Alignment.Center,
-                ) { Icon(icon, null, tint = scheme.onSurfaceVariant, modifier = Modifier.size(22.dp)) }
-                Column(Modifier.weight(1f)) {
-                    Text(title, style = MaterialTheme.typography.bodyLarge, color = scheme.onSurface)
-                    Text(subtitle, style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant)
-                }
-            }
-        }
-    }
-}

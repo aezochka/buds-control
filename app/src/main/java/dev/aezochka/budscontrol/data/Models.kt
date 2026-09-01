@@ -42,7 +42,7 @@ data class UserSettings(
     val hiddenTiles: Set<String> = emptySet(),
 )
 
-val defaultTileOrder = listOf("eq", "game", "case", "sleep", "volume", "lowlatency", "find", "firmware")
+val defaultTileOrder = listOf("eq", "game", "case", "sleep", "volume", "find", "firmware")
 
 /** Акценты темы — выбираются пользователем, сохраняются локально. */
 enum class Accent(val key: String, val title: String, val seed: Long) {

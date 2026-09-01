@@ -10,12 +10,10 @@ import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.AP
 import dev.aezochka.budscontrol.audio.AudioTools
 import dev.aezochka.budscontrol.audio.Feedback
 import dev.aezochka.budscontrol.notify.SleepNotifier
-import dev.aezochka.budscontrol.audio.MusicPulse
 import dev.aezochka.budscontrol.audio.SystemAudioFx
 import kotlinx.coroutines.Job
 import dev.aezochka.budscontrol.data.CaseBatteryMemo
 import dev.aezochka.budscontrol.data.PhotoFinder
-import dev.aezochka.budscontrol.data.ProductCatalog
 import dev.aezochka.budscontrol.data.EarbudProfile
 import dev.aezochka.budscontrol.data.LocalStore
 import dev.aezochka.budscontrol.data.UserSettings
@@ -231,14 +229,10 @@ class BudsViewModel(app: Application) : AndroidViewModel(app) {
     val foundPhoto: StateFlow<String?> = _foundPhoto.asStateFlow()
 
     fun ensurePhoto(deviceName: String) = viewModelScope.launch {
-        if (ProductCatalog.localAsset(deviceName) != null) return@launch
+        _foundPhoto.value = null
         _foundPhoto.value = PhotoFinder.find(getApplication(), deviceName)
     }
 
-    /** Уровни звука для полос на плитке эквалайзера. */
-    val musicLevels: StateFlow<List<Float>?> = MusicPulse(getApplication())
-        .levels()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(2_000), null)
 
 
 

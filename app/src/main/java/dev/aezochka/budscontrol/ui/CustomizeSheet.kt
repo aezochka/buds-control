@@ -1,5 +1,7 @@
 package dev.aezochka.budscontrol.ui
 
+import dev.aezochka.budscontrol.i18n.tr
+
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -185,10 +187,10 @@ private fun CustomColorPicker(start: Long, onChange: (Long) -> Unit) {
     }
 
     Column(Modifier.padding(top = 6.dp, bottom = 6.dp)) {
-        listOf(
-            Triple(tr("red"), r) { v: Int -> r = v },
-            Triple(tr("green"), g) { v: Int -> g = v },
-            Triple(tr("blue"), b) { v: Int -> b = v },
+        listOf<Triple<String, Int, (Int) -> Unit>>(
+            Triple(tr("red"), r, { v: Int -> r = v }),
+            Triple(tr("green"), g, { v: Int -> g = v }),
+            Triple(tr("blue"), b, { v: Int -> b = v }),
         ).forEach { (label, value, setter) ->
             Text(label, style = MaterialTheme.typography.labelMedium, color = scheme.onSurfaceVariant)
             Spacer(Modifier.height(4.dp))
@@ -202,7 +204,6 @@ private fun CustomColorPicker(start: Long, onChange: (Long) -> Unit) {
                         detectHorizontalDragGestures { change, _ ->
                             val ratio = (change.position.x / size.width).coerceIn(0f, 1f)
                             setter((ratio * 255).toInt())
-                            emit()
                         }
                     },
                 contentAlignment = Alignment.CenterStart,

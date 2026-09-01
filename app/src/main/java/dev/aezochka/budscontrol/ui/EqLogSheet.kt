@@ -1,5 +1,7 @@
 package dev.aezochka.budscontrol.ui
 
+import dev.aezochka.budscontrol.i18n.tr
+
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context

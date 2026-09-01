@@ -49,17 +49,19 @@ import dev.aezochka.budscontrol.proto.TouchType
 fun GesturesTab(vm: BudsViewModel) {
     val scheme = MaterialTheme.colorScheme
     val live by vm.live.collectAsState()
+    val strings = dev.aezochka.budscontrol.i18n.LocalStrings.current
 
     LazyColumn(Modifier.fillMaxSize()) {
         item { Spacer(Modifier.statusBarsPadding().height(14.dp)) }
         listOf(
-            TouchSide.LEFT to tr("leftBud"),
-            TouchSide.RIGHT to tr("rightBud"),
+            TouchSide.LEFT to strings["leftBud"],
+            TouchSide.RIGHT to strings["rightBud"],
         ).forEach { (side, title) ->
             item {
                 SideGestures(
                     title = title, side = side, touch = live.touch,
                     enabled = live.connected,
+                    strings = strings,
                     onPick = { type, action -> vm.setTouch(side, type, action) },
                 )
             }
@@ -74,6 +76,7 @@ private fun SideGestures(
     side: TouchSide,
     touch: Map<Pair<TouchSide, TouchType>, TouchAction>,
     enabled: Boolean,
+    strings: dev.aezochka.budscontrol.i18n.Strings,
     onPick: (TouchType, TouchAction) -> Unit,
 ) {
     val scheme = MaterialTheme.colorScheme
@@ -92,9 +95,9 @@ private fun SideGestures(
         }
         Spacer(Modifier.height(10.dp))
         listOf(
-            TouchType.TAP_2 to tr("tap2"),
-            TouchType.TAP_3 to tr("tap3"),
-            TouchType.HOLD to tr("hold"),
+            TouchType.TAP_2 to strings["tap2"],
+            TouchType.TAP_3 to strings["tap3"],
+            TouchType.HOLD to strings["hold"],
         ).forEach { (type, label) ->
             GestureRow(
                 label = label,
@@ -102,9 +105,9 @@ private fun SideGestures(
                 enabled = enabled,
                 // Заводское значение, пока гарнитура не прислала своё.
                 fallbackLabel = when (type) {
-                    TouchType.TAP_2 -> tr("defaultPlay")
-                    TouchType.TAP_3 -> tr("defaultNext")
-                    TouchType.HOLD -> tr("defaultAssistant")
+                    TouchType.TAP_2 -> strings["defaultPlay"]
+                    TouchType.TAP_3 -> strings["defaultNext"]
+                    TouchType.HOLD -> strings["defaultAssistant"]
                     else -> "не задано"
                 },
                 onPick = { onPick(type, it) },
@@ -141,7 +144,7 @@ private fun GestureRow(
             Column(Modifier.fillMaxWidth(0.84f)) {
                 Text(label, style = MaterialTheme.typography.bodyLarge, color = scheme.onSurface)
                 Text(
-                    current?.let(::actionLabel) ?: fallbackLabel,
+                    current?.let { actionLabel(it, strings) } ?: fallbackLabel,
                     style = MaterialTheme.typography.bodySmall,
                     color = if (current == null) scheme.outline else scheme.onSurfaceVariant,
                 )
@@ -172,7 +175,7 @@ private fun GestureRow(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(
-                            actionLabel(action),
+                            actionLabel(action, strings),
                             style = MaterialTheme.typography.bodyMedium,
                             color = if (selected) scheme.onPrimary else scheme.onSurface,
                             modifier = Modifier.fillMaxWidth(0.9f),
@@ -209,4 +212,4 @@ private fun actionLabelKey(action: TouchAction) = when (action) {
 }
 
 @Composable
-private fun actionLabel(action: TouchAction) = tr(actionLabelKey(action))
+private fun actionLabel(action: TouchAction, strings: dev.aezochka.budscontrol.i18n.Strings) = strings[actionLabelKey(action)]

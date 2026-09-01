@@ -217,7 +217,7 @@ class BudsViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /** Уровни звука для полос на плитке эквалайзера. */
-    val musicLevels: StateFlow<List<Float>?> = MusicPulse(application)
+    val musicLevels: StateFlow<List<Float>?> = MusicPulse(getApplication())
         .levels()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(2_000), null)
 

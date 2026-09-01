@@ -60,6 +60,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -314,7 +315,7 @@ private fun BentoGrid(
                 BentoTile(
                     Modifier.weight(spanWeight(settings, "eq")).wobble(editing),
                     active = live.eqPreset != null, minHeight = 150.dp,
-                    onClick = if (editing) ({ vm.cycleTileSpan("eq") }) else onEq,
+                    onClick = if (editing) { { vm.cycleTileSpan("eq"); Unit } } else onEq,
                 ) { primary, secondary ->
                     EqBars(
                         bars = live.eqPreset?.bars ?: listOf(0.4f, 0.6f, 0.9f, 0.5f, 0.45f),
@@ -334,7 +335,7 @@ private fun BentoGrid(
                 Modifier.weight(spanWeight(settings, "game")).wobble(editing),
                 active = live.gameMode,
                 minHeight = 150.dp,
-                onClick = if (editing) ({ vm.cycleTileSpan("game") }) else ({ vm.setGameMode(!live.gameMode) }),
+                onClick = if (editing) { { vm.cycleTileSpan("game"); Unit } } else { { vm.setGameMode(!live.gameMode) } },
             ) { primary, secondary ->
                 MorphIcon(active = live.gameMode, icon = Icons.Outlined.SportsEsports, tint = primary)
                 Spacer(Modifier.height(6.dp))
@@ -346,7 +347,7 @@ private fun BentoGrid(
         Row(horizontalArrangement = Arrangement.spacedBy(11.dp)) {
             if ("case" !in hidden) BentoTile(
                 Modifier.weight(spanWeight(settings, "case", 3f)).wobble(editing),
-                onClick = if (editing) ({ vm.cycleTileSpan("case") }) else null,
+                onClick = if (editing) { { vm.cycleTileSpan("case"); Unit } } else null,
             ) { primary, secondary ->
                 Icon(Icons.Outlined.Inventory2, null, tint = secondary, modifier = Modifier.size(24.dp))
                 TileLabel(
@@ -368,10 +369,11 @@ private fun BentoGrid(
                 BentoTile(
                     Modifier.weight(spanWeight(settings, "find")).wobble(editing),
                     active = ringing,
-                    onClick = if (editing) ({ vm.cycleTileSpan("find") }) else ({
-                        ringing = !ringing
-                        vm.findDevice(ringing)
-                    }),
+                    onClick = if (editing) {
+                        { vm.cycleTileSpan("find"); Unit }
+                    } else {
+                        { ringing = !ringing; vm.findDevice(ringing) }
+                    },
                 ) { primary, secondary ->
                     Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -391,7 +393,7 @@ private fun BentoGrid(
         Row(horizontalArrangement = Arrangement.spacedBy(11.dp)) {
             if ("firmware" !in hidden) BentoTile(
                 Modifier.weight(spanWeight(settings, "firmware")).wobble(editing),
-                onClick = if (editing) ({ vm.cycleTileSpan("firmware") }) else null,
+                onClick = if (editing) { { vm.cycleTileSpan("firmware"); Unit } } else null,
             ) { primary, secondary ->
                 Icon(Icons.Outlined.BluetoothConnected, null, tint = secondary, modifier = Modifier.size(23.dp))
                 TileLabel("Прошивка", secondary)

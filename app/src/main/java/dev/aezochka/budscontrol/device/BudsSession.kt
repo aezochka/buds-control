@@ -44,6 +44,8 @@ data class LiveState(
     /** Наушник не отвечает по заряду — обычно лежит в кейсе. */
     val budInCaseLeft: Boolean = false,
     val budInCaseRight: Boolean = false,
+    /** Журнал кадров протокола — эксклюзив для разбора. */
+    val log: List<String> = emptyList(),
     val ancMode: AncMode? = null,
     val eqPreset: EqPreset? = null,
     /** Гарнитура подтвердила команду поиска. */
@@ -186,6 +188,12 @@ class BudsSession(private val context: Context) {
 
     private fun observe(c: SppConnection) = scope.launch {
         c.frames.collect { frame ->
+            // Пишем в журнал: код кадра и payload в hex.
+            _state.update {
+                val hex = frame.payload.take(12).joinToString(" ") { b -> "%02X".format(b) }
+                val line = "${'$'}{frame.cmd} ${'$'}hex"
+                it.copy(log = (it.log + line).takeLast(120))
+            }
             when (frame.cmd) {
                 Cmd.BATTERY_RET, Cmd.SUBSCRIPTION_RET -> {
                     _state.update { it.copy(supported = it.supported + "battery") }

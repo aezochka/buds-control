@@ -185,6 +185,61 @@ class BudsViewModel(app: Application) : AndroidViewModel(app) {
     fun setEqualizerGains(gains: List<Int>) = session.setEqualizerGains(gains)
     fun setSpatialAudio(on: Boolean) = session.setSpatialAudio(on)
     fun setMultipoint(on: Boolean) = session.setMultipoint(on)
+
+    fun setLowBatteryAlert(on: Boolean) = viewModelScope.launch {
+        store.saveSettings(settings.value.copy(lowBatteryAlert = on))
+    }
+
+    /**
+     * Прогноз работы по паспортным 6.5 ч у T110 и текущему заряду.
+     * Это оценка, не телеметрия — так и подписано в UI.
+     */
+    fun batteryForecast(): String {
+        val level = listOfNotNull(live.value.batteryLeft, live.value.batteryRight).minOrNull()
+            ?: return "Нужен хотя бы один наушник на связи"
+        val hours = level / 100.0 * 6.5
+        val h = hours.toInt()
+        val m = ((hours - h) * 60).toInt()
+        return "Осталось примерно ${'$'}h ч ${'$'}m мин при среднем громкости"
+    }
+
+    /** Короткий тон в один канал — проверка, что оба наушника играют. */
+    fun playChannelTest(left: Boolean) {
+        val sampleRate = 44100
+        val seconds = 1.2
+        val frames = (sampleRate * seconds).toInt()
+        val buffer = ShortArray(frames * 2)
+        for (i in 0 until frames) {
+            val t = i.toDouble() / sampleRate
+            val envelope = kotlin.math.min(1.0, kotlin.math.min(t * 8, (seconds - t) * 8))
+            val value = (kotlin.math.sin(2 * Math.PI * 440 * t) * envelope * Short.MAX_VALUE * 0.4).toInt().toShort()
+            buffer[i * 2] = if (left) value else 0
+            buffer[i * 2 + 1] = if (left) 0 else value
+        }
+        val track = android.media.AudioTrack.Builder()
+            .setAudioAttributes(
+                android.media.AudioAttributes.Builder()
+                    .setUsage(android.media.AudioAttributes.USAGE_MEDIA)
+                    .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                    .build()
+            )
+            .setAudioFormat(
+                android.media.AudioFormat.Builder()
+                    .setEncoding(android.media.AudioFormat.ENCODING_PCM_16BIT)
+                    .setSampleRate(sampleRate)
+                    .setChannelMask(android.media.AudioFormat.CHANNEL_OUT_STEREO)
+                    .build()
+            )
+            .setBufferSizeInBytes(buffer.size * 2)
+            .build()
+        track.write(buffer, 0, buffer.size)
+        track.setNotificationMarkerPosition(frames)
+        track.play()
+        viewModelScope.launch {
+            delay((seconds * 1000).toLong() + 200)
+            runCatching { track.stop(); track.release() }
+        }
+    }
     fun startAddDevice() = startScan()
 
     // Таймер сна и лимит громкости живут в приложении: гарнитура их не хранит.

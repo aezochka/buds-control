@@ -21,6 +21,7 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.GraphicEq
+import androidx.compose.material.icons.outlined.Science
 import androidx.compose.material.icons.outlined.Headphones
 import androidx.compose.material.icons.outlined.TouchApp
 import androidx.compose.material.icons.outlined.Tune
@@ -45,6 +46,7 @@ private enum class Tab(val label: String, val icon: ImageVector) {
     Buds("Наушники", Icons.Outlined.Headphones),
     Sound("Звук", Icons.Outlined.GraphicEq),
     Gestures("Жесты", Icons.Outlined.TouchApp),
+    Extras("Экстра", Icons.Outlined.Science),
     Settings("Ещё", Icons.Outlined.Tune),
 }
 
@@ -84,6 +86,7 @@ fun BudsApp(vm: BudsViewModel) {
                     Tab.Buds -> BudsTab(vm)
                     Tab.Sound -> SoundTab(vm)
                     Tab.Gestures -> GesturesTab(vm)
+                    Tab.Extras -> ExtrasTab(vm)
                     Tab.Settings -> SettingsTab(vm)
                 }
             }
@@ -135,7 +138,7 @@ private fun FloatingTabBar(current: Int, onSelect: (Int) -> Unit, modifier: Modi
                     .clip(RoundedCornerShape(corner))
                     .background(bg)
                     .pressBounce(scaleDown = 0.93f) { onSelect(index) }
-                    .padding(horizontal = 13.dp, vertical = 9.dp),
+                    .padding(horizontal = 10.dp, vertical = 9.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Icon(

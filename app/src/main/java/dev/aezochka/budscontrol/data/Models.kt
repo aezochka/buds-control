@@ -33,6 +33,7 @@ data class UserSettings(
     val accent: String = "lime",
     val tileOrder: List<String> = defaultTileOrder,
     val tileSpans: Map<String, Int> = emptyMap(),
+    val lowBatteryAlert: Boolean = false,
     val hiddenTiles: Set<String> = emptySet(),
 )
 

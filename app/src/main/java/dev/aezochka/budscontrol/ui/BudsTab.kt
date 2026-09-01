@@ -35,6 +35,8 @@ import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Bedtime
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.DashboardCustomize
+import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.DashboardCustomize
 import androidx.compose.material.icons.outlined.BluetoothConnected
 import androidx.compose.material.icons.outlined.Devices
 import androidx.compose.material.icons.outlined.Headphones
@@ -144,14 +146,10 @@ fun BudsTab(vm: BudsViewModel) {
                     connecting = live.connecting,
                     connected = live.connected,
                     onRefresh = vm::refresh,
+                    editing = editTiles,
+                    onToggleEdit = { editTiles = !editTiles },
                 )
             }
-        }
-        item {
-            EditBar(
-                editing = editTiles,
-                onToggle = { editTiles = !editTiles },
-            )
         }
         item {
             BentoGrid(
@@ -177,6 +175,8 @@ private fun ProductHero(
     connecting: Boolean,
     connected: Boolean,
     onRefresh: () -> Unit,
+    editing: Boolean,
+    onToggleEdit: () -> Unit,
 ) {
     val scheme = MaterialTheme.colorScheme
     val asset = ProductCatalog.localAsset(name)
@@ -259,11 +259,29 @@ private fun ProductHero(
                     color = scheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
                 )
-                Box(
-                    Modifier.size(38.dp).clip(CircleShape).pressBounce(onClick = onRefresh),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(Icons.Outlined.Refresh, "Обновить", tint = scheme.onSurfaceVariant, modifier = Modifier.size(19.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Box(
+                        Modifier.size(38.dp).clip(CircleShape).pressBounce(onClick = onRefresh),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(Icons.Outlined.Refresh, "Обновить", tint = scheme.onSurfaceVariant, modifier = Modifier.size(19.dp))
+                    }
+                    // Правка плиток рядом с обновлением, а не полосой над сеткой.
+                    Box(
+                        Modifier
+                            .size(38.dp)
+                            .clip(CircleShape)
+                            .background(if (editing) scheme.primary else scheme.surfaceContainerHigh)
+                            .pressBounce(onClick = onToggleEdit),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            if (editing) Icons.Outlined.Check else Icons.Outlined.DashboardCustomize,
+                            "Настроить плитки",
+                            tint = if (editing) scheme.onPrimary else scheme.onSurfaceVariant,
+                            modifier = Modifier.size(19.dp),
+                        )
+                    }
                 }
             }
         }
@@ -305,131 +323,80 @@ private fun BentoGrid(
     onSleep: () -> Unit,
     onVolume: () -> Unit,
 ) {
+    val scheme = MaterialTheme.colorScheme
     val live by vm.live.collectAsState()
     val settings by vm.settings.collectAsState()
     val hidden = settings.hiddenTiles
-    val scheme = MaterialTheme.colorScheme
-    Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(11.dp)) {
-        Row(horizontalArrangement = Arrangement.spacedBy(11.dp)) {
-            if ("eq" !in hidden) {
-                BentoTile(
-                    Modifier.weight(spanWeight(settings, "eq")).wobble(editing),
-                    active = live.eqPreset != null, minHeight = 150.dp,
-                    onClick = if (editing) { { vm.cycleTileSpan("eq"); Unit } } else onEq,
-                ) { primary, secondary ->
-                    EqBars(
-                        bars = live.eqPreset?.bars ?: listOf(0.4f, 0.6f, 0.9f, 0.5f, 0.45f),
-                        animated = live.eqPreset != null,
-                        color = primary,
-                    )
-                    Spacer(Modifier.height(6.dp))
-                    TileLabel("Эквалайзер", secondary)
-                    AnimatedContent(
-                        live.eqPreset?.title ?: "—",
-                        transitionSpec = { fadeIn(Motion.effects()) togetherWith fadeOut(Motion.effects()) },
-                        label = "eqName",
-                    ) { name -> Text(name, style = MaterialTheme.typography.titleMedium, color = primary) }
-                }
-            }
-            if ("game" !in hidden) BentoTile(
-                Modifier.weight(spanWeight(settings, "game")).wobble(editing),
-                active = live.gameMode,
-                minHeight = 150.dp,
-                onClick = if (editing) { { vm.cycleTileSpan("game"); Unit } } else { { vm.setGameMode(!live.gameMode) } },
-            ) { primary, secondary ->
-                MorphIcon(active = live.gameMode, icon = Icons.Outlined.SportsEsports, tint = primary)
-                Spacer(Modifier.height(6.dp))
-                TileLabel("Режим", secondary)
-                Text(if (live.gameMode) "Игровой" else "Обычный", style = MaterialTheme.typography.titleMedium, color = primary)
-            }
-        }
+    val order = settings.tileOrder.filter { it !in hidden }
 
-        Row(horizontalArrangement = Arrangement.spacedBy(11.dp)) {
-            if ("case" !in hidden) BentoTile(
-                Modifier.weight(spanWeight(settings, "case", 3f)).wobble(editing),
-                onClick = if (editing) { { vm.cycleTileSpan("case"); Unit } } else null,
-            ) { primary, secondary ->
-                Icon(Icons.Outlined.Inventory2, null, tint = secondary, modifier = Modifier.size(24.dp))
-                TileLabel(
-                    if (live.caseFromMemory) "Кейс · последнее" else "Кейс",
-                    secondary,
-                )
-                Row(verticalAlignment = Alignment.Bottom) {
-                    TileValue(live.batteryCase?.let { "$it" } ?: "…", if (live.batteryCase != null) "%" else null, primary, secondary)
-                    if (live.chargingCase) {
-                        Spacer(Modifier.width(6.dp))
-                        Icon(Icons.Filled.Bolt, null, tint = scheme.tertiary, modifier = Modifier.size(17.dp))
-                    }
-                }
-                Spacer(Modifier.height(4.dp))
-                SmoothBar((live.batteryCase ?: 0) / 100f, scheme.surfaceContainerHighest, scheme.primary)
+    var dragKey by remember { mutableStateOf<String?>(null) }
+    var dragShift by remember { mutableStateOf(0f) }
+
+    // Раскладываем плитки в ряды по сумме размеров: 4 колонки в ряду.
+    val rows = remember(order, settings.tileSpans) {
+        val result = mutableListOf<MutableList<String>>()
+        var current = mutableListOf<String>()
+        var width = 0
+        order.forEach { key ->
+            val span = (settings.tileSpans[key] ?: defaultSpan(key)).coerceIn(1, 4)
+            if (width + span > 4 && current.isNotEmpty()) {
+                result += current; current = mutableListOf(); width = 0
             }
-            if ("find" !in hidden) {
-                var ringing by remember { mutableStateOf(false) }
-                BentoTile(
-                    Modifier.weight(spanWeight(settings, "find")).wobble(editing),
-                    active = ringing,
-                    onClick = if (editing) {
-                        { vm.cycleTileSpan("find"); Unit }
-                    } else {
-                        { ringing = !ringing; vm.findDevice(ringing) }
-                    },
-                ) { primary, secondary ->
-                    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            MorphIcon(active = ringing, icon = Icons.Outlined.NotificationsActive, tint = primary)
-                            Spacer(Modifier.height(6.dp))
-                            Text(
-                                if (ringing) "Стоп" else "Найти",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = secondary,
-                            )
-                        }
+            current += key
+            width += span
+        }
+        if (current.isNotEmpty()) result += current
+        result
+    }
+
+    Column(
+        Modifier.padding(horizontal = 20.dp),
+        verticalArrangement = Arrangement.spacedBy(11.dp),
+    ) {
+        rows.forEach { row ->
+            Row(horizontalArrangement = Arrangement.spacedBy(11.dp)) {
+                row.forEach { key ->
+                    val span = (settings.tileSpans[key] ?: defaultSpan(key)).coerceIn(1, 4)
+                    EditableTile(
+                        editing = editing,
+                        span = span,
+                        modifier = Modifier.weight(span.toFloat()),
+                        onSpanChange = { vm.setTileSpan(key, it) },
+                        onDragStart = { dragKey = key; dragShift = 0f },
+                        onDrag = { dx ->
+                            dragShift += dx
+                            if (kotlin.math.abs(dragShift) > 90f) {
+                                val step = if (dragShift > 0) 1 else -1
+                                vm.moveTile(key, step)
+                                dragShift = 0f
+                            }
+                        },
+                        onDragEnd = { dragKey = null; dragShift = 0f },
+                    ) {
+                        TileContent(
+                            key = key,
+                            vm = vm,
+                            live = live,
+                            editing = editing,
+                            onEq = onEq,
+                            onSleep = onSleep,
+                            onVolume = onVolume,
+                        )
                     }
                 }
             }
-        }
-
-        Row(horizontalArrangement = Arrangement.spacedBy(11.dp)) {
-            if ("firmware" !in hidden) BentoTile(
-                Modifier.weight(spanWeight(settings, "firmware")).wobble(editing),
-                onClick = if (editing) { { vm.cycleTileSpan("firmware"); Unit } } else null,
-            ) { primary, secondary ->
-                Icon(Icons.Outlined.BluetoothConnected, null, tint = secondary, modifier = Modifier.size(23.dp))
-                TileLabel("Прошивка", secondary)
-                Text(live.firmware ?: "—", style = MaterialTheme.typography.titleMedium, color = primary)
-            }
-        }
-
-        Row(horizontalArrangement = Arrangement.spacedBy(11.dp)) {
-            if ("sleep" !in hidden) ActionSquare(
-                Icons.Outlined.Bedtime, "Сон",
-                active = vm.sleepTimerLabel() != "Выключить",
-                modifier = Modifier.weight(1f),
-            ) { onSleep() }
-            if ("volume" !in hidden) ActionSquare(
-                Icons.Outlined.VolumeUp, "Лимит",
-                active = vm.volumeLimitLabel() != "Без лимита",
-                modifier = Modifier.weight(1f),
-            ) { onVolume() }
-            if ("spatial" !in hidden) ActionSquare(
-                Icons.Outlined.SpatialAudio, "3D",
-                active = live.spatialAudio,
-                supported = "spatial" in live.supported,
-                modifier = Modifier.weight(1f),
-            ) { vm.setSpatialAudio(!live.spatialAudio) }
-            if ("multipoint" !in hidden) ActionSquare(
-                Icons.Outlined.Devices, "2 устр.",
-                active = live.multipoint,
-                supported = "multipoint" in live.supported,
-                modifier = Modifier.weight(1f),
-            ) { vm.setMultipoint(!live.multipoint) }
         }
     }
 }
 
+private fun defaultSpan(key: String): Int = when (key) {
+    "eq", "game" -> 2
+    "case" -> 4
+    else -> 1
+}
+
 @Composable
-private fun ActionSquare(
+fun ActionSquare(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     label: String,
     active: Boolean,
@@ -457,7 +424,7 @@ private fun ActionSquare(
 
 /** Иконка, которая при активации мягко подрастает и доворачивается. */
 @Composable
-private fun MorphIcon(active: Boolean, icon: androidx.compose.ui.graphics.vector.ImageVector, tint: Color) {
+fun MorphIcon(active: Boolean, icon: androidx.compose.ui.graphics.vector.ImageVector, tint: Color) {
     val scale by animateFloatAsState(
         if (active) 1.14f else 1f, Motion.spatial(), label = "iconScale",
     )
@@ -475,50 +442,6 @@ private fun MorphIcon(active: Boolean, icon: androidx.compose.ui.graphics.vector
 
 
 /** Полоска режима правки плиток: включается на самом главном экране. */
-@Composable
-private fun EditBar(editing: Boolean, onToggle: () -> Unit) {
-    val scheme = MaterialTheme.colorScheme
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        AnimatedContent(
-            targetState = editing,
-            transitionSpec = { fadeIn(Motion.effects()) togetherWith fadeOut(Motion.effects()) },
-            label = "editHint",
-        ) { on ->
-            Text(
-                if (on) "Тапни плитку, чтобы изменить размер" else "Плитки",
-                style = MaterialTheme.typography.bodySmall,
-                color = scheme.onSurfaceVariant,
-            )
-        }
-        Spacer(Modifier.weight(1f))
-        Row(
-            Modifier
-                .clip(CircleShape)
-                .background(if (editing) scheme.primary else scheme.surfaceContainer)
-                .pressBounce(onClick = onToggle)
-                .padding(horizontal = 14.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            Icon(
-                if (editing) Icons.Outlined.Check else Icons.Outlined.DashboardCustomize,
-                null,
-                tint = if (editing) scheme.onPrimary else scheme.onSurfaceVariant,
-                modifier = Modifier.size(17.dp),
-            )
-            Text(
-                if (editing) "Готово" else "Настроить",
-                style = MaterialTheme.typography.labelMedium,
-                color = if (editing) scheme.onPrimary else scheme.onSurfaceVariant,
-            )
-        }
-    }
-}
 
 /** Покачивание плитки в режиме правки — как в макете. */
 @Composable

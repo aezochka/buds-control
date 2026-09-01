@@ -51,7 +51,6 @@ class SystemAudioFx(private val context: android.content.Context) {
 
     private fun tryAttach(): Boolean {
         return runCatching {
-            EqLog.log("Пробую создать Equalizer(0, 0)")
             val eq = Equalizer(0, 0).apply { enabled = true }
             val bands = eq.numberOfBands.toInt()
             bandFrequencies = (0 until bands).map { eq.getCenterFreq(it.toShort()) / 1000 }
@@ -61,10 +60,8 @@ class SystemAudioFx(private val context: android.content.Context) {
             equalizer = eq
 
             loudness = runCatching { LoudnessEnhancer(0) }.getOrNull()
-            EqLog.log("OK: полос=$bands, частоты=$bandFrequencies, диапазон ${range[0]}..${range[1]} мБ")
             true
         }.getOrElse {
-            EqLog.log("ОШИБКА создания Equalizer: ${it.javaClass.simpleName}: ${it.message}")
             false
         }
     }
@@ -99,7 +96,6 @@ class SystemAudioFx(private val context: android.content.Context) {
         while (current.size <= band) current.add(0)
         current[band] = db.coerceIn(minGainMb / 100, maxGainMb / 100)
         manualGains = current
-        EqLog.log("setBandDb($band, $db): обновлен локальный массив, отправляю в сервис")
         pushToService()
     }
 
@@ -107,10 +103,8 @@ class SystemAudioFx(private val context: android.content.Context) {
     private fun pushToService() {
         val levels = currentGainsDb()
         if (levels.isEmpty()) {
-            EqLog.log("Уровни пустые — сервису нечего отправлять")
             return
         }
-        EqLog.log("Отправляю в EqService (ручной массив): $levels дБ")
         EqService.apply(context, levels)
     }
 
@@ -132,7 +126,6 @@ class SystemAudioFx(private val context: android.content.Context) {
 
     fun applyPreset(gains: List<Int>) {
         manualGains = gains
-        EqLog.log("applyPreset: $gains")
         EqService.apply(context, gains)
     }
 

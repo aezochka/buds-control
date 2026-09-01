@@ -21,16 +21,13 @@ class EqSessionReceiver : BroadcastReceiver() {
         val action = intent?.action ?: return
         val session = intent.getIntExtra(AudioEffect.EXTRA_AUDIO_SESSION, -1)
         if (session <= 0) {
-            EqLog.log("Broadcast $action без валидной сессии ($session) — пропускаю")
             return
         }
         when (action) {
             AudioEffect.ACTION_OPEN_AUDIO_EFFECT_CONTROL_SESSION -> {
-                EqLog.log("Плеер открыл сессию $session — подключаю эквалайзер")
                 EqService.attachSession(ctx, session)
             }
             AudioEffect.ACTION_CLOSE_AUDIO_EFFECT_CONTROL_SESSION -> {
-                EqLog.log("Плеер закрыл сессию $session")
                 EqService.detachSession(ctx, session)
             }
         }

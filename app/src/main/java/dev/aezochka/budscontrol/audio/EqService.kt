@@ -88,11 +88,9 @@ class EqService : Service() {
             ACTION_DETACH_SESSION -> {
                 val session = intent.getIntExtra(EXTRA_SESSION, -1)
                 equalizers.remove(session)?.let { runCatching { it.release() } }
-                EqLog.log("Сессия $session отключена, осталось ${equalizers.size}")
             }
             else -> {
                 startForegroundSafely()
-                EqLog.log("Сервис запущен, уровни=$levelsDb, активных сессий=${equalizers.size}")
                 attach(0)
                 attachActivePlayers()
                 applyToAll()
@@ -120,9 +118,8 @@ class EqService : Service() {
                 }
                 .filter { it > 0 }
                 .distinct()
-            EqLog.log("Активные сессии плееров: ${ids.ifEmpty { listOf("нет") }}")
             ids.forEach { attach(it) }
-        }.onFailure { EqLog.log("Не удалось прочитать активные сессии: ${it.message}") }
+        }
     }
 
     private fun startForegroundSafely() {
@@ -151,9 +148,7 @@ class EqService : Service() {
             val eq = Equalizer(PRIORITY, session).apply { enabled = true }
             equalizers[session] = eq
             apply(eq)
-            EqLog.log("Сервис: подключён к сессии $session, полос=${eq.numberOfBands}")
         }.onFailure {
-            EqLog.log("Сервис: сессия $session недоступна — ${it.javaClass.simpleName}: ${it.message}")
         }
     }
 
@@ -163,7 +158,6 @@ class EqService : Service() {
 
     private fun apply(eq: Equalizer) {
         if (levelsDb.isEmpty()) {
-            EqLog.log("Сервис: уровней нет, применять нечего")
             return
         }
         runCatching {
@@ -171,10 +165,7 @@ class EqService : Service() {
             for (i in 0 until minOf(bands, levelsDb.size)) {
                 eq.setBandLevel(i.toShort(), (levelsDb[i] * 100).toShort())
             }
-            // Читаем обратно: подтверждение, что железо приняло значения.
-            val readBack = (0 until bands).map { eq.getBandLevel(it.toShort()) / 100 }
-            EqLog.log("Сервис: применено $levelsDb, прочитано обратно $readBack")
-        }.onFailure { EqLog.log("Сервис: применение упало — ${it.message}") }
+        }
     }
 
     private fun stopEverything() {

@@ -37,7 +37,6 @@ import androidx.compose.material.icons.outlined.MusicNote
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.Palette
-import androidx.compose.material.icons.outlined.Terminal
 import androidx.compose.material.icons.outlined.TouchApp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -70,7 +69,6 @@ fun SettingsTab(vm: BudsViewModel) {
     var showEq by remember { mutableStateOf(false) }
     var showUpdate by remember { mutableStateOf(false) }
     var showLang by remember { mutableStateOf(false) }
-    var showEqLog by remember { mutableStateOf(false) }
     var showSleep by remember { mutableStateOf(false) }
     var showVolume by remember { mutableStateOf(false) }
     val sleepMin by vm.sleepMinutes.collectAsState()
@@ -78,7 +76,6 @@ fun SettingsTab(vm: BudsViewModel) {
     if (showEq) { EqualizerSheet(vm) { showEq = false } }
     if (showUpdate) { UpdateSheet(vm) { showUpdate = false } }
     if (showLang) { LanguageSheet(vm) { showLang = false } }
-    if (showEqLog) { EqLogSheet { showEqLog = false } }
     if (showSleep) { SleepSheet(vm) { showSleep = false } }
     if (showVolume) { VolumeLimitSheet(vm) { showVolume = false } }
     if (showTheme) {
@@ -137,11 +134,6 @@ fun SettingsTab(vm: BudsViewModel) {
                     subtitle = "Когда наушник ниже 20%",
                     checked = settings.lowBatteryAlert,
                     onToggle = { vm.setLowBatteryAlert(it) },
-                )
-                SettingsRow(
-                    Icons.Outlined.Terminal, tr("soundLog"),
-                    tr("soundLogHint"),
-                    onClick = { showEqLog = true },
                 )
                 SettingsRow(
                     Icons.Outlined.Download, tr("update"),

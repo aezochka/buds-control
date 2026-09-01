@@ -3,11 +3,7 @@
 Приложение для управления TWS-наушниками на протоколе OPPO / realme / OnePlus.
 Замена realme Link: без аккаунта, без рекламы, без телеметрии.
 
-<p align="left">
-  <img src="docs/screenshots/home.png" width="260" alt="Главный экран" />
-  <img src="docs/screenshots/home-tiles.png" width="260" alt="Плитки функций" />
-  <img src="docs/screenshots/settings.png" width="260" alt="Настройки" />
-</p>
+
 
 ## Что умеет
 

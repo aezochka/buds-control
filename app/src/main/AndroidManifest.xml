@@ -13,6 +13,9 @@
 
     <!-- Нужно системному Visualizer, чтобы полосы двигались под музыку -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <!-- Уведомление о срабатывании таймера сна -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.VIBRATE" />
 
     <uses-feature android:name="android.hardware.bluetooth" android:required="true" />
 

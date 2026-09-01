@@ -34,6 +34,7 @@ data class UserSettings(
     /** Свой цвет акцента в ARGB. 0 — не задан, используется accent. */
     val customAccent: Long = 0L,
     val hapticFeedback: Boolean = true,
+    val soundEffects: Boolean = true,
     val autoConnect: Boolean = true,
     val lowBatteryAlert: Boolean = false,
     val tileOrder: List<String> = defaultTileOrder,
@@ -41,7 +42,7 @@ data class UserSettings(
     val hiddenTiles: Set<String> = emptySet(),
 )
 
-val defaultTileOrder = listOf("eq", "game", "case", "find", "firmware", "sleep", "volume", "bass", "lowlatency")
+val defaultTileOrder = listOf("eq", "game", "case", "sleep", "volume", "lowlatency", "find", "firmware")
 
 /** Акценты темы — выбираются пользователем, сохраняются локально. */
 enum class Accent(val key: String, val title: String, val seed: Long) {

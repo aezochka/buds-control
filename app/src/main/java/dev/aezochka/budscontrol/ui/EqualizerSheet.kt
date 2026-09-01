@@ -63,7 +63,6 @@ fun EqualizerSheet(vm: BudsViewModel, onDismiss: () -> Unit) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val ready by vm.fxReady.collectAsState()
     val gains by vm.eqGains.collectAsState()
-    val bass by vm.bassBoost.collectAsState()
 
     LaunchedEffect(Unit) { vm.attachAudioFx() }
 
@@ -116,12 +115,6 @@ fun EqualizerSheet(vm: BudsViewModel, onDismiss: () -> Unit) {
                     minDb = minDb,
                     maxDb = maxDb,
                 ) { band, db -> vm.setBandDb(band, db) }
-
-                Spacer(Modifier.height(20.dp))
-                Text("Усиление басов", style = MaterialTheme.typography.titleSmall, color = scheme.onSurfaceVariant)
-                Spacer(Modifier.height(8.dp))
-                // Bass Boost+ — то, что в описании T110.
-                StrengthBar(value = bass, max = 1000) { vm.setBassBoostStrength(it) }
 
                 Spacer(Modifier.height(20.dp))
                 Text("Готовые режимы", style = MaterialTheme.typography.titleSmall, color = scheme.onSurfaceVariant)

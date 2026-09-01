@@ -8,6 +8,8 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
 import dev.aezochka.budscontrol.audio.AudioTools
+import dev.aezochka.budscontrol.audio.Feedback
+import dev.aezochka.budscontrol.notify.SleepNotifier
 import dev.aezochka.budscontrol.audio.MusicPulse
 import dev.aezochka.budscontrol.audio.SystemAudioFx
 import kotlinx.coroutines.Job
@@ -186,6 +188,11 @@ class BudsViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /** Свой цвет темы: ARGB, перебивает пресет. */
+    fun setSoundEffects(on: Boolean) = viewModelScope.launch {
+        store.saveSettings(settings.value.copy(soundEffects = on))
+        if (on) tick(Feedback.Kind.On)
+    }
+
     fun setHaptic(on: Boolean) = viewModelScope.launch {
         store.saveSettings(settings.value.copy(hapticFeedback = on))
     }
@@ -240,13 +247,18 @@ class BudsViewModel(app: Application) : AndroidViewModel(app) {
     // ===== Системный звук: работает независимо от протокола гарнитуры =====
     private val audioFx = SystemAudioFx()
     private val audioTools = AudioTools(getApplication())
+    private val feedback = Feedback(getApplication())
+
+    /** Щелчок на действие: звук и вибро по настройкам пользователя. */
+    fun tick(kind: Feedback.Kind = Feedback.Kind.Tap) {
+        val s = settings.value
+        feedback.play(kind, soundOn = s.soundEffects, hapticOn = s.hapticFeedback)
+    }
 
     private val _fxReady = MutableStateFlow(false)
     val fxReady: StateFlow<Boolean> = _fxReady.asStateFlow()
     private val _eqGains = MutableStateFlow<List<Int>>(emptyList())
     val eqGains: StateFlow<List<Int>> = _eqGains.asStateFlow()
-    private val _bassBoost = MutableStateFlow(0)
-    val bassBoost: StateFlow<Int> = _bassBoost.asStateFlow()
 
     fun bandFrequencies(): List<Int> = audioFx.bandFrequencies
     fun gainRangeDb(): Pair<Int, Int> = (audioFx.minGainMb / 100) to (audioFx.maxGainMb / 100)
@@ -255,7 +267,6 @@ class BudsViewModel(app: Application) : AndroidViewModel(app) {
         if (audioFx.attach()) {
             _fxReady.value = true
             _eqGains.value = audioFx.currentGainsDb()
-            _bassBoost.value = audioFx.bassBoostStrength()
         }
     }
 
@@ -264,10 +275,6 @@ class BudsViewModel(app: Application) : AndroidViewModel(app) {
         _eqGains.value = audioFx.currentGainsDb()
     }
 
-    fun setBassBoostStrength(value: Int) {
-        audioFx.setBassBoost(value)
-        _bassBoost.value = value
-    }
 
     fun applyEqPreset(gains: List<Int>) {
         audioFx.applyPreset(gains)
@@ -276,8 +283,6 @@ class BudsViewModel(app: Application) : AndroidViewModel(app) {
 
     fun resetEq() {
         repeat(audioFx.bandCount) { audioFx.setBandDb(it, 0) }
-        audioFx.setBassBoost(0)
-        _bassBoost.value = 0
         _eqGains.value = audioFx.currentGainsDb()
     }
 
@@ -302,6 +307,9 @@ class BudsViewModel(app: Application) : AndroidViewModel(app) {
             _sleepLeft.value = 0
             _sleepMinutes.value = 0
             audioTools.pausePlayback()
+            // Слышимый и видимый финал вместо тихой паузы.
+            feedback.play(Feedback.Kind.Alarm, soundOn = true, hapticOn = true)
+            SleepNotifier.notifyFinished(getApplication())
         }
     }
 

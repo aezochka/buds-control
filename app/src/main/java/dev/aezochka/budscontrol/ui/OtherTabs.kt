@@ -33,6 +33,7 @@ import androidx.compose.material.icons.outlined.VolumeUp
 import androidx.compose.material.icons.outlined.Vibration
 import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material.icons.outlined.BatteryAlert
+import androidx.compose.material.icons.outlined.MusicNote
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Terminal
 import androidx.compose.material.icons.outlined.TouchApp
@@ -111,10 +112,17 @@ fun SettingsTab(vm: BudsViewModel) {
                 )
                 SettingsToggle(
                     icon = Icons.Outlined.Vibration,
-                    title = "Отклик при нажатии",
-                    subtitle = "Виброотдача на плитках",
+                    title = "Виброотклик",
+                    subtitle = "Отдача при нажатии на плитки",
                     checked = settings.hapticFeedback,
-                    onToggle = { vm.setHaptic(it) },
+                    onToggle = { vm.tick(); vm.setHaptic(it) },
+                )
+                SettingsToggle(
+                    icon = Icons.Outlined.MusicNote,
+                    title = "Звуки действий",
+                    subtitle = "Щелчки при нажатии и переключении",
+                    checked = settings.soundEffects,
+                    onToggle = { vm.setSoundEffects(it) },
                 )
                 SettingsToggle(
                     icon = Icons.Outlined.Bolt,

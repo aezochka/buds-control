@@ -43,7 +43,6 @@ fun SoundTab(vm: BudsViewModel) {
     val scheme = MaterialTheme.colorScheme
     val ready by vm.fxReady.collectAsState()
     val gains by vm.eqGains.collectAsState()
-    val bass by vm.bassBoost.collectAsState()
     val sleepMin by vm.sleepMinutes.collectAsState()
     val sleepLeft by vm.sleepLeft.collectAsState()
     val limit by vm.volumeLimit.collectAsState()
@@ -118,19 +117,6 @@ fun SoundTab(vm: BudsViewModel) {
                         }
                     }
                 }
-            }
-        }
-
-        // Усиление басов — то, что в описании T110 названо Bass Boost+.
-        item {
-            Column(Modifier.padding(horizontal = 20.dp).padding(top = 11.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Усиление басов", style = MaterialTheme.typography.titleSmall, color = scheme.onSurfaceVariant)
-                    Spacer(Modifier.weight(1f))
-                    Text("${bass * 100 / 1000}%", style = MaterialTheme.typography.labelMedium, color = scheme.primary)
-                }
-                Spacer(Modifier.height(8.dp))
-                StrengthBar(value = bass, max = 1000) { vm.setBassBoostStrength(it) }
             }
         }
 

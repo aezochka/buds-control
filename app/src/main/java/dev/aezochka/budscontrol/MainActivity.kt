@@ -45,15 +45,6 @@ class MainActivity : ComponentActivity() {
             // null = DataStore ещё читается. Показываем нейтральный фон,
             // иначе на старте моргает онбординг — это и был баг после рестарта.
             val loaded by vm.settingsOrNull.collectAsState()
-            LaunchedEffect(Unit) {
-                // Просим доступ к звуку сразу: без него визуализация EQ мертва.
-                if (ActivityCompat.checkSelfPermission(
-                        this@MainActivity, Manifest.permission.RECORD_AUDIO
-                    ) != PackageManager.PERMISSION_GRANTED
-                ) {
-                    permissionLauncher.launch(audioPermissions())
-                }
-            }
             BudsControlTheme(
                 accentKey = loaded?.accent ?: "lime",
                 customAccent = loaded?.customAccent ?: 0L,
@@ -78,7 +69,9 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
-        permissionLauncher.launch(bluetoothPermissions())
+        // ОДНИМ вызовом: раньше запрос микрофона из LaunchedEffect перебивался
+        // этим вызовом BT-разрешений, и диалог про звук вообще не появлялся.
+        permissionLauncher.launch(startupPermissions())
     }
 
     private fun bluetoothPermissions(): Array<String> =
@@ -89,8 +82,11 @@ class MainActivity : ComponentActivity() {
         }
 
     /** Микрофон нужен системному Visualizer, иначе полосы EQ не двигаются. */
-    private fun audioPermissions(): Array<String> = buildList {
+    /** Всё, что нужно на старте: Bluetooth + микрофон для визуализации звука. */
+    private fun startupPermissions(): Array<String> = buildList {
+        addAll(bluetoothPermissions())
         add(Manifest.permission.RECORD_AUDIO)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) add(Manifest.permission.POST_NOTIFICATIONS)
     }.toTypedArray()
 
     private fun historyPermissions(): Array<String> = buildList {

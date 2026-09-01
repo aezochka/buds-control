@@ -93,6 +93,7 @@ fun BudsApp(vm: BudsViewModel) {
         FloatingTabBar(
             current = pager.currentPage,
             onSelect = { index ->
+                vm.tick(dev.aezochka.budscontrol.audio.Feedback.Kind.Switch)
                 scope.launch {
                     // Прыжок на дальнюю вкладку: без прокрутки через середину.
                     if ((index - pager.currentPage).absoluteValue > 1) {
@@ -114,13 +115,12 @@ private fun FloatingTabBar(current: Int, onSelect: (Int) -> Unit, modifier: Modi
     val scheme = MaterialTheme.colorScheme
     Row(
         modifier
-            // Прямоугольник с круглыми углами вместо пилюли.
-            .fillMaxWidth()
-            .padding(horizontal = 14.dp)
-            .clip(RoundedCornerShape(26.dp))
+            // Прямоугольник со скруглением, по ширине контента — раньше
+            // растягивался на весь экран и выглядел слишком длинным.
+            .clip(RoundedCornerShape(24.dp))
             .background(scheme.surfaceContainer)
-            .padding(horizontal = 6.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.SpaceEvenly,
+            .padding(horizontal = 5.dp, vertical = 6.dp),
+        horizontalArrangement = Arrangement.spacedBy(3.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Tab.entries.forEachIndexed { index, tab ->
@@ -139,12 +139,12 @@ private fun FloatingTabBar(current: Int, onSelect: (Int) -> Unit, modifier: Modi
                     .clip(RoundedCornerShape(corner))
                     .background(bg)
                     .pressBounce(scaleDown = 0.93f) { onSelect(index) }
-                    .padding(horizontal = 16.dp, vertical = 9.dp),
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Icon(
                     tab.icon, contentDescription = tab.label, tint = tint,
-                    modifier = Modifier.size(22.dp).graphicsLayer { scaleX = iconScale; scaleY = iconScale },
+                    modifier = Modifier.size(21.dp).graphicsLayer { scaleX = iconScale; scaleY = iconScale },
                 )
                 Spacer(Modifier.height(3.dp))
                 Text(tab.label, style = MaterialTheme.typography.labelMedium, color = tint)

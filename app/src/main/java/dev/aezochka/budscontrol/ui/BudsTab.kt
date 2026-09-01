@@ -366,76 +366,44 @@ private fun BentoGrid(
     onSleep: () -> Unit,
     onVolume: () -> Unit,
 ) {
-    val scheme = MaterialTheme.colorScheme
     val live by vm.live.collectAsState()
-    val settings by vm.settings.collectAsState()
-    val hidden = settings.hiddenTiles
-    val order = settings.tileOrder.filter { it !in hidden }
 
-    var dragKey by remember { mutableStateOf<String?>(null) }
-    var dragShift by remember { mutableStateOf(0f) }
-
-    // Раскладываем плитки в ряды по сумме размеров: 4 колонки в ряду.
-    val rows = remember(order, settings.tileSpans) {
-        val result = mutableListOf<MutableList<String>>()
-        var current = mutableListOf<String>()
-        var width = 0
-        order.forEach { key ->
-            val span = (settings.tileSpans[key] ?: defaultSpan(key)).coerceIn(1, 4)
-            if (width + span > 4 && current.isNotEmpty()) {
-                result += current; current = mutableListOf(); width = 0
-            }
-            current += key
-            width += span
-        }
-        if (current.isNotEmpty()) result += current
-        result
-    }
-
+    // Ровная сетка: две крупные плитки одинаковой высоты сверху,
+    // широкая плитка кейса, затем ряд одинаковых квадратов.
+    // Раньше размеры плиток скакали и раскладка выглядела рвано.
     Column(
         Modifier.padding(horizontal = 20.dp),
         verticalArrangement = Arrangement.spacedBy(11.dp),
     ) {
-        rows.forEach { row ->
-            Row(horizontalArrangement = Arrangement.spacedBy(11.dp)) {
-                row.forEach { key ->
-                    val span = (settings.tileSpans[key] ?: defaultSpan(key)).coerceIn(1, 4)
-                    EditableTile(
-                        editing = editing,
-                        span = span,
-                        modifier = Modifier.weight(span.toFloat()),
-                        onSpanChange = { vm.setTileSpan(key, it) },
-                        onDragStart = { dragKey = key; dragShift = 0f },
-                        onDrag = { dx ->
-                            dragShift += dx
-                            if (kotlin.math.abs(dragShift) > 90f) {
-                                val step = if (dragShift > 0) 1 else -1
-                                vm.moveTile(key, step)
-                                dragShift = 0f
-                            }
-                        },
-                        onDragEnd = { dragKey = null; dragShift = 0f },
-                    ) {
-                        TileContent(
-                            key = key,
-                            vm = vm,
-                            live = live,
-                            editing = editing,
-                            onEq = onEq,
-                            onSleep = onSleep,
-                            onVolume = onVolume,
-                        )
-                    }
+        Row(horizontalArrangement = Arrangement.spacedBy(11.dp)) {
+            Box(Modifier.weight(1f)) {
+                TileContent("eq", vm, live, editing, onEq, onSleep, onVolume)
+            }
+            Box(Modifier.weight(1f)) {
+                TileContent("game", vm, live, editing, onEq, onSleep, onVolume)
+            }
+        }
+
+        Box(Modifier.fillMaxWidth()) {
+            TileContent("case", vm, live, editing, onEq, onSleep, onVolume)
+        }
+
+        Row(horizontalArrangement = Arrangement.spacedBy(11.dp)) {
+            listOf("sleep", "volume", "lowlatency").forEach { key ->
+                Box(Modifier.weight(1f)) {
+                    TileContent(key, vm, live, editing, onEq, onSleep, onVolume)
+                }
+            }
+        }
+
+        Row(horizontalArrangement = Arrangement.spacedBy(11.dp)) {
+            listOf("find", "firmware").forEach { key ->
+                Box(Modifier.weight(1f)) {
+                    TileContent(key, vm, live, editing, onEq, onSleep, onVolume)
                 }
             }
         }
     }
-}
-
-private fun defaultSpan(key: String): Int = when (key) {
-    "eq", "game" -> 2
-    "case" -> 4
-    else -> 1
 }
 
 @Composable
@@ -445,10 +413,11 @@ fun ActionSquare(
     active: Boolean,
     modifier: Modifier = Modifier,
     supported: Boolean = true,
+    minHeight: androidx.compose.ui.unit.Dp = 112.dp,
     onClick: () -> Unit,
 ) {
     BentoTile(
-        modifier, active = active, minHeight = 104.dp,
+        modifier, active = active, minHeight = minHeight,
         onClick = if (supported) onClick else null,
     ) { primary, secondary ->
         Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {

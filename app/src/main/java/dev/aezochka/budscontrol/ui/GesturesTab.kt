@@ -104,6 +104,7 @@ private fun SideGestures(
                 current = touch[side to type] ?: touch[TouchSide.BOTH to type],
                 enabled = enabled,
                 // Заводское значение, пока гарнитура не прислала своё.
+                strings = strings,
                 fallbackLabel = when (type) {
                     TouchType.TAP_2 -> strings["defaultPlay"]
                     TouchType.TAP_3 -> strings["defaultNext"]
@@ -121,6 +122,7 @@ private fun GestureRow(
     label: String,
     current: TouchAction?,
     enabled: Boolean,
+    strings: dev.aezochka.budscontrol.i18n.Strings,
     fallbackLabel: String,
     onPick: (TouchAction) -> Unit,
 ) {

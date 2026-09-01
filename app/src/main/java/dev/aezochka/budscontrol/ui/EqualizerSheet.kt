@@ -7,6 +7,8 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -39,9 +41,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
@@ -148,19 +148,22 @@ private fun BandSliders(
                         .height(trackHeight)
                         .clip(RoundedCornerShape(20.dp))
                         .background(scheme.surfaceContainer)
+                        // Тап: ставит уровень на высоте касания.
                         .pointerInput(index, minDb, maxDb) {
-                            // Ручная обработка: тап И протяжка, оба работают.
-                            awaitPointerEventScope {
-                                while (true) {
-                                    val down = awaitPointerEvent(PointerEventPass.Initial)
-                                    val position = down.changes.firstOrNull()?.position ?: continue
-                                    if (down.changes.any { it.pressed }) {
-                                        val value = valueAt(position, trackPx, minDb, span)
-                                        if (value != gains.getOrNull(index)) onChange(index, value)
-                                        down.changes.forEach { it.consume() }
-                                    }
-                                }
+                            detectTapGestures { position ->
+                                onChange(index, valueAt(position.y, trackPx, minDb, span))
                             }
+                        }
+                        // Протяжка: непрерывное изменение по вертикали.
+                        .pointerInput(index, minDb, maxDb) {
+                            var current = 0f
+                            detectVerticalDragGestures(
+                                onDragStart = { current = it.y },
+                                onVerticalDrag = { _, delta ->
+                                    current = (current + delta).coerceIn(0f, trackPx)
+                                    onChange(index, valueAt(current, trackPx, minDb, span))
+                                },
+                            )
                         },
                     contentAlignment = Alignment.BottomCenter,
                 ) {
@@ -198,8 +201,8 @@ private fun BandSliders(
     }
 }
 
-private fun valueAt(position: Offset, trackPx: Float, minDb: Int, span: Int): Int {
-    val ratio = 1f - (position.y / trackPx).coerceIn(0f, 1f)
+private fun valueAt(y: Float, trackPx: Float, minDb: Int, span: Int): Int {
+    val ratio = 1f - (y / trackPx).coerceIn(0f, 1f)
     return (minDb + ratio * span).roundToInt()
 }
 

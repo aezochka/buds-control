@@ -64,6 +64,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
@@ -78,6 +82,10 @@ import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.core.graphics.drawable.toBitmap
 import dev.aezochka.budscontrol.data.ImageProbe
+import androidx.compose.runtime.DisposableEffect
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import dev.aezochka.budscontrol.BudsViewModel
 
 /** Главная вкладка: фото продукта, живой заряд, bento-плитки. */
@@ -90,6 +98,16 @@ fun BudsTab(vm: BudsViewModel, onDragActive: (Boolean) -> Unit = {}) {
     // Ключ только по адресу: раньше эффект перезапускался на каждое изменение
     // live.connected и уходил в бесконечный цикл подключений.
     LaunchedEffect(selected?.address) { if (selected != null) vm.connectSelected() }
+
+    // Возврат на экран: сбрасываем залипшее «подключаюсь» и переподключаемся.
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) vm.onResume()
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
     // Само определяет модель и ищет фото, если её нет в каталоге.
     LaunchedEffect(selected?.address) {
         selected?.let { vm.ensurePhoto(it.address, it.displayName) }
@@ -124,26 +142,29 @@ fun BudsTab(vm: BudsViewModel, onDragActive: (Boolean) -> Unit = {}) {
         VolumeLimitSheet(vm) { showVolume = false }
     }
 
-    // Скрытие панели при скролле вниз, как строка поиска в Telegram.
+    // Скрытие панели по НАПРАВЛЕНИЮ жеста, как строка поиска в Telegram.
+    // По индексу элемента не работало: элементов в списке всего три,
+    // firstVisibleItemIndex почти не менялся и панель висела всегда.
     val listState = rememberLazyListState()
-    var lastIndex by remember { mutableStateOf(0) }
-    var lastOffset by remember { mutableStateOf(0) }
     var barVisible by remember { mutableStateOf(true) }
-
-    LaunchedEffect(listState) {
-        snapshotFlow { listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset }
-            .collect { (index, offset) ->
-                val scrollingDown = index > lastIndex || (index == lastIndex && offset > lastOffset + 6)
-                val scrollingUp = index < lastIndex || (index == lastIndex && offset < lastOffset - 6)
-                if (scrollingDown && index > 0) barVisible = false
-                if (scrollingUp) barVisible = true
-                if (index == 0 && offset < 8) barVisible = true
-                lastIndex = index
-                lastOffset = offset
+    val scrollConnection = remember {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                val dy = available.y
+                if (dy < -4f) barVisible = false   // палец вверх => контент вниз
+                if (dy > 4f) barVisible = true
+                return Offset.Zero
             }
+        }
     }
 
-    Column(Modifier.fillMaxWidth()) {
+    // Наверху списка панель всегда открыта.
+    LaunchedEffect(listState) {
+        snapshotFlow { listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset }
+            .collect { (index, offset) -> if (index == 0 && offset < 12) barVisible = true }
+    }
+
+    Column(Modifier.fillMaxWidth().nestedScroll(scrollConnection)) {
         AnimatedVisibility(
             visible = barVisible,
             enter = expandVertically(Motion.spatial()) + fadeIn(Motion.effects()),

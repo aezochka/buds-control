@@ -75,10 +75,20 @@ class BudsSession(private val context: Context) {
     }
 
     @SuppressLint("MissingPermission")
-    fun connect(address: String, name: String) {
+    /**
+     * Подключение. [force] игнорирует защиту от повторов: нужно при возврате
+     * в приложение, иначе состояние «подключаюсь» залипало навсегда —
+     * сокет уже умер, пока приложение было в фоне, а флаг остался.
+     */
+    fun connect(address: String, name: String, force: Boolean = false) {
         val s = _state.value
-        // Защита от вечного реконнекта: если уже работаем с этим адресом — выходим.
-        if (s.address == address && (s.connected || s.connecting)) return
+        val alive = conn?.isConnected == true
+        if (!force && s.address == address && (s.connected || s.connecting) && alive) return
+        if (force || !alive) {
+            // Роняем мёртвую сессию перед новой попыткой.
+            conn?.close()
+            conn = null
+        }
         disconnect()
         _state.value = LiveState(connecting = true, deviceName = name, address = address)
         scope.launch {
@@ -330,6 +340,14 @@ class BudsSession(private val context: Context) {
      * Обновление. Если сокет уже мёртв — переподключаемся, а не молча
      * пишем в закрытый поток: именно поэтому кнопка казалась нерабочей.
      */
+    /** Сбрасывает залипшие флаги, если сокет фактически мёртв. */
+    fun syncState() {
+        val alive = conn?.isConnected == true
+        if (!alive && (_state.value.connected || _state.value.connecting)) {
+            _state.update { it.copy(connected = false, connecting = false) }
+        }
+    }
+
     fun refresh() {
         val c = conn
         val st = _state.value

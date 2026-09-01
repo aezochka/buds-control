@@ -132,6 +132,16 @@ class BudsViewModel(app: Application) : AndroidViewModel(app) {
         store.saveProfiles(store.profiles.first().filterNot { it.id == id })
     }
 
+    /**
+     * Вызывается, когда приложение возвращается на экран: сбрасывает
+     * залипшее «подключаюсь» и переподключается, если сокет умер в фоне.
+     */
+    fun onResume() = viewModelScope.launch {
+        session.syncState()
+        val profile = store.profiles.first().firstOrNull { it.isSelected } ?: return@launch
+        if (!live.value.connected) session.connect(profile.address, profile.displayName, force = true)
+    }
+
     fun connectSelected() = viewModelScope.launch {
         val profile = store.profiles.first().firstOrNull { it.isSelected } ?: return@launch
         // Сохраняем заряд кейса, когда гарнитура его прислала.

@@ -45,8 +45,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
+import android.util.Log
 import dev.aezochka.budscontrol.BudsViewModel
 import kotlin.math.roundToInt
+
+private const val TAG = "EqUi"
 
 /**
  * Эквалайзер: вертикальные полосы по частотам, без пресетов.
@@ -151,20 +154,33 @@ private fun BandSliders(
                         // Один обработчик на тап и протяжку. consume() обязателен:
                         // без него ModalBottomSheet забирает вертикальный жест
                         // себе после пары пикселей — отсюда «чуть тянулось и всё».
-                        .pointerInput(index, minDb, maxDb) {
+                        .pointerInput(index, minDb, maxDb, trackPx) {
                             awaitEachGesture {
                                 val down = awaitFirstDown(requireUnconsumed = false)
                                 down.consume()
-                                onChange(index, valueAt(down.position.y, trackPx, minDb, span))
+                                var moves = 0
+                                val first = valueAt(down.position.y, trackPx, minDb, span)
+                                Log.d(TAG, "band=$index DOWN y=${down.position.y} track=$trackPx -> $first дБ")
+                                onChange(index, first)
                                 while (true) {
                                     val event = awaitPointerEvent()
-                                    val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                                    val change = event.changes.firstOrNull { it.id == down.id }
+                                    if (change == null) {
+                                        Log.d(TAG, "band=$index указатель потерян после $moves движений")
+                                        break
+                                    }
                                     if (!change.pressed) {
                                         change.consume()
+                                        Log.d(TAG, "band=$index UP, движений=$moves")
                                         break
                                     }
                                     change.consume()
-                                    onChange(index, valueAt(change.position.y, trackPx, minDb, span))
+                                    moves++
+                                    val value = valueAt(change.position.y, trackPx, minDb, span)
+                                    if (moves % 5 == 0) {
+                                        Log.d(TAG, "band=$index MOVE#$moves y=${change.position.y} -> $value дБ")
+                                    }
+                                    onChange(index, value)
                                 }
                             }
                         },

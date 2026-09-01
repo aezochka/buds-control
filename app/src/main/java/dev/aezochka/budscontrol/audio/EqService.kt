@@ -73,7 +73,7 @@ class EqService : Service() {
             }
             else -> {
                 startForegroundSafely()
-                // Глобальная сессия — плюс все уже играющие.
+                EqLog.log("Сервис запущен, уровни=$levelsDb, активных сессий=${equalizers.size}")
                 attach(0)
                 applyToAll()
             }
@@ -107,8 +107,10 @@ class EqService : Service() {
             val eq = Equalizer(PRIORITY, session).apply { enabled = true }
             equalizers[session] = eq
             apply(eq)
-            Log.i(TAG, "Эквалайзер подключён к сессии $session")
-        }.onFailure { Log.w(TAG, "Сессия $session недоступна: ${it.message}") }
+            EqLog.log("Сервис: подключён к сессии $session, полос=${eq.numberOfBands}")
+        }.onFailure {
+            EqLog.log("Сервис: сессия $session недоступна — ${it.javaClass.simpleName}: ${it.message}")
+        }
     }
 
     private fun applyToAll() {
@@ -116,13 +118,19 @@ class EqService : Service() {
     }
 
     private fun apply(eq: Equalizer) {
-        if (levelsDb.isEmpty()) return
+        if (levelsDb.isEmpty()) {
+            EqLog.log("Сервис: уровней нет, применять нечего")
+            return
+        }
         runCatching {
             val bands = eq.numberOfBands.toInt()
             for (i in 0 until minOf(bands, levelsDb.size)) {
                 eq.setBandLevel(i.toShort(), (levelsDb[i] * 100).toShort())
             }
-        }
+            // Читаем обратно: подтверждение, что железо приняло значения.
+            val readBack = (0 until bands).map { eq.getBandLevel(it.toShort()) / 100 }
+            EqLog.log("Сервис: применено $levelsDb, прочитано обратно $readBack")
+        }.onFailure { EqLog.log("Сервис: применение упало — ${it.message}") }
     }
 
     private fun stopEverything() {

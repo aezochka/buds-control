@@ -69,6 +69,7 @@ fun SettingsTab(vm: BudsViewModel) {
     var showEq by remember { mutableStateOf(false) }
     var showUpdate by remember { mutableStateOf(false) }
     var showLang by remember { mutableStateOf(false) }
+    var showEqLog by remember { mutableStateOf(false) }
     var showSleep by remember { mutableStateOf(false) }
     var showVolume by remember { mutableStateOf(false) }
     val sleepMin by vm.sleepMinutes.collectAsState()
@@ -76,6 +77,7 @@ fun SettingsTab(vm: BudsViewModel) {
     if (showEq) { EqualizerSheet(vm) { showEq = false } }
     if (showUpdate) { UpdateSheet(vm) { showUpdate = false } }
     if (showLang) { LanguageSheet(vm) { showLang = false } }
+    if (showEqLog) { EqLogSheet { showEqLog = false } }
     if (showSleep) { SleepSheet(vm) { showSleep = false } }
     if (showVolume) { VolumeLimitSheet(vm) { showVolume = false } }
     if (showTheme) {
@@ -134,6 +136,11 @@ fun SettingsTab(vm: BudsViewModel) {
                     subtitle = "Когда наушник ниже 20%",
                     checked = settings.lowBatteryAlert,
                     onToggle = { vm.setLowBatteryAlert(it) },
+                )
+                SettingsRow(
+                    Icons.Outlined.Terminal, "Лог звука",
+                    "Диагностика эквалайзера",
+                    onClick = { showEqLog = true },
                 )
                 SettingsRow(
                     Icons.Outlined.Download, "Обновление",

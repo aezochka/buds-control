@@ -51,6 +51,7 @@ class SystemAudioFx(private val context: android.content.Context) {
 
     private fun tryAttach(): Boolean {
         return runCatching {
+            EqLog.log("Пробую создать Equalizer(0, 0)")
             val eq = Equalizer(0, 0).apply { enabled = true }
             val bands = eq.numberOfBands.toInt()
             bandFrequencies = (0 until bands).map { eq.getCenterFreq(it.toShort()) / 1000 }
@@ -60,10 +61,10 @@ class SystemAudioFx(private val context: android.content.Context) {
             equalizer = eq
 
             loudness = runCatching { LoudnessEnhancer(0) }.getOrNull()
-            Log.i(TAG, "Эквалайзер подключён: $bands полос, ${bandFrequencies}")
+            EqLog.log("OK: полос=$bands, частоты=$bandFrequencies, диапазон ${range[0]}..${range[1]} мБ")
             true
         }.getOrElse {
-            Log.w(TAG, "Системный эквалайзер недоступен: ${it.message}")
+            EqLog.log("ОШИБКА создания Equalizer: ${it.javaClass.simpleName}: ${it.message}")
             false
         }
     }
@@ -97,7 +98,10 @@ class SystemAudioFx(private val context: android.content.Context) {
             runCatching {
                 val mb = (db * 100).coerceIn(minGainMb.toInt(), maxGainMb.toInt())
                 eq.setBandLevel(band.toShort(), mb.toShort())
-            }
+                EqLog.log("setBandLevel($band, ${mb} мБ) применён локально")
+            }.onFailure { EqLog.log("setBandLevel($band) упал: ${it.message}") }
+        } else {
+            EqLog.log("Локального Equalizer нет, полоса $band = $db дБ только в сервис")
         }
         pushToService()
     }
@@ -105,7 +109,12 @@ class SystemAudioFx(private val context: android.content.Context) {
     /** Отдаёт текущие уровни сервису, который применяет их к плеерам. */
     private fun pushToService() {
         val levels = currentGainsDb()
-        if (levels.isNotEmpty()) EqService.apply(context, levels)
+        if (levels.isEmpty()) {
+            EqLog.log("Уровни пустые — сервису нечего отправлять")
+            return
+        }
+        EqLog.log("Отправляю в EqService: $levels дБ")
+        EqService.apply(context, levels)
     }
 
     fun setEnabled(on: Boolean) {

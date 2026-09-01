@@ -131,8 +131,8 @@ fun RouteMapView(points: List<TrackPoint>, modifier: Modifier = Modifier) {
                 val tx = firstTx + ix
                 val ty = firstTy + iy
                 val bitmap = tiles["$zoom/$tx/$ty"] ?: continue
-                val left = tx * MapTiles.TILE - originX
-                val top = ty * MapTiles.TILE - originY
+                val left = (tx * MapTiles.TILE - originX).toFloat()
+                val top = (ty * MapTiles.TILE - originY).toFloat()
                 translate(left, top) {
                     drawImage(bitmap, colorFilter = darken)
                 }

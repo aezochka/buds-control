@@ -33,6 +33,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import dev.aezochka.budscontrol.BudsViewModel
+import dev.aezochka.budscontrol.i18n.tr
 
 /**
  * Звук: системный эквалайзер (реально влияет на воспроизведение),
@@ -81,7 +82,7 @@ fun SoundTab(vm: BudsViewModel) {
                             when {
                                 !ready -> "Недоступен"
                                 gains.any { it != 0 } -> "Настроен вручную"
-                                else -> "Ровный"
+                                else -> tr("eqFlat")
                             },
                             style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant,
                         )
@@ -117,11 +118,11 @@ fun SoundTab(vm: BudsViewModel) {
         item {
             SoundRow(
                 icon = Icons.Outlined.Bedtime,
-                title = "Таймер сна",
+                title = tr("sleepTimer"),
                 value = when {
                     sleepLeft > 0 -> "%d:%02d".format(sleepLeft / 60, sleepLeft % 60)
                     sleepMin > 0 -> "$sleepMin мин"
-                    else -> "Выключен"
+                    else -> tr("off")
                 },
                 active = sleepMin > 0,
             ) { showSleep = true }
@@ -129,8 +130,8 @@ fun SoundTab(vm: BudsViewModel) {
         item {
             SoundRow(
                 icon = Icons.Outlined.VolumeUp,
-                title = "Лимит громкости",
-                value = if (limit > 0) "$limit%" else "Без лимита",
+                title = tr("volumeLimit"),
+                value = if (limit > 0) "$limit%" else tr("noLimit"),
                 active = limit > 0,
             ) { showVolume = true }
         }

@@ -47,6 +47,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import android.util.Log
 import dev.aezochka.budscontrol.BudsViewModel
+import dev.aezochka.budscontrol.i18n.tr
 import kotlin.math.roundToInt
 
 private const val TAG = "EqUi"
@@ -85,7 +86,7 @@ fun EqualizerSheet(vm: BudsViewModel, onDismiss: () -> Unit) {
                 Column(Modifier.fillMaxWidth(0.8f)) {
                     Text("Эквалайзер", style = MaterialTheme.typography.headlineSmall, color = scheme.onSurface)
                     Text(
-                        "Тяни полосы или тапни по нужной высоте",
+                        tr("eqHint"),
                         style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant,
                     )
                 }
@@ -98,7 +99,7 @@ fun EqualizerSheet(vm: BudsViewModel, onDismiss: () -> Unit) {
                         .pressBounce { vm.resetEq() },
                     contentAlignment = Alignment.Center,
                 ) {
-                    Icon(Icons.Outlined.RestartAlt, "Сброс", tint = scheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
+                    Icon(Icons.Outlined.RestartAlt, tr("reset"), tint = scheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
                 }
             }
 

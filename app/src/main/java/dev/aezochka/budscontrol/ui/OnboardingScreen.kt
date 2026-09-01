@@ -53,6 +53,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.aezochka.budscontrol.BudsViewModel
+import dev.aezochka.budscontrol.i18n.tr
 import dev.aezochka.budscontrol.i18n.LocalStrings
 import dev.aezochka.budscontrol.device.BluetoothScanner
 
@@ -250,7 +251,7 @@ private fun DevicesStep(vm: BudsViewModel, onRequestBluetooth: () -> Unit) {
         }
         Spacer(Modifier.height(10.dp))
         Text(
-            if (scanning) "Ищу по Bluetooth…" else "Тапни, чтобы добавить профиль",
+            if (scanning) tr("scanning") else "Тапни, чтобы добавить профиль",
             style = MaterialTheme.typography.bodyLarge, color = scheme.onSurfaceVariant,
         )
         Spacer(Modifier.height(18.dp))
@@ -266,7 +267,7 @@ private fun DevicesStep(vm: BudsViewModel, onRequestBluetooth: () -> Unit) {
             ) {
                 Text("Пока ничего не нашлось", style = MaterialTheme.typography.titleMedium, color = scheme.onSurface)
                 Text(
-                    "Достань наушники из кейса и включи Bluetooth. Сопряжённые устройства появятся сразу.",
+                    tr("takeOutOfCase"),
                     style = MaterialTheme.typography.bodyMedium, color = scheme.onSurfaceVariant,
                 )
                 Spacer(Modifier.height(16.dp))

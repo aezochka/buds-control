@@ -87,6 +87,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import dev.aezochka.budscontrol.BudsViewModel
+import dev.aezochka.budscontrol.i18n.tr
 
 /** Главная вкладка: фото продукта, живой заряд, bento-плитки. */
 @Composable
@@ -184,7 +185,7 @@ fun BudsTab(vm: BudsViewModel, onDragActive: (Boolean) -> Unit = {}) {
         LazyColumn(Modifier.fillMaxWidth(), state = listState) {
             item {
                 ProductHero(
-                    name = selected?.displayName ?: "Наушники не выбраны",
+                    name = selected?.displayName ?: tr("notSelected"),
                     left = live.batteryLeft,
                     right = live.batteryRight,
                     // Раньше свечение зависело только от chargingCase, который
@@ -408,7 +409,7 @@ private fun ProductHero(
                             .pressBounce(onClick = onRefresh),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Icon(Icons.Outlined.Refresh, "Обновить", tint = scheme.onSurfaceVariant, modifier = Modifier.size(19.dp))
+                        Icon(Icons.Outlined.Refresh, tr("refresh"), tint = scheme.onSurfaceVariant, modifier = Modifier.size(19.dp))
                     }
                 }
             }
@@ -459,7 +460,7 @@ private fun BatteryChip(
             } else {
                 Icon(
                     Icons.Outlined.Inventory2,
-                    contentDescription = "В кейсе",
+                    contentDescription = tr("inCase"),
                     tint = labelColor,
                     modifier = Modifier.size(15.dp),
                 )
@@ -528,7 +529,7 @@ fun ActionSquare(
                 MorphIcon(active = active, icon = icon, tint = if (supported) primary else secondary)
                 Spacer(Modifier.height(6.dp))
                 Text(
-                    if (supported) label else "нет",
+                    if (supported) label else tr("unavailable"),
                     style = MaterialTheme.typography.labelMedium,
                     color = secondary,
                 )

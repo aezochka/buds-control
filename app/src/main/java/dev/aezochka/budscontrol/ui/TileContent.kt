@@ -35,6 +35,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import dev.aezochka.budscontrol.BudsViewModel
+import dev.aezochka.budscontrol.i18n.tr
 import dev.aezochka.budscontrol.audio.Feedback
 import dev.aezochka.budscontrol.device.LiveState
 
@@ -62,7 +63,7 @@ fun TileContent(
             StatTile(
                 icon = null,
                 label = "Эквалайзер",
-                value = if (!fxOn) "—" else if (tuned) "Настроен" else "Ровный",
+                value = if (!fxOn) "—" else if (tuned) tr("eqTuned") else tr("eqFlat"),
                 active = tuned,
                 onClick = { vm.tick(); onEq() },
                 topContent = { color ->
@@ -73,8 +74,8 @@ fun TileContent(
 
         "game" -> StatTile(
             icon = Icons.Outlined.SportsEsports,
-            label = "Игровой режим",
-            value = if (live.gameMode) "Включён" else "Выключен",
+            label = tr("actGame"),
+            value = if (live.gameMode) tr("on") else tr("off"),
             active = live.gameMode,
             onClick = {
                 vm.tick(if (live.gameMode) Feedback.Kind.Off else Feedback.Kind.On)
@@ -84,8 +85,8 @@ fun TileContent(
 
         "case" -> StatTile(
             icon = Icons.Outlined.Inventory2,
-            label = if (live.caseFromMemory) "Кейс · последнее" else "Кейс",
-            value = live.batteryCase?.let { "$it%" } ?: "нет данных",
+            label = if (live.caseFromMemory) tr("caseLast") else "Кейс",
+            value = live.batteryCase?.let { "$it%" } ?: tr("noData"),
             active = false,
             onClick = null,
             bottomContent = { primary, secondary ->
@@ -110,8 +111,8 @@ fun TileContent(
             } else {
                 StatTile(
                     icon = Icons.Outlined.Bedtime,
-                    label = "Таймер сна",
-                    value = if (minutes > 0) short else "Выключен",
+                    label = tr("sleepTimer"),
+                    value = if (minutes > 0) short else tr("off"),
                     active = minutes > 0,
                     onClick = { vm.tick(); onSleep() },
                 )
@@ -129,8 +130,8 @@ fun TileContent(
             } else {
                 StatTile(
                     icon = Icons.Outlined.VolumeUp,
-                    label = "Лимит громкости",
-                    value = if (limit > 0) "$limit%" else "Без лимита",
+                    label = tr("volumeLimit"),
+                    value = if (limit > 0) "$limit%" else tr("noLimit"),
                     active = limit > 0,
                     onClick = { vm.tick(); onVolume() },
                 )
@@ -142,7 +143,7 @@ fun TileContent(
             if (compact) {
                 MiniTile(
                     Icons.Outlined.NotificationsActive,
-                    if (ringing) "Стоп" else "Найти",
+                    if (ringing) tr("stop") else "Найти",
                     ringing,
                 ) {
                     ringing = !ringing
@@ -153,8 +154,8 @@ fun TileContent(
             }
             StatTile(
                 icon = Icons.Outlined.NotificationsActive,
-                label = "Найти наушники",
-                value = if (ringing) "Играет сигнал" else "Подать звук",
+                label = tr("findBuds"),
+                value = if (ringing) tr("signalPlaying") else tr("playSignal"),
                 active = ringing,
                 onClick = {
                     ringing = !ringing
@@ -169,15 +170,15 @@ fun TileContent(
         "firmware" -> if (compact) {
             MiniTile(
                 Icons.Outlined.Memory,
-                live.firmware ?: if (live.connected) "…" else "нет связи",
+                live.firmware ?: if (live.connected) "…" else tr("noLink"),
                 false,
                 null,
             )
         } else {
             StatTile(
                 icon = Icons.Outlined.Memory,
-                label = "Прошивка",
-                value = live.firmware ?: if (live.connected) "запрашиваю…" else "нет связи",
+                label = tr("firmware"),
+                value = live.firmware ?: if (live.connected) tr("requesting") else tr("noLink"),
                 active = false,
                 onClick = null,
             )

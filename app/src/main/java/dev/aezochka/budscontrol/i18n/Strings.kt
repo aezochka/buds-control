@@ -340,3 +340,7 @@ class Strings(private val code: String) {
 }
 
 val LocalStrings = compositionLocalOf { Strings.of("ru") }
+
+/** Локализованная строка прямо в @Composable-коде. */
+@androidx.compose.runtime.Composable
+fun tr(key: String): String = LocalStrings.current[key]

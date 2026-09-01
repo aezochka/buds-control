@@ -31,6 +31,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import dev.aezochka.budscontrol.BudsViewModel
+import dev.aezochka.budscontrol.i18n.tr
 import kotlin.math.roundToInt
 
 /** Обновление приложения: что нового, прогресс загрузки, установка. */
@@ -56,10 +57,10 @@ fun UpdateSheet(vm: BudsViewModel, onDismiss: () -> Unit) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Icon(Icons.Outlined.Download, null, tint = scheme.primary, modifier = Modifier.size(26.dp))
                 Column {
-                    Text("Обновление", style = MaterialTheme.typography.headlineSmall, color = scheme.onSurface)
+                    Text(tr("update"), style = MaterialTheme.typography.headlineSmall, color = scheme.onSurface)
                     Text(
                         when {
-                            state.checking -> "Проверяю релизы…"
+                            state.checking -> tr("checking")
                             pending == null -> "Установлена последняя версия ${state.currentVersion}"
                             else -> "Доступна ${pending.version}, у тебя ${state.currentVersion}"
                         },
@@ -79,12 +80,12 @@ fun UpdateSheet(vm: BudsViewModel, onDismiss: () -> Unit) {
                         .padding(16.dp),
                 ) {
                     Text(
-                        "Что нового",
+                        tr("whatsNew"),
                         style = MaterialTheme.typography.labelMedium, color = scheme.onSurfaceVariant,
                     )
                     Spacer(Modifier.height(6.dp))
                     Text(
-                        release.notes.ifBlank { "Без описания" },
+                        release.notes.ifBlank { tr("noNotes") },
                         style = MaterialTheme.typography.bodyMedium,
                         color = scheme.onSurface,
                         modifier = Modifier.heightIn(max = 190.dp).verticalScroll(rememberScrollState()),
@@ -121,7 +122,7 @@ fun UpdateSheet(vm: BudsViewModel, onDismiss: () -> Unit) {
                     }
                     Spacer(Modifier.height(6.dp))
                     Text(
-                        "Если связь оборвётся, загрузка продолжится с этого места",
+                        tr("resumeHint"),
                         style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant,
                     )
                 }
@@ -137,7 +138,7 @@ fun UpdateSheet(vm: BudsViewModel, onDismiss: () -> Unit) {
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(
-                        if (state.progress >= 1f) "Установить" else "Скачать и установить",
+                        if (state.progress >= 1f) tr("install") else tr("downloadInstall"),
                         style = MaterialTheme.typography.labelLarge, color = scheme.onPrimary,
                     )
                 }
@@ -152,7 +153,7 @@ fun UpdateSheet(vm: BudsViewModel, onDismiss: () -> Unit) {
                         .padding(vertical = 16.dp),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text("Проверить снова", style = MaterialTheme.typography.labelLarge, color = scheme.onSurface)
+                    Text(tr("checkAgain"), style = MaterialTheme.typography.labelLarge, color = scheme.onSurface)
                 }
             }
 

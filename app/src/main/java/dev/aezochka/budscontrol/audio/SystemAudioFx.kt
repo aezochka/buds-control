@@ -87,22 +87,13 @@ class SystemAudioFx(private val context: android.content.Context) {
      * потому что подключён ко всем активным сессиям плееров.
      */
     fun setBandDb(band: Int, db: Int) {
-        // Держим значения у себя: нужны, если системный объект не создался.
+        // Держим значения у себя. Локальный Equalizer на многих устройствах падает
+        // с "invalid parameter operation" — поэтому всё идёт только через сервис.
         val current = currentGainsDb().toMutableList()
         while (current.size <= band) current.add(0)
         current[band] = db.coerceIn(minGainMb / 100, maxGainMb / 100)
         manualGains = current
-
-        val eq = equalizer
-        if (eq != null) {
-            runCatching {
-                val mb = (db * 100).coerceIn(minGainMb.toInt(), maxGainMb.toInt())
-                eq.setBandLevel(band.toShort(), mb.toShort())
-                EqLog.log("setBandLevel($band, ${mb} мБ) применён локально")
-            }.onFailure { EqLog.log("setBandLevel($band) упал: ${it.message}") }
-        } else {
-            EqLog.log("Локального Equalizer нет, полоса $band = $db дБ только в сервис")
-        }
+        EqLog.log("setBandDb($band, $db): обновлен локальный массив, отправляю в сервис")
         pushToService()
     }
 
@@ -135,13 +126,7 @@ class SystemAudioFx(private val context: android.content.Context) {
 
     fun applyPreset(gains: List<Int>) {
         manualGains = gains
-        val eq = equalizer
-        gains.forEachIndexed { index, db ->
-            runCatching {
-                val mb = (db * 100).coerceIn(minGainMb.toInt(), maxGainMb.toInt())
-                eq?.setBandLevel(index.toShort(), mb.toShort())
-            }
-        }
+        EqLog.log("applyPreset: $gains")
         EqService.apply(context, gains)
     }
 

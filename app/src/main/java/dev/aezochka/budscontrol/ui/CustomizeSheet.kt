@@ -80,7 +80,7 @@ fun ThemeSheet(
             Text("Тема", style = MaterialTheme.typography.headlineSmall, color = scheme.onSurface)
             Spacer(Modifier.height(4.dp))
             Text(
-                "Акцент применяется сразу ко всему приложению",
+                tr("themeHint"),
                 style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant,
             )
             Spacer(Modifier.height(16.dp))
@@ -129,7 +129,7 @@ fun ThemeSheet(
                 ) {
                     Icon(
                         if (picking) Icons.Filled.Check else Icons.Outlined.Add,
-                        "Свой цвет",
+                        tr("ownColor"),
                         tint = if (customAccent != 0L) Color(0xFF16210A) else scheme.primary,
                         modifier = Modifier.size(22.dp),
                     )
@@ -186,9 +186,9 @@ private fun CustomColorPicker(start: Long, onChange: (Long) -> Unit) {
 
     Column(Modifier.padding(top = 6.dp, bottom = 6.dp)) {
         listOf(
-            Triple("Красный", r) { v: Int -> r = v },
-            Triple("Зелёный", g) { v: Int -> g = v },
-            Triple("Синий", b) { v: Int -> b = v },
+            Triple(tr("red"), r) { v: Int -> r = v },
+            Triple(tr("green"), g) { v: Int -> g = v },
+            Triple(tr("blue"), b) { v: Int -> b = v },
         ).forEach { (label, value, setter) ->
             Text(label, style = MaterialTheme.typography.labelMedium, color = scheme.onSurfaceVariant)
             Spacer(Modifier.height(4.dp))
@@ -225,7 +225,7 @@ private fun CustomColorPicker(start: Long, onChange: (Long) -> Unit) {
                     .background(Color(0xFF000000L or (r.toLong() shl 16) or (g.toLong() shl 8) or b.toLong())),
             )
             Text(
-                "Свой цвет",
+                tr("ownColor"),
                 style = MaterialTheme.typography.bodyMedium, color = scheme.onSurface,
             )
         }

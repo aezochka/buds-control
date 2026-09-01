@@ -61,7 +61,7 @@ fun EqLogSheet(onDismiss: () -> Unit) {
             Spacer(Modifier.height(10.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.fillMaxWidth(0.66f)) {
-                    Text("Лог звука", style = MaterialTheme.typography.headlineSmall, color = scheme.onSurface)
+                    Text(tr("soundLog"), style = MaterialTheme.typography.headlineSmall, color = scheme.onSurface)
                     Text(
                         "${lines.size} записей",
                         style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant,
@@ -73,7 +73,7 @@ fun EqLogSheet(onDismiss: () -> Unit) {
                         .pressBounce { copy(context, EqLog.dump()) },
                     contentAlignment = Alignment.Center,
                 ) {
-                    Icon(Icons.Outlined.ContentCopy, "Копировать", tint = scheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
+                    Icon(Icons.Outlined.ContentCopy, tr("copy"), tint = scheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
                 }
                 Spacer(Modifier.size(8.dp))
                 Box(
@@ -81,14 +81,14 @@ fun EqLogSheet(onDismiss: () -> Unit) {
                         .pressBounce { EqLog.clear() },
                     contentAlignment = Alignment.Center,
                 ) {
-                    Icon(Icons.Outlined.DeleteOutline, "Очистить", tint = scheme.onSurfaceVariant, modifier = Modifier.size(19.dp))
+                    Icon(Icons.Outlined.DeleteOutline, tr("clear"), tint = scheme.onSurfaceVariant, modifier = Modifier.size(19.dp))
                 }
             }
 
             Spacer(Modifier.height(14.dp))
             if (lines.isEmpty()) {
                 Text(
-                    "Пусто. Открой эквалайзер и потяни полосу — тут появится, что произошло.",
+                    tr("logEmpty"),
                     style = MaterialTheme.typography.bodyMedium, color = scheme.onSurfaceVariant,
                 )
             } else {

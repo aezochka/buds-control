@@ -60,6 +60,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import dev.aezochka.budscontrol.BudsViewModel
+import dev.aezochka.budscontrol.i18n.tr
 import java.io.File
 import kotlin.math.roundToInt
 
@@ -106,12 +107,12 @@ fun PhotoSheet(
             Spacer(Modifier.height(10.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.fillMaxWidth(0.72f)) {
-                    Text("Картинка", style = MaterialTheme.typography.headlineSmall, color = scheme.onSurface)
+                    Text(tr("picture"), style = MaterialTheme.typography.headlineSmall, color = scheme.onSurface)
                     Text(
                         when {
-                            sizing -> "Тяни ползунок — меняется размер"
-                            editing -> "Тапни индикатор, чтобы выбрать, и тяни"
-                            else -> "Выбери картинку или поправь индикаторы"
+                            sizing -> tr("sizeHint")
+                            editing -> tr("dragChips")
+                            else -> tr("pictureHint")
                         },
                         style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant,
                     )
@@ -123,7 +124,7 @@ fun PhotoSheet(
                             .pressBounce { vm.resetChips() },
                         contentAlignment = Alignment.Center,
                     ) {
-                        Icon(Icons.Outlined.RestartAlt, "Сброс", tint = scheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
+                        Icon(Icons.Outlined.RestartAlt, tr("reset"), tint = scheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
                     }
                     Spacer(Modifier.size(8.dp))
                 }
@@ -132,7 +133,7 @@ fun PhotoSheet(
                         .pressBounce { vm.loadPhotoVariants(address, deviceName) },
                     contentAlignment = Alignment.Center,
                 ) {
-                    Icon(Icons.Outlined.Refresh, "Обновить", tint = scheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
+                    Icon(Icons.Outlined.Refresh, tr("refresh"), tint = scheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
                 }
             }
 
@@ -212,17 +213,17 @@ fun PhotoSheet(
                 )
                 Column(Modifier.fillMaxWidth(0.8f)) {
                     Text(
-                        if (editing) "Готово" else "Настроить индикаторы",
+                        if (editing) tr("done") else tr("tuneChips"),
                         style = MaterialTheme.typography.bodyLarge,
                         color = if (editing) scheme.onPrimary else scheme.onSurface,
                     )
                     if (editing) {
                         Text(
                             when {
-                                pickLeft && pickRight -> "Двигаются оба"
-                                pickLeft -> "Двигается левый"
-                                pickRight -> "Двигается правый"
-                                else -> "Ничего не выбрано"
+                                pickLeft && pickRight -> tr("movingBoth")
+                                pickLeft -> tr("movingLeft")
+                                pickRight -> tr("movingRight")
+                                else -> tr("movingNone")
                             },
                             style = MaterialTheme.typography.bodySmall,
                             color = scheme.onPrimary.copy(alpha = 0.85f),
@@ -239,7 +240,7 @@ fun PhotoSheet(
             ) {
                 Column(Modifier.padding(top = 10.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("Размер", style = MaterialTheme.typography.labelMedium, color = scheme.onSurfaceVariant)
+                        Text(tr("size"), style = MaterialTheme.typography.labelMedium, color = scheme.onSurfaceVariant)
                         Spacer(Modifier.weight(1f))
                         Text(
                             "${(tweak.scale * 100).roundToInt()}%",
@@ -273,7 +274,7 @@ fun PhotoSheet(
             }
 
             Spacer(Modifier.height(18.dp))
-            Text("Найденные варианты", style = MaterialTheme.typography.titleSmall, color = scheme.onSurfaceVariant)
+            Text(tr("variants"), style = MaterialTheme.typography.titleSmall, color = scheme.onSurfaceVariant)
             Spacer(Modifier.height(10.dp))
 
             // Готовые картинки + скелетоны на те, что ещё грузятся.
@@ -297,7 +298,7 @@ fun PhotoSheet(
             }
             if (!loading && variants.isEmpty()) {
                 Text(
-                    "Ничего не нашлось. Попробуй обновить.",
+                    tr("noVariants"),
                     style = MaterialTheme.typography.bodyMedium, color = scheme.onSurfaceVariant,
                 )
             }

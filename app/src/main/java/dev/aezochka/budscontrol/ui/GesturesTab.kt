@@ -39,6 +39,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.unit.dp
 import dev.aezochka.budscontrol.BudsViewModel
+import dev.aezochka.budscontrol.i18n.tr
 import dev.aezochka.budscontrol.proto.TouchAction
 import dev.aezochka.budscontrol.proto.TouchSide
 import dev.aezochka.budscontrol.proto.TouchType
@@ -52,8 +53,8 @@ fun GesturesTab(vm: BudsViewModel) {
     LazyColumn(Modifier.fillMaxSize()) {
         item { Spacer(Modifier.statusBarsPadding().height(14.dp)) }
         listOf(
-            TouchSide.LEFT to "Левый наушник",
-            TouchSide.RIGHT to "Правый наушник",
+            TouchSide.LEFT to tr("leftBud"),
+            TouchSide.RIGHT to tr("rightBud"),
         ).forEach { (side, title) ->
             item {
                 SideGestures(
@@ -91,9 +92,9 @@ private fun SideGestures(
         }
         Spacer(Modifier.height(10.dp))
         listOf(
-            TouchType.TAP_2 to "Двойное касание",
-            TouchType.TAP_3 to "Тройное касание",
-            TouchType.HOLD to "Долгое нажатие",
+            TouchType.TAP_2 to tr("tap2"),
+            TouchType.TAP_3 to tr("tap3"),
+            TouchType.HOLD to tr("hold"),
         ).forEach { (type, label) ->
             GestureRow(
                 label = label,
@@ -101,9 +102,9 @@ private fun SideGestures(
                 enabled = enabled,
                 // Заводское значение, пока гарнитура не прислала своё.
                 fallbackLabel = when (type) {
-                    TouchType.TAP_2 -> "по умолчанию: плей / пауза"
-                    TouchType.TAP_3 -> "по умолчанию: следующий трек"
-                    TouchType.HOLD -> "по умолчанию: помощник"
+                    TouchType.TAP_2 -> tr("defaultPlay")
+                    TouchType.TAP_3 -> tr("defaultNext")
+                    TouchType.HOLD -> tr("defaultAssistant")
                     else -> "не задано"
                 },
                 onPick = { onPick(type, it) },
@@ -196,13 +197,13 @@ private val pickableActions = listOf(
 )
 
 private fun actionLabel(action: TouchAction) = when (action) {
-    TouchAction.OFF -> "Ничего"
-    TouchAction.PLAY_PAUSE -> "Плей / пауза"
-    TouchAction.VOICE_ASSISTANT, TouchAction.VOICE_ASSISTANT_REALME -> "Голосовой помощник"
-    TouchAction.PREVIOUS -> "Предыдущий трек"
-    TouchAction.NEXT -> "Следующий трек"
-    TouchAction.NOISE_CONTROL -> "Переключить шумодав"
-    TouchAction.VOLUME_UP -> "Громче"
-    TouchAction.VOLUME_DOWN -> "Тише"
-    TouchAction.GAME_MODE -> "Игровой режим"
+    TouchAction.OFF -> tr("actNothing")
+    TouchAction.PLAY_PAUSE -> tr("actPlay")
+    TouchAction.VOICE_ASSISTANT, TouchAction.VOICE_ASSISTANT_REALME -> tr("actAssistant")
+    TouchAction.PREVIOUS -> tr("actPrev")
+    TouchAction.NEXT -> tr("actNext")
+    TouchAction.NOISE_CONTROL -> tr("actNoise")
+    TouchAction.VOLUME_UP -> tr("actVolUp")
+    TouchAction.VOLUME_DOWN -> tr("actVolDown")
+    TouchAction.GAME_MODE -> tr("actGame")
 }

@@ -36,6 +36,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.aezochka.budscontrol.BudsViewModel
+import dev.aezochka.budscontrol.i18n.tr
 
 /** Шторка добавления гарнитуры: живой Bluetooth-скан по плюсику. */
 @Composable
@@ -62,9 +63,9 @@ fun AddDeviceSheet(vm: BudsViewModel, onDismiss: () -> Unit) {
             Spacer(Modifier.height(10.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.fillMaxWidth(0.86f)) {
-                    Text("Добавить наушники", style = MaterialTheme.typography.headlineSmall, color = scheme.onSurface)
+                    Text(tr("addBuds"), style = MaterialTheme.typography.headlineSmall, color = scheme.onSurface)
                     Text(
-                        if (scanning) "Ищу по Bluetooth…" else "Тапни, чтобы добавить",
+                        if (scanning) tr("scanning") else tr("tapToAdd"),
                         style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant,
                     )
                 }
@@ -113,7 +114,7 @@ fun AddDeviceSheet(vm: BudsViewModel, onDismiss: () -> Unit) {
                                     maxLines = 1, overflow = TextOverflow.Ellipsis,
                                 )
                                 Text(
-                                    if (device.bonded) "Уже сопряжены" else "Найдено рядом",
+                                    if (device.bonded) tr("bonded") else tr("nearby"),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = if (added) scheme.onPrimary.copy(alpha = 0.8f) else scheme.onSurfaceVariant,
                                 )
@@ -122,7 +123,7 @@ fun AddDeviceSheet(vm: BudsViewModel, onDismiss: () -> Unit) {
                             // выбор был необратимым.
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(
-                                    if (added) "Убрать" else "Добавить",
+                                    if (added) tr("remove") else tr("add"),
                                     style = MaterialTheme.typography.labelMedium,
                                     color = if (added) scheme.onPrimary else scheme.primary,
                                 )

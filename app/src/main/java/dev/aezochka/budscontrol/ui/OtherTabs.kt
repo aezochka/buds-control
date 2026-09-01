@@ -54,6 +54,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import dev.aezochka.budscontrol.BudsViewModel
+import dev.aezochka.budscontrol.i18n.tr
 import dev.aezochka.budscontrol.proto.TouchAction
 import dev.aezochka.budscontrol.proto.TouchSide
 import dev.aezochka.budscontrol.proto.TouchType
@@ -100,56 +101,56 @@ fun SettingsTab(vm: BudsViewModel) {
                     onClick = { showEq = true },
                 )
                 SettingsRow(
-                    Icons.Outlined.Bedtime, "Таймер сна",
+                    Icons.Outlined.Bedtime, tr("sleepTimer"),
                     if (sleepMin > 0) "Активен: $sleepMin мин" else "Пауза по времени",
                     onClick = { showSleep = true },
                 )
                 SettingsRow(
-                    Icons.Outlined.VolumeUp, "Лимит громкости",
+                    Icons.Outlined.VolumeUp, tr("volumeLimit"),
                     if (limit > 0) "Не выше $limit%" else "Защита слуха",
                     onClick = { showVolume = true },
                 )
                 SettingsToggle(
                     icon = Icons.Outlined.Vibration,
-                    title = "Виброотклик",
-                    subtitle = "Отдача при нажатии на плитки",
+                    title = tr("haptics"),
+                    subtitle = tr("hapticsHint"),
                     checked = settings.hapticFeedback,
                     onToggle = { vm.tick(); vm.setHaptic(it) },
                 )
                 SettingsToggle(
                     icon = Icons.Outlined.MusicNote,
-                    title = "Звуки действий",
-                    subtitle = "Щелчки при нажатии и переключении",
+                    title = tr("sounds"),
+                    subtitle = tr("soundsHint"),
                     checked = settings.soundEffects,
                     onToggle = { vm.setSoundEffects(it) },
                 )
                 SettingsToggle(
                     icon = Icons.Outlined.Bolt,
-                    title = "Подключать автоматически",
-                    subtitle = "Как только гарнитура рядом",
+                    title = tr("autoConnect"),
+                    subtitle = tr("autoConnectHint"),
                     checked = settings.autoConnect,
                     onToggle = { vm.setAutoConnect(it) },
                 )
                 SettingsToggle(
                     icon = Icons.Outlined.BatteryAlert,
-                    title = "Уведомлять о низком заряде",
+                    title = tr("lowBattery"),
                     subtitle = "Когда наушник ниже 20%",
                     checked = settings.lowBatteryAlert,
                     onToggle = { vm.setLowBatteryAlert(it) },
                 )
                 SettingsRow(
-                    Icons.Outlined.Terminal, "Лог звука",
-                    "Диагностика эквалайзера",
+                    Icons.Outlined.Terminal, tr("soundLog"),
+                    tr("soundLogHint"),
                     onClick = { showEqLog = true },
                 )
                 SettingsRow(
-                    Icons.Outlined.Download, "Обновление",
-                    "Проверить и установить новую версию",
+                    Icons.Outlined.Download, tr("update"),
+                    tr("updateHint"),
                     onClick = { showUpdate = true; vm.checkUpdate() },
                 )
                 SettingsRow(
-                    Icons.Outlined.Language, "Язык",
-                    "8 языков, меняется сразу",
+                    Icons.Outlined.Language, tr("language"),
+                    tr("langCount"),
                     onClick = { showLang = true },
                 )
                 SettingsRow(

@@ -179,7 +179,7 @@ fun ProfileRow(
                 .pressBounce(scaleDown = 0.88f) { onAdd() },
             contentAlignment = Alignment.Center,
         ) {
-            Icon(Icons.Outlined.Add, "Добавить наушники", tint = scheme.primary, modifier = Modifier.size(21.dp))
+            Icon(Icons.Outlined.Add, tr("addBuds"), tint = scheme.primary, modifier = Modifier.size(21.dp))
         }
     }
 }

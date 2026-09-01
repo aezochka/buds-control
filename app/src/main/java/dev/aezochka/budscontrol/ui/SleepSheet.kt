@@ -34,6 +34,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import dev.aezochka.budscontrol.BudsViewModel
+import dev.aezochka.budscontrol.i18n.tr
 import kotlin.math.roundToInt
 
 /** Таймер сна: пресеты + свой ползунок до 180 минут, с обратным отсчётом. */
@@ -57,11 +58,11 @@ fun SleepSheet(vm: BudsViewModel, onDismiss: () -> Unit) {
     ) {
         Column(Modifier.padding(horizontal = 20.dp).navigationBarsPadding()) {
             Spacer(Modifier.height(10.dp))
-            Text("Таймер сна", style = MaterialTheme.typography.headlineSmall, color = scheme.onSurface)
+            Text(tr("sleepTimer"), style = MaterialTheme.typography.headlineSmall, color = scheme.onSurface)
             Spacer(Modifier.height(4.dp))
             Text(
                 if (left > 0) "Осталось ${formatLeft(left)} — музыка встанет на паузу"
-                else "Поставит воспроизведение на паузу",
+                else tr("sleepHint"),
                 style = MaterialTheme.typography.bodySmall,
                 color = if (left > 0) scheme.primary else scheme.onSurfaceVariant,
             )
@@ -86,7 +87,7 @@ fun SleepSheet(vm: BudsViewModel, onDismiss: () -> Unit) {
             }
 
             Spacer(Modifier.height(16.dp))
-            listOf(0 to "Выключить", 15 to "15 минут", 30 to "30 минут", 60 to "60 минут").forEach { (value, title) ->
+            listOf(0 to tr("disable"), 15 to tr("min15"), 30 to tr("min30"), 60 to tr("min60")).forEach { (value, title) ->
                 val active = minutes == value
                 val bg by animateColorAsState(
                     if (active) scheme.primary else scheme.surfaceContainer, Motion.effects(), label = "sleepBg",
@@ -179,14 +180,14 @@ fun VolumeLimitSheet(vm: BudsViewModel, onDismiss: () -> Unit) {
     ) {
         Column(Modifier.padding(horizontal = 20.dp).navigationBarsPadding()) {
             Spacer(Modifier.height(10.dp))
-            Text("Лимит громкости", style = MaterialTheme.typography.headlineSmall, color = scheme.onSurface)
+            Text(tr("volumeLimit"), style = MaterialTheme.typography.headlineSmall, color = scheme.onSurface)
             Spacer(Modifier.height(4.dp))
             Text(
                 if (limit > 0) "Громкость не поднимется выше $limit%" else "Без ограничения",
                 style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant,
             )
             Spacer(Modifier.height(16.dp))
-            listOf(0 to "Без лимита", 50 to "50% — тихо", 70 to "70% — умеренно", 85 to "85% — громко").forEach { (value, title) ->
+            listOf(0 to tr("noLimit"), 50 to "50% — тихо", 70 to "70% — умеренно", 85 to "85% — громко").forEach { (value, title) ->
                 val active = limit == value
                 val bg by animateColorAsState(
                     if (active) scheme.primary else scheme.surfaceContainer, Motion.effects(), label = "limBg",
@@ -215,7 +216,7 @@ fun VolumeLimitSheet(vm: BudsViewModel, onDismiss: () -> Unit) {
             Spacer(Modifier.height(6.dp))
             var custom by remember(limit) { mutableStateOf(if (limit > 0) limit else 60) }
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Свой предел", style = MaterialTheme.typography.titleSmall, color = scheme.onSurfaceVariant)
+                Text(tr("ownLimit"), style = MaterialTheme.typography.titleSmall, color = scheme.onSurfaceVariant)
                 Spacer(Modifier.weight(1f))
                 Text("$custom%", style = MaterialTheme.typography.labelMedium, color = scheme.primary)
             }

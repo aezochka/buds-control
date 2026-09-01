@@ -137,6 +137,7 @@ enum class Cmd(val code: Short) {
     EQUALIZER_REQ(0x010F),
     EQUALIZER_SET(0x0406),
     EQUALIZER_RET(0x810F.toShort()),
+    EQUALIZER_ACK(0x8406.toShort()),
     SUBSCRIPTION_SET(0x0205),
     SUBSCRIPTION_ACK(0x8205.toShort()),
     SUBSCRIPTION_RET(0x0204),

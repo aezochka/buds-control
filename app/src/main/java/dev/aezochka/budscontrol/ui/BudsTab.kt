@@ -121,12 +121,11 @@ fun BudsTab(vm: BudsViewModel) {
                     right = live.batteryRight,
                     connecting = live.connecting,
                     connected = live.connected,
-                    inEar = (live.inEarLeft == true) || (live.inEarRight == true),
                     onRefresh = vm::refresh,
                 )
             }
         }
-        item { BentoGrid(vm) }
+        item { BentoGrid(vm, onEq = { showEq = true }, onSleep = { showSleep = true }, onVolume = { showVolume = true }) }
         item { BottomSpacer() }
     }
 }
@@ -173,7 +172,6 @@ private fun ProductHero(
     right: Int?,
     connecting: Boolean,
     connected: Boolean,
-    inEar: Boolean,
     onRefresh: () -> Unit,
 ) {
     val scheme = MaterialTheme.colorScheme
@@ -227,7 +225,6 @@ private fun ProductHero(
                 Text(
                     buildString {
                         append(name)
-                        if (connected && inEar) append(" · в ухе")
                         if (connecting) append(" · подключаюсь")
                     },
                     style = MaterialTheme.typography.bodyMedium,
@@ -264,7 +261,12 @@ private fun BatteryChip(percent: Int, side: String, modifier: Modifier = Modifie
 }
 
 @Composable
-private fun BentoGrid(vm: BudsViewModel) {
+private fun BentoGrid(
+    vm: BudsViewModel,
+    onEq: () -> Unit,
+    onSleep: () -> Unit,
+    onVolume: () -> Unit,
+) {
     val live by vm.live.collectAsState()
     val settings by vm.settings.collectAsState()
     val hidden = settings.hiddenTiles
@@ -274,7 +276,7 @@ private fun BentoGrid(vm: BudsViewModel) {
             if ("eq" !in hidden) {
                 BentoTile(
                     Modifier.weight(1f), active = live.eqPreset != null, minHeight = 150.dp,
-                    onClick = { showEq = true },
+                    onClick = onEq,
                 ) { primary, secondary ->
                     EqBars(
                         bars = live.eqPreset?.bars ?: listOf(0.4f, 0.6f, 0.9f, 0.5f, 0.45f),
@@ -357,12 +359,12 @@ private fun BentoGrid(vm: BudsViewModel) {
                 Icons.Outlined.Bedtime, "Сон",
                 active = vm.sleepTimerLabel() != "Выключить",
                 modifier = Modifier.weight(1f),
-            ) { showSleep = true }
+            ) { onSleep() }
             if ("volume" !in hidden) ActionSquare(
                 Icons.Outlined.VolumeUp, "Лимит",
                 active = vm.volumeLimitLabel() != "Без лимита",
                 modifier = Modifier.weight(1f),
-            ) { showVolume = true }
+            ) { onVolume() }
             if ("spatial" !in hidden) ActionSquare(
                 Icons.Outlined.SpatialAudio, "3D",
                 active = false,

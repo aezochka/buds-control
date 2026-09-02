@@ -37,6 +37,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import dev.aezochka.budscontrol.BudsViewModel
 import dev.aezochka.budscontrol.i18n.tr
@@ -143,15 +144,17 @@ private fun GestureRow(
             Modifier.pressBounce { expanded = !expanded }.padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Column(Modifier.fillMaxWidth(0.84f)) {
-                Text(label, style = MaterialTheme.typography.bodyLarge, color = scheme.onSurface)
-                Text(
-                    current?.let { actionLabel(it, strings) } ?: fallbackLabel,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = if (current == null) scheme.outline else scheme.onSurfaceVariant,
-                )
-            }
-            Spacer(Modifier.fillMaxWidth(0.08f))
+            // Жест слева, назначенное действие справа.
+            Text(label, style = MaterialTheme.typography.bodyLarge, color = scheme.onSurface)
+            Spacer(Modifier.weight(1f))
+            Text(
+                current?.let { actionLabel(it, strings) } ?: fallbackLabel,
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (current == null) scheme.outline else scheme.onSurfaceVariant,
+                textAlign = TextAlign.End,
+                modifier = Modifier.fillMaxWidth(0.52f),
+            )
+            Spacer(Modifier.size(10.dp))
             Icon(
                 Icons.Outlined.ExpandMore, null, tint = scheme.outline,
                 modifier = Modifier.size(20.dp).rotate(rotation),

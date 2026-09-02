@@ -31,6 +31,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import dev.aezochka.budscontrol.BudsViewModel
 import dev.aezochka.budscontrol.i18n.tr
@@ -165,16 +166,18 @@ private fun SoundRow(
             tint = if (active) scheme.onPrimary else scheme.primary,
             modifier = Modifier.size(22.dp),
         )
-        Column(Modifier.fillMaxWidth(0.78f)) {
-            Text(
-                title, style = MaterialTheme.typography.bodyLarge,
-                color = if (active) scheme.onPrimary else scheme.onSurface,
-            )
-            Text(
-                value, style = MaterialTheme.typography.bodySmall,
-                color = if (active) scheme.onPrimary.copy(alpha = 0.85f) else scheme.onSurfaceVariant,
-            )
-        }
+        // Значение справа, как на системном экране «Об устройстве».
+        Text(
+            title, style = MaterialTheme.typography.bodyLarge,
+            color = if (active) scheme.onPrimary else scheme.onSurface,
+        )
+        Spacer(Modifier.weight(1f))
+        Text(
+            value, style = MaterialTheme.typography.bodyMedium,
+            color = if (active) scheme.onPrimary.copy(alpha = 0.85f) else scheme.onSurfaceVariant,
+            textAlign = TextAlign.End,
+            modifier = Modifier.fillMaxWidth(0.5f),
+        )
     }
 }
 

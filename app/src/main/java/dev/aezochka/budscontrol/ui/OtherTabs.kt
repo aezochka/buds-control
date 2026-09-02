@@ -51,6 +51,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import dev.aezochka.budscontrol.BudsViewModel
 import dev.aezochka.budscontrol.i18n.tr
@@ -89,7 +90,9 @@ fun SettingsTab(vm: BudsViewModel) {
     LazyColumn(Modifier.fillMaxSize()) {
         item { Spacer(Modifier.statusBarsPadding().height(14.dp)) }
         item {
-            Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
+            // Плотный зазор внутри группы: иерархия задаётся расстоянием,
+            // а не разделителями.
+            Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 SettingsRow(
                     Icons.Outlined.GraphicEq, "Эквалайзер",
                     "Системный: полосы, басы, пресеты",
@@ -182,10 +185,21 @@ private fun SettingsRow(icon: ImageVector, title: String, subtitle: String, onCl
             Modifier.size(48.dp).clip(RoundedCornerShape(17.dp)).background(scheme.surfaceContainerHighest),
             contentAlignment = Alignment.Center,
         ) { Icon(icon, null, tint = scheme.onSurfaceVariant, modifier = Modifier.size(23.dp)) }
-        Column(Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.bodyLarge, color = scheme.onSurface)
-            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant)
-        }
+        // Заголовок слева, значение справа — как на системном экране
+        // «Об устройстве»: так значение читается сразу, без поиска глазами.
+        Text(
+            title,
+            style = MaterialTheme.typography.bodyLarge,
+            color = scheme.onSurface,
+        )
+        Spacer(Modifier.weight(1f))
+        Text(
+            subtitle,
+            style = MaterialTheme.typography.bodyMedium,
+            color = scheme.onSurfaceVariant,
+            textAlign = TextAlign.End,
+            modifier = Modifier.fillMaxWidth(0.52f),
+        )
     }
 }
 
@@ -218,6 +232,8 @@ private fun SettingsToggle(
         ) {
             Icon(icon, null, tint = if (checked) scheme.onPrimary else scheme.onSurfaceVariant, modifier = Modifier.size(23.dp))
         }
+        // У переключателя подпись остаётся под заголовком: справа уже стоит
+        // сам тумблер, и значение там столкнулось бы с ним.
         Column(Modifier.weight(1f)) {
             Text(title, style = MaterialTheme.typography.bodyLarge, color = if (checked) scheme.onPrimary else scheme.onSurface)
             Text(

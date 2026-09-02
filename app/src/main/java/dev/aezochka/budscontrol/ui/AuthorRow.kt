@@ -5,8 +5,8 @@ import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -67,15 +67,15 @@ fun AuthorRow() {
                 tint = scheme.primary, modifier = Modifier.size(19.dp),
             )
         }
-        Column(Modifier.fillMaxWidth(0.8f)) {
-            Text(
-                tr("author"),
-                style = MaterialTheme.typography.bodyLarge, color = scheme.onSurface,
-            )
-            Text(
-                "@$TELEGRAM",
-                style = MaterialTheme.typography.bodySmall, color = scheme.primary,
-            )
-        }
+        // Тот же вид, что у остальных строк: слева подпись, справа значение.
+        Text(
+            tr("author"),
+            style = MaterialTheme.typography.bodyLarge, color = scheme.onSurface,
+        )
+        Spacer(Modifier.weight(1f))
+        Text(
+            "@$TELEGRAM",
+            style = MaterialTheme.typography.bodyMedium, color = scheme.primary,
+        )
     }
 }

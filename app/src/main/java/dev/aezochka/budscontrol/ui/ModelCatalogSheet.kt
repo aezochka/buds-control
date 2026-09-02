@@ -52,6 +52,9 @@ import dev.aezochka.budscontrol.i18n.tr
 @Composable
 fun ModelCatalogSheet(
     onPick: (ModelSpec) -> Unit,
+    /** Уже добавленные модели: для них кнопка становится «убрать». */
+    addedIds: Set<String> = emptySet(),
+    onRemove: (ModelSpec) -> Unit = {},
     onDismiss: () -> Unit,
 ) {
     val scheme = MaterialTheme.colorScheme
@@ -123,7 +126,12 @@ fun ModelCatalogSheet(
             } else {
                 LazyColumn(Modifier.height(400.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
                     items(results, key = { it.modelId }) { spec ->
-                        ModelRow(spec) { onPick(spec) }
+                        val added = spec.modelId in addedIds
+                        ModelRow(
+                            spec = spec,
+                            added = added,
+                            onToggle = { if (added) onRemove(spec) else onPick(spec) },
+                        )
                     }
                 }
             }
@@ -133,7 +141,7 @@ fun ModelCatalogSheet(
 }
 
 @Composable
-private fun ModelRow(spec: ModelSpec, onPick: () -> Unit) {
+private fun ModelRow(spec: ModelSpec, added: Boolean, onToggle: () -> Unit) {
     val scheme = MaterialTheme.colorScheme
     var expanded by remember { mutableStateOf(false) }
     val bg by animateColorAsState(
@@ -163,14 +171,20 @@ private fun ModelRow(spec: ModelSpec, onPick: () -> Unit) {
                 )
             }
             Spacer(Modifier.fillMaxWidth(0.1f))
+            // Добавленную модель можно убрать тем же местом: раньше кнопка
+            // всегда добавляла, и удалить её из списка было нельзя.
             Text(
-                tr("add"),
+                if (added) tr("remove") else tr("add"),
                 style = MaterialTheme.typography.labelMedium,
-                color = scheme.primary,
+                color = if (added) scheme.error else scheme.primary,
                 modifier = Modifier
                     .clip(RoundedCornerShape(14.dp))
-                    .pressBounce { onPick() }
-                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                    .background(
+                        if (added) scheme.error.copy(alpha = 0.14f)
+                        else scheme.primary.copy(alpha = 0.14f)
+                    )
+                    .pressBounce { onToggle() }
+                    .padding(horizontal = 12.dp, vertical = 7.dp),
             )
         }
 

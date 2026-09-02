@@ -139,6 +139,30 @@ class BudsViewModel(app: Application) : AndroidViewModel(app) {
         list.firstOrNull { it.isSelected }?.let { session.connect(it.address, it.displayName) }
     }
 
+    /**
+     * Удаляет модель, добавленную из каталога.
+     *
+     * У таких профилей нет MAC-адреса, поэтому удаление по адресу для них
+     * не работало и убрать их было нельзя.
+     */
+    fun removeCatalogModel(modelId: String) = viewModelScope.launch {
+        val id = "catalog:$modelId"
+        val list = store.profiles.first().filterNot { it.id == id }
+        val fixed = if (list.none { it.isSelected } && list.isNotEmpty()) {
+            list.mapIndexed { i, p -> p.copy(isSelected = i == 0) }
+        } else list
+        store.saveProfiles(fixed)
+    }
+
+    /** Модели из каталога, уже добавленные в список. */
+    val catalogModelIds: StateFlow<Set<String>> = profiles
+        .map { list ->
+            list.filter { it.id.startsWith("catalog:") }
+                .map { it.id.removePrefix("catalog:") }
+                .toSet()
+        }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())
+
     fun removeProfileByAddress(address: String) = viewModelScope.launch {
         val list = store.profiles.first().filterNot { it.address == address }
         // Если сняли активный — активируем первый оставшийся.
@@ -330,9 +354,26 @@ class BudsViewModel(app: Application) : AndroidViewModel(app) {
      */
     private val faceDownSensor = FaceDownSensor(app)
 
-    /** 0f — экран вверх, 1f — экран вниз. Для плавного размытия названия. */
-    val faceDownAmount: StateFlow<Float> = faceDownSensor.faceDownAmount
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(2_000), 0f)
+    /**
+     * Размытие названия работает как выключатель, а не как индикатор наклона.
+     *
+     * Перевернул экраном вниз — размытие включилось и осталось, даже когда
+     * телефон снова в руках. Перевернул ещё раз — выключилось. Поэтому здесь
+     * ловим сам факт переворота и щёлкаем состояние, а не отдаём наружу
+     * текущий наклон.
+     */
+    private val _nameBlurred = MutableStateFlow(false)
+    val nameBlurred: StateFlow<Boolean> = _nameBlurred.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            faceDownSensor.faceDown.collect { down ->
+                // Реагируем только на вход в положение «экраном вниз»:
+                // возврат в нормальное положение состояние не меняет.
+                if (down) _nameBlurred.value = !_nameBlurred.value
+            }
+        }
+    }
 
     /**
      * AirPods и Beats: состояние приходит BLE-рекламой, без подключения.

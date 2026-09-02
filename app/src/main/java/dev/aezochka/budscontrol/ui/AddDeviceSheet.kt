@@ -19,7 +19,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Close
-import androidx.compose.material.icons.outlined.FormatListBulleted
 import androidx.compose.material.icons.outlined.Headphones
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -46,7 +45,6 @@ import dev.aezochka.budscontrol.i18n.tr
 @Composable
 fun AddDeviceSheet(
     vm: BudsViewModel,
-    onOpenCatalog: () -> Unit = {},
     onDismiss: () -> Unit,
 ) {
     val scheme = MaterialTheme.colorScheme
@@ -78,34 +76,8 @@ fun AddDeviceSheet(
                 }
                 if (scanning) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp, color = scheme.primary)
             }
-            Spacer(Modifier.height(14.dp))
-            // Вход в каталог: посмотреть, что умеет модель, и добавить её
-            // без наличия самой гарнитуры под рукой.
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(scheme.primary.copy(alpha = 0.16f))
-                    // Каталог открываем ВМЕСТО этой шторки, а не поверх неё:
-                    // вложенные ModalBottomSheet роняли приложение.
-                    .pressBounce { vm.stopScan(); onOpenCatalog() }
-                    .padding(horizontal = 15.dp, vertical = 13.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(11.dp),
-            ) {
-                Icon(Icons.Outlined.FormatListBulleted, null, tint = scheme.primary, modifier = Modifier.size(19.dp))
-                Column(Modifier.fillMaxWidth(0.9f)) {
-                    Text(
-                        tr("catalogTitle"),
-                        style = MaterialTheme.typography.bodyMedium, color = scheme.onSurface,
-                    )
-                    Text(
-                        tr("catalogOpenHint"),
-                        style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant,
-                    )
-                }
-            }
-
+            // Каталог моделей переехал в «Ещё»: в шторке поиска он мешал
+            // главному действию — выбрать реальные наушники рядом.
             Spacer(Modifier.height(16.dp))
 
             if (found.isEmpty()) {

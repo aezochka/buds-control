@@ -1,7 +1,9 @@
 package dev.aezochka.budscontrol.ui
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
@@ -92,6 +94,14 @@ fun ProfileRow(
                 }
                 val shift by animateIntAsState(targetShift, Motion.spatial(), label = "neighbourShift")
                 val lift by animateFloatAsState(if (dragging) 1.07f else 1f, Motion.spatialFast(), label = "lift")
+                // Сглаживаем сам палец: сырой dragOffset шёл в translationX
+                // напрямую, и чип рвано скакал за пальцем. Пружина без
+                // перелёта даёт плавность, но не отстаёт от жеста.
+                val smoothDrag by animateFloatAsState(
+                    if (dragging) dragOffset else 0f,
+                    spring(dampingRatio = 1f, stiffness = Spring.StiffnessHigh),
+                    label = "smoothDrag",
+                )
                 val bg by animateColorAsState(
                     when {
                         active -> scheme.primary
@@ -107,7 +117,7 @@ fun ProfileRow(
                         .graphicsLayer {
                             scaleX = lift
                             scaleY = lift
-                            translationX = if (dragging) dragOffset else shift * (chipWidthPx * 0.34f)
+                            translationX = if (dragging) smoothDrag else shift * (chipWidthPx * 0.34f)
                             shadowElevation = if (dragging) 20f else 0f
                         }
                         .clip(CircleShape)

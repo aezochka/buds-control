@@ -26,37 +26,6 @@ class FaceDownSensor(context: Context) {
 
     val available: Boolean get() = sensor != null
 
-    /**
-     * Насколько телефон повёрнут экраном вниз: 0f — экран вверх, 1f — вниз.
-     *
-     * Непрерывное значение, а не да/нет: по нему размытие названия нарастает
-     * плавно, как рычаг, и так же плавно уходит обратно.
-     */
-    val faceDownAmount: Flow<Float> = callbackFlow {
-        val mgr = manager
-        val acc = sensor
-        if (mgr == null || acc == null) {
-            trySend(0f)
-            awaitClose { }
-            return@callbackFlow
-        }
-
-        val listener = object : SensorEventListener {
-            override fun onSensorChanged(event: SensorEvent) {
-                val z = event.values.getOrNull(2) ?: return
-                // Рабочий диапазон -3..-8: до -3 ещё «на боку», после -8
-                // уже уверенно лицом в стол.
-                val amount = ((-z - 3f) / 5f).coerceIn(0f, 1f)
-                trySend(amount)
-            }
-
-            override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) = Unit
-        }
-
-        mgr.registerListener(listener, acc, SensorManager.SENSOR_DELAY_UI)
-        awaitClose { mgr.unregisterListener(listener) }
-    }
-
     val faceDown: Flow<Boolean> = callbackFlow {
         val mgr = manager
         val acc = sensor
@@ -84,8 +53,10 @@ class FaceDownSensor(context: Context) {
             override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) = Unit
         }
 
-        // SENSOR_DELAY_UI: чаще не нужно, а батарею не жжём.
-        mgr.registerListener(listener, acc, SensorManager.SENSOR_DELAY_UI)
+        // Нам нужен только факт переворота, поэтому берём самый редкий поток
+        // событий: SENSOR_DELAY_UI дёргал UI десятки раз в секунду и давал
+        // микрофризы.
+        mgr.registerListener(listener, acc, SensorManager.SENSOR_DELAY_NORMAL)
         awaitClose { mgr.unregisterListener(listener) }
     }.distinctUntilChanged()
 }

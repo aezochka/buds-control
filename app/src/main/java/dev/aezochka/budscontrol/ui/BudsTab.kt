@@ -120,27 +120,15 @@ fun BudsTab(vm: BudsViewModel, onDragActive: (Boolean) -> Unit = {}) {
 
     var showEq by remember { mutableStateOf(false) }
     var showAddDevice by remember { mutableStateOf(false) }
-    var showCatalog by remember { mutableStateOf(false) }
     var showPhoto by remember { mutableStateOf(false) }
     var showSleep by remember { mutableStateOf(false) }
     var showVolume by remember { mutableStateOf(false) }
 
     // Шторки взаимоисключающие: две сразу роняли приложение.
     if (showAddDevice) {
-        AddDeviceSheet(
-            vm = vm,
-            onOpenCatalog = { showAddDevice = false; showCatalog = true },
-        ) { showAddDevice = false }
+        AddDeviceSheet(vm = vm) { showAddDevice = false }
     }
-    if (showCatalog) {
-        ModelCatalogSheet(
-            onPick = { spec ->
-                vm.addModelFromCatalog(spec)
-                showCatalog = false
-            },
-            onDismiss = { showCatalog = false },
-        )
-    }
+
     if (showPhoto && selected != null) {
         PhotoSheet(
             vm = vm,
@@ -183,11 +171,17 @@ fun BudsTab(vm: BudsViewModel, onDragActive: (Boolean) -> Unit = {}) {
             .collect { (index, offset) -> if (index == 0 && offset < 12) barVisible = true }
     }
 
-    // Размытие названия по наклону телефона. Настройка позволяет отключить.
+    // Размытие названия — переключатель: держится, пока телефон не перевернут
+    // ещё раз. Анимация нужна только для плавного перехода между двумя
+    // состояниями, а не для отслеживания наклона.
     val budsSettings by vm.settings.collectAsState()
-    val faceDownAmount by vm.faceDownAmount.collectAsState()
-    val blurTarget = if (budsSettings.hideNameOnScroll) faceDownAmount * 9f else 0f
-    val nameBlurValue by animateFloatAsState(blurTarget, Motion.effects(), label = "nameBlur")
+    val blurred by vm.nameBlurred.collectAsState()
+    val blurTarget = if (budsSettings.hideNameOnScroll && blurred) 9f else 0f
+    val nameBlurValue by animateFloatAsState(
+        blurTarget,
+        tween(durationMillis = 420, easing = FastOutSlowInEasing),
+        label = "nameBlur",
+    )
     val nameBlur = nameBlurValue.dp
 
     Column(Modifier.fillMaxWidth().nestedScroll(scrollConnection)) {
@@ -205,6 +199,16 @@ fun BudsTab(vm: BudsViewModel, onDragActive: (Boolean) -> Unit = {}) {
                     onDragActive = onDragActive,
                 )
             }
+        }
+
+        // Когда шторка спрятана, статус-бар перестаёт её отодвигать, и фото
+        // подъезжает вплотную к верху. Добавляем отступ ровно на это время.
+        AnimatedVisibility(
+            visible = !barVisible,
+            enter = expandVertically(Motion.spatial()),
+            exit = shrinkVertically(Motion.spatial()),
+        ) {
+            Spacer(Modifier.statusBarsPadding().height(18.dp))
         }
 
         LazyColumn(Modifier.fillMaxWidth(), state = listState) {

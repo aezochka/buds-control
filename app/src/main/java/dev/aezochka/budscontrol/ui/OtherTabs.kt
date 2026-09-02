@@ -35,6 +35,7 @@ import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material.icons.outlined.BatteryAlert
 import androidx.compose.material.icons.outlined.MusicNote
 import androidx.compose.material.icons.outlined.Download
+import androidx.compose.material.icons.outlined.FormatListBulleted
 import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.TouchApp
@@ -71,7 +72,18 @@ fun SettingsTab(vm: BudsViewModel) {
     var showLang by remember { mutableStateOf(false) }
     var showSleep by remember { mutableStateOf(false) }
     var showVolume by remember { mutableStateOf(false) }
+    var showCatalog by remember { mutableStateOf(false) }
+    val catalogIds by vm.catalogModelIds.collectAsState()
     val sleepMin by vm.sleepMinutes.collectAsState()
+
+    if (showCatalog) {
+        ModelCatalogSheet(
+            onPick = { vm.addModelFromCatalog(it) },
+            addedIds = catalogIds,
+            onRemove = { vm.removeCatalogModel(it.modelId) },
+            onDismiss = { showCatalog = false },
+        )
+    }
     val limit by vm.volumeLimit.collectAsState()
     if (showEq) { EqualizerSheet(vm) { showEq = false } }
     if (showLang) { LanguageSheet(vm) { showLang = false } }
@@ -178,6 +190,14 @@ fun SettingsTab(vm: BudsViewModel) {
                     )
                     AuthorRow(shape = groupShape(3, 4))
                 }
+
+                // Каталог моделей: справочник, поэтому живёт в настройках,
+                // а не в шторке подключения.
+                SettingsRow(
+                    Icons.Outlined.FormatListBulleted, tr("catalogTitle"),
+                    tr("catalogOpenHint"),
+                    onClick = { showCatalog = true },
+                )
 
                 // Блок 4: сохранённые наушники.
                 if (profiles.isNotEmpty()) {

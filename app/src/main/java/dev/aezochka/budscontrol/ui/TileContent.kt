@@ -19,6 +19,7 @@ import androidx.compose.material.icons.outlined.Memory
 import androidx.compose.material.icons.outlined.NoiseAware
 import androidx.compose.material.icons.outlined.NotificationsActive
 import androidx.compose.material.icons.outlined.Devices
+import androidx.compose.material.icons.outlined.Hearing
 import androidx.compose.material.icons.outlined.SurroundSound
 import androidx.compose.material.icons.outlined.SportsEsports
 import androidx.compose.material.icons.outlined.VolumeUp
@@ -104,6 +105,69 @@ fun TileContent(
                 vm.setGameMode(!live.gameMode)
             },
         )
+
+        // AirPods/Beats: заряд из BLE-рекламы. Плитка появляется сама, когда
+        // такие наушники рядом, и не мешает основной гарнитуре.
+        "airpods" -> {
+            val pods by vm.applePods.collectAsState()
+            val p = pods
+            StatTile(
+                icon = Icons.Outlined.Hearing,
+                label = p?.status?.model ?: "AirPods",
+                value = if (p == null) tr("searching") else buildString {
+                    append(p.status.leftBattery?.let { "L $it%" } ?: "L —")
+                    append("  ")
+                    append(p.status.rightBattery?.let { "R $it%" } ?: "R —")
+                },
+                active = p != null,
+                onClick = null,
+                bottomContent = { primary, secondary ->
+                    val case = p?.status?.caseBattery
+                    Text(
+                        if (case != null) "${tr("caseTitle")} $case%" else tr("readOnly"),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = secondary,
+                        maxLines = 1,
+                    )
+                },
+            )
+        }
+
+        // Наушник в ухе — датчик носки. Есть и у AirPods, и у моделей с
+        // определением посадки.
+        "inear" -> {
+            val pods by vm.applePods.collectAsState()
+            val s = pods?.status
+            StatTile(
+                icon = Icons.Outlined.Hearing,
+                label = tr("wearDetect"),
+                value = when {
+                    s == null -> tr("noData")
+                    s.leftInEar && s.rightInEar -> tr("bothInEar")
+                    s.leftInEar -> tr("leftBud")
+                    s.rightInEar -> tr("rightBud")
+                    else -> tr("notWorn")
+                },
+                active = s?.let { it.leftInEar || it.rightInEar } == true,
+                onClick = null,
+            )
+        }
+
+        "lid" -> {
+            val pods by vm.applePods.collectAsState()
+            val s = pods?.status
+            StatTile(
+                icon = Icons.Outlined.Inventory2,
+                label = tr("caseLid"),
+                value = when {
+                    s == null -> tr("noData")
+                    s.lidOpen -> tr("lidOpen")
+                    else -> tr("lidClosed")
+                },
+                active = s?.lidOpen == true,
+                onClick = null,
+            )
+        }
 
         "spatial" -> StatTile(
             icon = Icons.Outlined.SurroundSound,

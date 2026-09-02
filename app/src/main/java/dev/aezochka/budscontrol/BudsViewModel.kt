@@ -22,6 +22,8 @@ import dev.aezochka.budscontrol.data.ModelSpec
 import dev.aezochka.budscontrol.data.UserSettings
 import dev.aezochka.budscontrol.device.BluetoothScanner
 import dev.aezochka.budscontrol.device.BudsSession
+import dev.aezochka.budscontrol.device.ApplePodsScanner
+import dev.aezochka.budscontrol.device.FaceDownSensor
 import dev.aezochka.budscontrol.device.LiveState
 import dev.aezochka.budscontrol.proto.TouchAction
 import dev.aezochka.budscontrol.proto.TouchSide
@@ -319,6 +321,26 @@ class BudsViewModel(app: Application) : AndroidViewModel(app) {
     fun setHideNameOnScroll(on: Boolean) = viewModelScope.launch {
         store.saveSettings(settings.value.copy(hideNameOnScroll = on))
     }
+
+    /**
+     * Телефон лежит экраном вниз.
+     *
+     * Поток живёт, пока подписан UI: датчик снимается автоматически, поэтому
+     * в фоне ничего не тратится.
+     */
+    private val faceDownSensor = FaceDownSensor(app)
+    val faceDown: StateFlow<Boolean> = faceDownSensor.faceDown
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(2_000), false)
+
+    /**
+     * AirPods и Beats: состояние приходит BLE-рекламой, без подключения.
+     *
+     * Поэтому они не занимают SPP-сессию и живут параллельно с обычной
+     * гарнитурой. Управления нет — только чтение, об этом честно в UI.
+     */
+    private val applePodsScanner = ApplePodsScanner(app)
+    val applePods: StateFlow<ApplePodsScanner.Found?> = applePodsScanner.scan()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(3_000), null)
 
     fun setSoundEffects(on: Boolean) = viewModelScope.launch {
         store.saveSettings(settings.value.copy(soundEffects = on))

@@ -16,7 +16,6 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -65,9 +64,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
-import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
@@ -161,30 +158,16 @@ fun BudsTab(vm: BudsViewModel, onDragActive: (Boolean) -> Unit = {}) {
     // По индексу элемента не работало: элементов в списке всего три,
     // firstVisibleItemIndex почти не менялся и панель висела всегда.
     val listState = rememberLazyListState()
-    // Скрытие можно выключить в настройках — тогда панель закреплена.
     val budsSettings by vm.settings.collectAsState()
     val hideOnScroll = budsSettings.hideNameOnScroll
+    // Телефон экраном вниз — название прячется, поднял — вернулось.
+    val faceDown by vm.faceDown.collectAsState()
     var barVisible by remember { mutableStateOf(true) }
-    val scrollConnection = remember(hideOnScroll) {
-        object : NestedScrollConnection {
-            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                if (!hideOnScroll) return Offset.Zero
-                val dy = available.y
-                if (dy < -4f) barVisible = false   // палец вверх => контент вниз
-                if (dy > 4f) barVisible = true
-                return Offset.Zero
-            }
-        }
-    }
+    val scrollConnection = remember { object : NestedScrollConnection {} }
 
-    // Наверху списка панель всегда открыта.
-    LaunchedEffect(listState, hideOnScroll) {
-        if (!hideOnScroll) {
-            barVisible = true
-            return@LaunchedEffect
-        }
-        snapshotFlow { listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset }
-            .collect { (index, offset) -> if (index == 0 && offset < 12) barVisible = true }
+    // Панель видна, пока телефон не лежит экраном вниз.
+    LaunchedEffect(hideOnScroll, faceDown) {
+        barVisible = !(hideOnScroll && faceDown)
     }
 
     Column(Modifier.fillMaxWidth().nestedScroll(scrollConnection)) {
@@ -506,6 +489,7 @@ private fun BentoGrid(
 ) {
     val scheme = MaterialTheme.colorScheme
     val live by vm.live.collectAsState()
+    val applePods by vm.applePods.collectAsState()
 
     Column(
         Modifier.padding(horizontal = 20.dp),
@@ -524,6 +508,13 @@ private fun BentoGrid(
             if (show("game")) add("game")
             if (show("spatial")) add("spatial")
             if (show("multipoint")) add("multipoint")
+            // AirPods рядом — показываем их плитки. Они читаются рекламой,
+            // поэтому не зависят от SPP-подключения.
+            if (applePods != null) {
+                add("airpods")
+                add("inear")
+                add("lid")
+            }
         }
 
         big.chunked(2).forEach { pair ->

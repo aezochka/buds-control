@@ -150,7 +150,10 @@ class Strings(private val code: String) {
             "updateReady" to "Загружено, можно ставить", "updateLatest" to "Последняя версия",
             "crashTitle" to "Отчёт о сбое", "crashHint" to "Скопируй и пришли мне",
             "author" to "Автор",
-            "hideName" to "Прятать название", "hideNameHint" to "Скрывать панель при прокрутке вниз",
+            "hideName" to "Прятать название", "hideNameHint" to "Когда телефон лежит экраном вниз",
+            "searching" to "ищу рядом", "readOnly" to "только чтение", "wearDetect" to "Ношение",
+            "bothInEar" to "Оба в ушах", "notWorn" to "Сняты", "caseLid" to "Крышка",
+            "lidOpen" to "Открыта", "lidClosed" to "Закрыта",
         )
 
         private val EN = mapOf(
@@ -233,7 +236,10 @@ class Strings(private val code: String) {
             "updateReady" to "Downloaded, ready to install", "updateLatest" to "Up to date",
             "crashTitle" to "Crash report", "crashHint" to "Copy it and send it over",
             "author" to "Author",
-            "hideName" to "Hide the name", "hideNameHint" to "Collapse the bar when scrolling down",
+            "hideName" to "Hide the name", "hideNameHint" to "When the phone lies face down",
+            "searching" to "looking nearby", "readOnly" to "read only", "wearDetect" to "Wearing",
+            "bothInEar" to "Both in ears", "notWorn" to "Not worn", "caseLid" to "Lid",
+            "lidOpen" to "Open", "lidClosed" to "Closed",
         )
 
         // Остальные языки: переведено главное, остальное падает на английский.
@@ -268,7 +274,10 @@ class Strings(private val code: String) {
             "updateReady" to "Завантажено, можна ставити", "updateLatest" to "Найновіша версія",
             "crashTitle" to "Звіт про збій", "crashHint" to "Скопіюй і надішли мені",
             "author" to "Автор",
-            "hideName" to "Приховувати назву", "hideNameHint" to "Ховати панель під час прокручування",
+            "hideName" to "Приховувати назву", "hideNameHint" to "Коли телефон лежить екраном вниз",
+            "searching" to "шукаю поруч", "readOnly" to "лише читання", "wearDetect" to "Носіння",
+            "bothInEar" to "Обидва у вухах", "notWorn" to "Зняті", "caseLid" to "Кришка",
+            "lidOpen" to "Відкрита", "lidClosed" to "Закрита",
         )
 
         private val DE = mapOf(
@@ -302,7 +311,10 @@ class Strings(private val code: String) {
             "updateReady" to "Geladen, bereit zur Installation", "updateLatest" to "Aktuell",
             "crashTitle" to "Fehlerbericht", "crashHint" to "Kopieren und senden",
             "author" to "Autor",
-            "hideName" to "Namen ausblenden", "hideNameHint" to "Leiste beim Scrollen einklappen",
+            "hideName" to "Namen ausblenden", "hideNameHint" to "Wenn das Telefon mit dem Display nach unten liegt",
+            "searching" to "suche in der Nähe", "readOnly" to "nur lesen", "wearDetect" to "Tragen",
+            "bothInEar" to "Beide im Ohr", "notWorn" to "Abgenommen", "caseLid" to "Deckel",
+            "lidOpen" to "Offen", "lidClosed" to "Geschlossen",
         )
 
         private val ES = mapOf(
@@ -336,7 +348,10 @@ class Strings(private val code: String) {
             "updateReady" to "Descargado, listo para instalar", "updateLatest" to "Actualizado",
             "crashTitle" to "Informe de fallo", "crashHint" to "Cópialo y envíalo",
             "author" to "Autor",
-            "hideName" to "Ocultar el nombre", "hideNameHint" to "Colapsar la barra al desplazar",
+            "hideName" to "Ocultar el nombre", "hideNameHint" to "Cuando el teléfono está boca abajo",
+            "searching" to "buscando cerca", "readOnly" to "solo lectura", "wearDetect" to "Uso",
+            "bothInEar" to "Ambos puestos", "notWorn" to "Sin poner", "caseLid" to "Tapa",
+            "lidOpen" to "Abierta", "lidClosed" to "Cerrada",
         )
 
         private val PL = mapOf(
@@ -370,7 +385,10 @@ class Strings(private val code: String) {
             "updateReady" to "Pobrano, gotowe do instalacji", "updateLatest" to "Aktualna wersja",
             "crashTitle" to "Raport awarii", "crashHint" to "Skopiuj i wyślij",
             "author" to "Autor",
-            "hideName" to "Ukrywaj nazwę", "hideNameHint" to "Zwijaj panel przy przewijaniu",
+            "hideName" to "Ukrywaj nazwę", "hideNameHint" to "Gdy telefon leży ekranem w dół",
+            "searching" to "szukam w pobliżu", "readOnly" to "tylko odczyt", "wearDetect" to "Noszenie",
+            "bothInEar" to "Oba w uszach", "notWorn" to "Zdjęte", "caseLid" to "Klapka",
+            "lidOpen" to "Otwarta", "lidClosed" to "Zamknięta",
         )
 
         private val TR = mapOf(
@@ -404,7 +422,10 @@ class Strings(private val code: String) {
             "updateReady" to "İndirildi, kurulabilir", "updateLatest" to "Güncel",
             "crashTitle" to "Çökme raporu", "crashHint" to "Kopyala ve gönder",
             "author" to "Geliştirici",
-            "hideName" to "Adı gizle", "hideNameHint" to "Kaydırırken çubuğu daralt",
+            "hideName" to "Adı gizle", "hideNameHint" to "Telefon ekranı aşağı bakarken",
+            "searching" to "yakında arıyorum", "readOnly" to "salt okunur", "wearDetect" to "Takma",
+            "bothInEar" to "İkisi de kulakta", "notWorn" to "Takılı değil", "caseLid" to "Kapak",
+            "lidOpen" to "Açık", "lidClosed" to "Kapalı",
         )
 
         private val ZH = mapOf(
@@ -438,7 +459,10 @@ class Strings(private val code: String) {
             "updateReady" to "已下载，可安装", "updateLatest" to "已是最新版本",
             "crashTitle" to "崩溃报告", "crashHint" to "复制并发送给我",
             "author" to "作者",
-            "hideName" to "隐藏名称", "hideNameHint" to "向下滚动时收起顶栏",
+            "hideName" to "隐藏名称", "hideNameHint" to "手机屏幕朝下时",
+            "searching" to "正在附近搜索", "readOnly" to "仅读取", "wearDetect" to "佩戴",
+            "bothInEar" to "双耳已戴", "notWorn" to "未佩戴", "caseLid" to "仓盖",
+            "lidOpen" to "已打开", "lidClosed" to "已关闭",
         )
     }
 }

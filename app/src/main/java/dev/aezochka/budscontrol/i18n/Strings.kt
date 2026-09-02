@@ -157,6 +157,8 @@ class Strings(private val code: String) {
             "testAlert" to "Проверить сигнал", "testAlertHint" to "Музыка приглушится и вернётся",
             "sectionSound" to "ЗВУК", "sectionFeedback" to "ОТКЛИК И УВЕДОМЛЕНИЯ",
             "sectionApp" to "ПРИЛОЖЕНИЕ", "sectionDevices" to "УСТРОЙСТВА",
+            "sectionSoundHint" to "Эквалайзер, таймер, громкость", "sectionFeedbackHint" to "Вибро, звуки, уведомления",
+            "sectionAppHint" to "Обновление, язык, тема", "sectionDevicesHint" to "Каталог и сохранённые наушники",
         )
 
         private val EN = mapOf(
@@ -246,6 +248,8 @@ class Strings(private val code: String) {
             "testAlert" to "Test the alert", "testAlertHint" to "Music ducks, then comes back",
             "sectionSound" to "SOUND", "sectionFeedback" to "FEEDBACK & ALERTS",
             "sectionApp" to "APP", "sectionDevices" to "DEVICES",
+            "sectionSoundHint" to "Equalizer, timer, volume", "sectionFeedbackHint" to "Haptics, sounds, alerts",
+            "sectionAppHint" to "Updates, language, theme", "sectionDevicesHint" to "Catalog and saved buds",
         )
 
         // Остальные языки: переведено главное, остальное падает на английский.
@@ -287,6 +291,8 @@ class Strings(private val code: String) {
             "testAlert" to "Перевірити сигнал", "testAlertHint" to "Музика стишиться і повернеться",
             "sectionSound" to "ЗВУК", "sectionFeedback" to "ВІДДАЧА ТА СПОВІЩЕННЯ",
             "sectionApp" to "ДОДАТОК", "sectionDevices" to "ПРИСТРОЇ",
+            "sectionSoundHint" to "Еквалайзер, таймер, гучність", "sectionFeedbackHint" to "Вібро, звуки, сповіщення",
+            "sectionAppHint" to "Оновлення, мова, тема", "sectionDevicesHint" to "Каталог і збережені навушники",
         )
 
         private val DE = mapOf(
@@ -327,6 +333,8 @@ class Strings(private val code: String) {
             "testAlert" to "Signal testen", "testAlertHint" to "Musik wird leiser und kommt zurück",
             "sectionSound" to "KLANG", "sectionFeedback" to "FEEDBACK & HINWEISE",
             "sectionApp" to "APP", "sectionDevices" to "GERÄTE",
+            "sectionSoundHint" to "Equalizer, Timer, Lautstärke", "sectionFeedbackHint" to "Haptik, Töne, Hinweise",
+            "sectionAppHint" to "Updates, Sprache, Thema", "sectionDevicesHint" to "Katalog und gespeicherte Buds",
         )
 
         private val ES = mapOf(
@@ -367,6 +375,8 @@ class Strings(private val code: String) {
             "testAlert" to "Probar el aviso", "testAlertHint" to "La música baja y vuelve",
             "sectionSound" to "SONIDO", "sectionFeedback" to "RESPUESTA Y AVISOS",
             "sectionApp" to "APLICACIÓN", "sectionDevices" to "DISPOSITIVOS",
+            "sectionSoundHint" to "Ecualizador, temporizador, volumen", "sectionFeedbackHint" to "Vibración, sonidos, avisos",
+            "sectionAppHint" to "Actualización, idioma, tema", "sectionDevicesHint" to "Catálogo y auriculares guardados",
         )
 
         private val PL = mapOf(
@@ -407,6 +417,8 @@ class Strings(private val code: String) {
             "testAlert" to "Sprawdź sygnał", "testAlertHint" to "Muzyka ścisza się i wraca",
             "sectionSound" to "DŹWIĘK", "sectionFeedback" to "REAKCJE I POWIADOMIENIA",
             "sectionApp" to "APLIKACJA", "sectionDevices" to "URZĄDZENIA",
+            "sectionSoundHint" to "Korektor, timer, głośność", "sectionFeedbackHint" to "Wibracje, dźwięki, alerty",
+            "sectionAppHint" to "Aktualizacja, język, motyw", "sectionDevicesHint" to "Katalog i zapisane słuchawki",
         )
 
         private val TR = mapOf(
@@ -447,6 +459,8 @@ class Strings(private val code: String) {
             "testAlert" to "Uyarıyı dene", "testAlertHint" to "Müzik kısılır ve geri döner",
             "sectionSound" to "SES", "sectionFeedback" to "GERİ BİLDİRİM VE UYARILAR",
             "sectionApp" to "UYGULAMA", "sectionDevices" to "CİHAZLAR",
+            "sectionSoundHint" to "Ekolayzer, zamanlayıcı, ses", "sectionFeedbackHint" to "Titreşim, sesler, uyarılar",
+            "sectionAppHint" to "Güncelleme, dil, tema", "sectionDevicesHint" to "Katalog ve kayıtlı kulaklıklar",
         )
 
         private val ZH = mapOf(
@@ -487,6 +501,8 @@ class Strings(private val code: String) {
             "testAlert" to "测试提示音", "testAlertHint" to "音乐会先降低再恢复",
             "sectionSound" to "声音", "sectionFeedback" to "反馈与提醒",
             "sectionApp" to "应用", "sectionDevices" to "设备",
+            "sectionSoundHint" to "均衡器、定时器、音量", "sectionFeedbackHint" to "振动、声音、提醒",
+            "sectionAppHint" to "更新、语言、主题", "sectionDevicesHint" to "目录与已保存耳机",
         )
     }
 }

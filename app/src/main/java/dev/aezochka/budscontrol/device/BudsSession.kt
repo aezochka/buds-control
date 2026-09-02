@@ -96,19 +96,19 @@ class BudsSession(private val context: Context) {
     fun connect(address: String, name: String, force: Boolean = false) {
         val s = _state.value
         val alive = conn?.isConnected == true
-        // Живое соединение к тому же адресу не пересоздаём: повторный вызов
-        // не должен рвать рабочий сокет.
-        if (s.address == address && alive && (s.connected || s.connecting)) return
-
-        // Смена устройства: старый сокет ОБЯЗАТЕЛЬНО закрываем, иначе он
-        // остаётся жив, продолжает слать кадры и новое подключение
-        // разваливается — коннект появлялся и снова пропадал.
-        val switching = s.address != null && s.address != address
-        if (force || switching || !alive) {
-            conn?.close()
-            conn = null
+        // Сокет к тому же адресу жив — выходим сразу, не глядя на флаги
+        // состояния. Раньше при alive=true, но connected=false шли дальше и
+        // рвали рабочее соединение: отсюда постоянный реконект.
+        if (s.address == address && alive) {
+            if (!s.connected && !s.connecting) {
+                _state.update { it.copy(connected = true, connecting = false) }
+            }
+            return
         }
-        disconnect()
+
+        // Дальше идём только если сокета нет или это другое устройство.
+        conn?.close()
+        conn = null
         // При переподключении к ТОМУ ЖЕ устройству сохраняем уже известные
         // значения: полный сброс гасил игровой режим и другие тумблеры, и они
         // мигали, пока гарнитура не ответит заново.

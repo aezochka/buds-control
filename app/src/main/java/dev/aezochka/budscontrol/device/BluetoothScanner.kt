@@ -3,6 +3,7 @@ package dev.aezochka.budscontrol.device
 import android.Manifest
 import android.annotation.SuppressLint
 import android.bluetooth.BluetoothAdapter
+import android.bluetooth.BluetoothClass
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothManager
 import android.content.BroadcastReceiver
@@ -78,14 +79,39 @@ class BluetoothScanner(private val context: Context) {
         }
     }
 
+    /**
+     * Только наушники и гарнитуры.
+     *
+     * Раньше проходил любой AUDIO_VIDEO: в списке оказывались колонки,
+     * магнитолы и телевизоры. Теперь смотрим точный подкласс устройства,
+     * а имя — лишь подстраховка для TWS, которые рапортуют класс неверно.
+     */
     @SuppressLint("MissingPermission")
     private fun looksLikeAudio(device: BluetoothDevice): Boolean {
-        // 1024 = AUDIO_VIDEO по major-классу; плюс подстраховка по имени,
-        // т.к. часть TWS рапортует класс некорректно.
-        val major = runCatching { device.bluetoothClass?.majorDeviceClass }.getOrNull()
-        if (major == 1024) return true
+        val deviceClass = runCatching { device.bluetoothClass?.deviceClass }.getOrNull()
+        val headphoneClasses = setOf(
+            BluetoothClass.Device.AUDIO_VIDEO_HEADPHONES,
+            BluetoothClass.Device.AUDIO_VIDEO_WEARABLE_HEADSET,
+            BluetoothClass.Device.AUDIO_VIDEO_HANDSFREE,
+        )
+        if (deviceClass in headphoneClasses) return true
+
+        // Колонки и прочую акустику отсекаем явно, даже если имя похожее.
+        val speakerClasses = setOf(
+            BluetoothClass.Device.AUDIO_VIDEO_LOUDSPEAKER,
+            BluetoothClass.Device.AUDIO_VIDEO_HIFI_AUDIO,
+            BluetoothClass.Device.AUDIO_VIDEO_CAR_AUDIO,
+            BluetoothClass.Device.AUDIO_VIDEO_SET_TOP_BOX,
+            BluetoothClass.Device.AUDIO_VIDEO_VIDEO_DISPLAY_AND_LOUDSPEAKER,
+            BluetoothClass.Device.AUDIO_VIDEO_PORTABLE_AUDIO,
+        )
+        if (deviceClass in speakerClasses) return false
+
         val n = runCatching { device.name }.getOrNull()?.lowercase().orEmpty()
-        return listOf("buds", "enco", "tws", "earbud", "pods", "headset", "headphone", "realme", "oneplus", "oppo")
+        if (n.isEmpty()) return false
+        // Явно не наушники — отбрасываем по имени.
+        if (listOf("speaker", "колонка", "tv", "soundbar", "car", "audio system").any { it in n }) return false
+        return listOf("buds", "enco", "tws", "earbud", "pods", "headset", "headphone", "наушник")
             .any { it in n }
     }
 }

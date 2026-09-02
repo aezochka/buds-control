@@ -99,10 +99,17 @@ class SystemAudioFx(private val context: android.content.Context) {
         pushToService()
     }
 
-    /** Отдаёт текущие уровни сервису, который применяет их к плеерам. */
+    /**
+     * Отдаёт текущие уровни сервису, который применяет их к плеерам.
+     *
+     * Если кривая ровная, сервис останавливаем: держать foreground-сервис
+     * (а значит и его уведомление) ради нулевого эквалайзера незачем.
+     */
     private fun pushToService() {
         val levels = currentGainsDb()
-        if (levels.isEmpty()) {
+        if (levels.isEmpty()) return
+        if (levels.all { it == 0 }) {
+            EqService.stop(context)
             return
         }
         EqService.apply(context, levels)

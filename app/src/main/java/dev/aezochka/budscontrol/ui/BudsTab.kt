@@ -165,10 +165,16 @@ fun BudsTab(vm: BudsViewModel, onDragActive: (Boolean) -> Unit = {}) {
         }
     }
 
-    // Наверху списка панель всегда открыта.
+    // Панель открывается сама, только когда список ДЕЙСТВИТЕЛЬНО в самом
+    // верху и пользователь не тянет вниз. Раньше порог 12px срабатывал во
+    // время жеста, панель раскрывалась и отдавала скролл списку — экран
+    // прыгал наверх и свернуть бар было невозможно.
     LaunchedEffect(listState) {
-        snapshotFlow { listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset }
-            .collect { (index, offset) -> if (index == 0 && offset < 12) barVisible = true }
+        snapshotFlow {
+            listState.firstVisibleItemIndex == 0 &&
+                listState.firstVisibleItemScrollOffset == 0 &&
+                !listState.isScrollInProgress
+        }.collect { atTop -> if (atTop) barVisible = true }
     }
 
     // Размытие названия — переключатель: держится, пока телефон не перевернут

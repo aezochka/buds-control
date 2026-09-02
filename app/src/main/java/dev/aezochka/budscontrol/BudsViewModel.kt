@@ -9,6 +9,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
 import dev.aezochka.budscontrol.audio.AudioTools
 import dev.aezochka.budscontrol.audio.Feedback
+import dev.aezochka.budscontrol.audio.LowBatteryAlert
 import dev.aezochka.budscontrol.notify.SleepNotifier
 import dev.aezochka.budscontrol.audio.SystemAudioFx
 import kotlinx.coroutines.Job
@@ -341,6 +342,11 @@ class BudsViewModel(app: Application) : AndroidViewModel(app) {
             progress = 1f, downloading = false, readyToInstall = true, error = null,
         )
         Updater.install(getApplication(), file)
+    }
+
+    /** Проверка сигнала о низком заряде: приглушение музыки + звук. */
+    fun testLowBatteryAlert() = viewModelScope.launch {
+        LowBatteryAlert.play(getApplication())
     }
 
     fun setHideNameOnScroll(on: Boolean) = viewModelScope.launch {

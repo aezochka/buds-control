@@ -68,6 +68,9 @@ fun ProfileRow(
     var startIndex by remember { mutableStateOf(0) }
 
     val chipWidthPx = with(density) { 132.dp.toPx() }
+    // Тот же зазор, что в Arrangement.spacedBy ниже: сосед должен уехать
+    // ровно на своё место, иначе чипы визуально наезжают друг на друга.
+    val gapPx = with(density) { 8.dp.toPx() }
     val ordered = order.mapNotNull { id -> profiles.firstOrNull { it.id == id } }
 
     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -92,15 +95,18 @@ fun ProfileRow(
                     slots < 0 && index < startIndex && index >= startIndex + slots -> 1
                     else -> 0
                 }
-                val shift by animateIntAsState(targetShift, Motion.spatial(), label = "neighbourShift")
                 val lift by animateFloatAsState(if (dragging) 1.07f else 1f, Motion.spatialFast(), label = "lift")
-                // Сглаживаем сам палец: сырой dragOffset шёл в translationX
-                // напрямую, и чип рвано скакал за пальцем. Пружина без
-                // перелёта даёт плавность, но не отстаёт от жеста.
-                val smoothDrag by animateFloatAsState(
-                    if (dragging) dragOffset else 0f,
-                    spring(dampingRatio = 1f, stiffness = Spring.StiffnessHigh),
-                    label = "smoothDrag",
+                // Палец ведём БЕЗ анимации: сглаживание давало лаг и чип
+                // «догонял» палец. Плавность нужна соседям, а не тому чипу,
+                // который держат в руке.
+                //
+                // Сосед отодвигается на полную ширину чипа с отступом: раньше
+                // сдвиг был 0.34 ширины, и казалось, что он просто дёргается
+                // на месте, а не уступает место.
+                val neighbourShift by animateFloatAsState(
+                    targetShift * (chipWidthPx + gapPx),
+                    spring(dampingRatio = 0.75f, stiffness = Spring.StiffnessMediumLow),
+                    label = "neighbourShift",
                 )
                 val bg by animateColorAsState(
                     when {
@@ -117,7 +123,7 @@ fun ProfileRow(
                         .graphicsLayer {
                             scaleX = lift
                             scaleY = lift
-                            translationX = if (dragging) smoothDrag else shift * (chipWidthPx * 0.34f)
+                            translationX = if (dragging) dragOffset else neighbourShift
                             shadowElevation = if (dragging) 20f else 0f
                         }
                         .clip(CircleShape)
@@ -157,7 +163,10 @@ fun ProfileRow(
                                     dragOffset += amount.x
                                     // Считаем, через сколько позиций уехали, но список
                                     // не трогаем — только показываем сдвиг соседей.
-                                    val moved = (dragOffset / (chipWidthPx * 0.6f)).roundToInt()
+                                    // Порог — половина шага: сосед уступает
+                                    // место ровно когда чип его перекрыл.
+                                    val step = chipWidthPx + gapPx
+                                    val moved = (dragOffset / step).roundToInt()
                                     val limited = moved.coerceIn(-startIndex, order.lastIndex - startIndex)
                                     if (limited != slots) slots = limited
                                 },

@@ -154,6 +154,7 @@ class Strings(private val code: String) {
             "searching" to "ищу рядом", "readOnly" to "только чтение", "wearDetect" to "Ношение",
             "bothInEar" to "Оба в ушах", "notWorn" to "Сняты", "caseLid" to "Крышка",
             "lidOpen" to "Открыта", "lidClosed" to "Закрыта",
+            "testAlert" to "Проверить сигнал", "testAlertHint" to "Музыка приглушится и вернётся",
         )
 
         private val EN = mapOf(
@@ -240,6 +241,7 @@ class Strings(private val code: String) {
             "searching" to "looking nearby", "readOnly" to "read only", "wearDetect" to "Wearing",
             "bothInEar" to "Both in ears", "notWorn" to "Not worn", "caseLid" to "Lid",
             "lidOpen" to "Open", "lidClosed" to "Closed",
+            "testAlert" to "Test the alert", "testAlertHint" to "Music ducks, then comes back",
         )
 
         // Остальные языки: переведено главное, остальное падает на английский.
@@ -278,6 +280,7 @@ class Strings(private val code: String) {
             "searching" to "шукаю поруч", "readOnly" to "лише читання", "wearDetect" to "Носіння",
             "bothInEar" to "Обидва у вухах", "notWorn" to "Зняті", "caseLid" to "Кришка",
             "lidOpen" to "Відкрита", "lidClosed" to "Закрита",
+            "testAlert" to "Перевірити сигнал", "testAlertHint" to "Музика стишиться і повернеться",
         )
 
         private val DE = mapOf(
@@ -315,6 +318,7 @@ class Strings(private val code: String) {
             "searching" to "suche in der Nähe", "readOnly" to "nur lesen", "wearDetect" to "Tragen",
             "bothInEar" to "Beide im Ohr", "notWorn" to "Abgenommen", "caseLid" to "Deckel",
             "lidOpen" to "Offen", "lidClosed" to "Geschlossen",
+            "testAlert" to "Signal testen", "testAlertHint" to "Musik wird leiser und kommt zurück",
         )
 
         private val ES = mapOf(
@@ -352,6 +356,7 @@ class Strings(private val code: String) {
             "searching" to "buscando cerca", "readOnly" to "solo lectura", "wearDetect" to "Uso",
             "bothInEar" to "Ambos puestos", "notWorn" to "Sin poner", "caseLid" to "Tapa",
             "lidOpen" to "Abierta", "lidClosed" to "Cerrada",
+            "testAlert" to "Probar el aviso", "testAlertHint" to "La música baja y vuelve",
         )
 
         private val PL = mapOf(
@@ -389,6 +394,7 @@ class Strings(private val code: String) {
             "searching" to "szukam w pobliżu", "readOnly" to "tylko odczyt", "wearDetect" to "Noszenie",
             "bothInEar" to "Oba w uszach", "notWorn" to "Zdjęte", "caseLid" to "Klapka",
             "lidOpen" to "Otwarta", "lidClosed" to "Zamknięta",
+            "testAlert" to "Sprawdź sygnał", "testAlertHint" to "Muzyka ścisza się i wraca",
         )
 
         private val TR = mapOf(
@@ -426,6 +432,7 @@ class Strings(private val code: String) {
             "searching" to "yakında arıyorum", "readOnly" to "salt okunur", "wearDetect" to "Takma",
             "bothInEar" to "İkisi de kulakta", "notWorn" to "Takılı değil", "caseLid" to "Kapak",
             "lidOpen" to "Açık", "lidClosed" to "Kapalı",
+            "testAlert" to "Uyarıyı dene", "testAlertHint" to "Müzik kısılır ve geri döner",
         )
 
         private val ZH = mapOf(
@@ -463,6 +470,7 @@ class Strings(private val code: String) {
             "searching" to "正在附近搜索", "readOnly" to "仅读取", "wearDetect" to "佩戴",
             "bothInEar" to "双耳已戴", "notWorn" to "未佩戴", "caseLid" to "仓盖",
             "lidOpen" to "已打开", "lidClosed" to "已关闭",
+            "testAlert" to "测试提示音", "testAlertHint" to "音乐会先降低再恢复",
         )
     }
 }

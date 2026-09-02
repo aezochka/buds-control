@@ -60,21 +60,35 @@ class Feedback(private val context: Context) {
 
     private fun vibrate(kind: Kind) {
         val v = vibrator ?: return
+        // hasVibrator() обязателен: на части устройств сервис есть, а мотора
+        // нет, и вызовы молча уходят в никуда.
+        if (!v.hasVibrator()) return
         runCatching {
+            // Амплитуда была 50..120 из 255 — на большинстве телефонов это
+            // не чувствуется вообще. Плюс не все поддерживают амплитуду,
+            // тогда нужен простой одноразовый импульс.
+            val supportsAmplitude = v.hasAmplitudeControl()
             val effect = when (kind) {
-                Kind.Tap -> VibrationEffect.createOneShot(12, 60)
-                Kind.On -> VibrationEffect.createOneShot(22, 120)
-                Kind.Off -> VibrationEffect.createOneShot(16, 80)
-                Kind.Switch -> VibrationEffect.createOneShot(10, 50)
+                Kind.Tap -> oneShot(18, 170, supportsAmplitude)
+                Kind.On -> oneShot(28, 230, supportsAmplitude)
+                Kind.Off -> oneShot(22, 190, supportsAmplitude)
+                Kind.Switch -> oneShot(14, 150, supportsAmplitude)
                 Kind.Alarm -> VibrationEffect.createWaveform(
                     longArrayOf(0, 140, 90, 140, 90, 220),
-                    intArrayOf(0, 180, 0, 180, 0, 255),
+                    intArrayOf(0, 220, 0, 220, 0, 255),
                     -1,
                 )
             }
             v.vandalizeSafe(effect)
         }
     }
+
+    private fun oneShot(ms: Long, amplitude: Int, supportsAmplitude: Boolean): VibrationEffect =
+        if (supportsAmplitude) {
+            VibrationEffect.createOneShot(ms, amplitude)
+        } else {
+            VibrationEffect.createOneShot(ms, VibrationEffect.DEFAULT_AMPLITUDE)
+        }
 
     private fun Vibrator.vandalizeSafe(effect: VibrationEffect) {
         runCatching { vibrate(effect) }
@@ -87,11 +101,11 @@ class Feedback(private val context: Context) {
     private fun tone(kind: Kind) {
         val sampleRate = 44100
         val spec = when (kind) {
-            Kind.Tap -> Spec(0.045, 880.0, 880.0, 0.22)
-            Kind.On -> Spec(0.12, 660.0, 1180.0, 0.30)
-            Kind.Off -> Spec(0.12, 1180.0, 620.0, 0.26)
-            Kind.Switch -> Spec(0.05, 1040.0, 1040.0, 0.18)
-            Kind.Alarm -> Spec(0.8, 520.0, 900.0, 0.36)
+            Kind.Tap -> Spec(0.045, 880.0, 880.0, 0.55)
+            Kind.On -> Spec(0.12, 660.0, 1180.0, 0.70)
+            Kind.Off -> Spec(0.12, 1180.0, 620.0, 0.62)
+            Kind.Switch -> Spec(0.05, 1040.0, 1040.0, 0.48)
+            Kind.Alarm -> Spec(0.8, 520.0, 900.0, 0.85)
         }
         val frames = (sampleRate * spec.seconds).toInt().coerceAtLeast(64)
         val buffer = ShortArray(frames)
@@ -108,8 +122,11 @@ class Feedback(private val context: Context) {
             val track = AudioTrack.Builder()
                 .setAudioAttributes(
                     AudioAttributes.Builder()
-                        .setUsage(AudioAttributes.USAGE_ASSISTANCE_SONIFICATION)
-                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                        // USAGE_MEDIA, а не SONIFICATION: системный канал
+                        // уведомлений часто приглушён или замьючен, и щелчков
+                        // не было слышно вообще.
+                        .setUsage(AudioAttributes.USAGE_MEDIA)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
                         .build()
                 )
                 .setAudioFormat(

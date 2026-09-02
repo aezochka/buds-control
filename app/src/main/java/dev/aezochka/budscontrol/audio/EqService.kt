@@ -130,6 +130,11 @@ class EqService : Service() {
                 .setContentText("Настройки применяются к воспроизведению")
                 .setOngoing(true)
                 .setSilent(true)
+                // Android требует уведомление для foreground-сервиса, но его
+                // можно убрать из глаз: MIN + без времени и badge.
+                .setPriority(NotificationCompat.PRIORITY_MIN)
+                .setShowWhen(false)
+                .setVisibility(NotificationCompat.VISIBILITY_SECRET)
                 .build()
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 startForeground(
@@ -190,6 +195,9 @@ class EqService : Service() {
         getSystemService(NotificationManager::class.java)?.createNotificationChannel(
             NotificationChannel(CHANNEL, "Эквалайзер", NotificationManager.IMPORTANCE_MIN).apply {
                 description = "Держит настройки звука активными"
+                // Ни точки на иконке, ни всплытия: уведомление служебное.
+                setShowBadge(false)
+                lockscreenVisibility = android.app.Notification.VISIBILITY_SECRET
             }
         )
     }

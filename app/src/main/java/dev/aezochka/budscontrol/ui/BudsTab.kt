@@ -185,10 +185,14 @@ fun BudsTab(vm: BudsViewModel, onDragActive: (Boolean) -> Unit = {}) {
     val nameBlur = nameBlurValue.dp
 
     Column(Modifier.fillMaxWidth().nestedScroll(scrollConnection)) {
+        // Верхний бар анимируется тем же движением, что и нижний: раньше он
+        // использовал пружину с перелётом и дёргался на скрытии.
         AnimatedVisibility(
             visible = barVisible,
-            enter = expandVertically(Motion.spatial()) + fadeIn(Motion.effects()),
-            exit = shrinkVertically(Motion.spatial()) + fadeOut(Motion.effects()),
+            enter = expandVertically(tween(280, easing = FastOutSlowInEasing)) +
+                fadeIn(tween(220, easing = FastOutSlowInEasing)),
+            exit = shrinkVertically(tween(240, easing = FastOutSlowInEasing)) +
+                fadeOut(tween(160, easing = FastOutSlowInEasing)),
         ) {
             Column(Modifier.statusBarsPadding().padding(horizontal = 20.dp, vertical = 8.dp)) {
                 ProfileRow(

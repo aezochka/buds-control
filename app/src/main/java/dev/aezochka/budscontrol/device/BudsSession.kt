@@ -96,12 +96,15 @@ class BudsSession(private val context: Context) {
     fun connect(address: String, name: String, force: Boolean = false) {
         val s = _state.value
         val alive = conn?.isConnected == true
-        // Живое соединение к тому же адресу не пересоздаём даже по force:
-        // иначе каждый повторный вызов рвёт рабочий сокет.
+        // Живое соединение к тому же адресу не пересоздаём: повторный вызов
+        // не должен рвать рабочий сокет.
         if (s.address == address && alive && (s.connected || s.connecting)) return
-        if (!force && s.address == address && (s.connected || s.connecting) && alive) return
-        if (force || !alive) {
-            // Роняем мёртвую сессию перед новой попыткой.
+
+        // Смена устройства: старый сокет ОБЯЗАТЕЛЬНО закрываем, иначе он
+        // остаётся жив, продолжает слать кадры и новое подключение
+        // разваливается — коннект появлялся и снова пропадал.
+        val switching = s.address != null && s.address != address
+        if (force || switching || !alive) {
             conn?.close()
             conn = null
         }

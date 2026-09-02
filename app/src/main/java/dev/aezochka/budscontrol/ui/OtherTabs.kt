@@ -34,6 +34,7 @@ import androidx.compose.material.icons.outlined.Vibration
 import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material.icons.outlined.BatteryAlert
 import androidx.compose.material.icons.outlined.MusicNote
+import androidx.compose.material.icons.outlined.NotificationsActive
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.FormatListBulleted
 import androidx.compose.material.icons.outlined.Language
@@ -135,7 +136,7 @@ fun SettingsTab(vm: BudsViewModel) {
                         title = tr("haptics"),
                         subtitle = tr("hapticsHint"),
                         checked = settings.hapticFeedback,
-                        shape = groupShape(0, 5),
+                        shape = groupShape(0, 6),
                         onToggle = { vm.tick(); vm.setHaptic(it) },
                     )
                     SettingsToggle(
@@ -143,7 +144,7 @@ fun SettingsTab(vm: BudsViewModel) {
                         title = tr("sounds"),
                         subtitle = tr("soundsHint"),
                         checked = settings.soundEffects,
-                        shape = groupShape(1, 5),
+                        shape = groupShape(1, 6),
                         onToggle = { vm.setSoundEffects(it) },
                     )
                     SettingsToggle(
@@ -151,7 +152,7 @@ fun SettingsTab(vm: BudsViewModel) {
                         title = tr("autoConnect"),
                         subtitle = tr("autoConnectHint"),
                         checked = settings.autoConnect,
-                        shape = groupShape(2, 5),
+                        shape = groupShape(2, 6),
                         onToggle = { vm.setAutoConnect(it) },
                     )
                     SettingsToggle(
@@ -159,7 +160,7 @@ fun SettingsTab(vm: BudsViewModel) {
                         title = tr("lowBattery"),
                         subtitle = "Когда наушник ниже 20%",
                         checked = settings.lowBatteryAlert,
-                        shape = groupShape(3, 5),
+                        shape = groupShape(3, 6),
                         onToggle = { vm.setLowBatteryAlert(it) },
                     )
                     SettingsToggle(
@@ -167,8 +168,16 @@ fun SettingsTab(vm: BudsViewModel) {
                         title = tr("hideName"),
                         subtitle = tr("hideNameHint"),
                         checked = settings.hideNameOnScroll,
-                        shape = groupShape(4, 5),
+                        shape = groupShape(4, 6),
                         onToggle = { vm.setHideNameOnScroll(it) },
+                    )
+                    // Проверка сигнала: музыка приглушается, играет звук,
+                    // потом громкость возвращается.
+                    SettingsRow(
+                        Icons.Outlined.NotificationsActive, tr("testAlert"),
+                        tr("testAlertHint"),
+                        shape = groupShape(5, 6),
+                        onClick = { vm.testLowBatteryAlert() },
                     )
                 }
 

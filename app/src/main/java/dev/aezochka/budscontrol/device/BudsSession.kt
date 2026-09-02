@@ -52,6 +52,12 @@ data class LiveState(
     val supported: Set<String> = emptySet(),
     /** Коды команд, которые гарнитура объявила поддерживаемыми (ответ 0x8100). */
     val capabilities: Set<Int> = emptySet(),
+    /**
+     * Опрос возможностей завершён: на запросы либо ответили, либо истёк
+     * таймаут. До этого момента ничего не скрываем — иначе рабочие функции
+     * пропадают, пока идёт handshake.
+     */
+    val probeComplete: Boolean = false,
     val probed: Boolean = false,
     val error: String? = null,
 )
@@ -178,6 +184,14 @@ class BudsSession(private val context: Context) {
         c.send(OppoProtocol.touchConfigReq())
         c.send(OppoProtocol.ancConfigReq())
         _state.update { it.copy(probed = true) }
+
+        // Даём гарнитуре время ответить, и только потом разрешаем скрывать
+        // функции. Молчание в ответ = функции нет (устройства этого протокола
+        // просто игнорируют незнакомые команды).
+        scope.launch {
+            delay(2500)
+            if (_state.value.connected) _state.update { it.copy(probeComplete = true) }
+        }
     }
 
     private fun observeClose(c: SppConnection) = scope.launch {
@@ -187,6 +201,9 @@ class BudsSession(private val context: Context) {
                 else it.copy(
                     connected = false,
                     connecting = false,
+                    // Пока связи нет — не знаем, что умеет гарнитура,
+                    // поэтому скрывать ничего нельзя.
+                    probeComplete = false,
                     batteryLeft = null,
                     batteryRight = null,
                     error = "Наушники отключились",

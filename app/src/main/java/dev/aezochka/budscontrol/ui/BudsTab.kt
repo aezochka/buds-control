@@ -489,15 +489,19 @@ private fun BentoGrid(
         Modifier.padding(horizontal = 20.dp),
         verticalArrangement = Arrangement.spacedBy(11.dp),
     ) {
-        // Базовые плитки показываем ВСЕГДА. Ответ гарнитуры может только
-        // ДОБАВИТЬ функции, но не убрать: пока связи нет, supported пустой,
-        // и по нему игровой режим пропадал, хотя наушники его умеют.
+        // Скрываем функцию ТОЛЬКО когда точно знаем, что её нет: опрос
+        // завершён, а гарнитура о ней не сообщила. Пока идёт handshake или
+        // связи нет — показываем всё, иначе рабочие плитки (как игровой режим)
+        // пропадают на ровном месте.
+        fun show(key: String): Boolean =
+            !live.probeComplete || key in live.supported
+
         val big = buildList {
             add("eq")
-            add("anc")
-            add("game")
-            add("spatial")
-            add("multipoint")
+            if (show("anc")) add("anc")
+            if (show("game")) add("game")
+            if (show("spatial")) add("spatial")
+            if (show("multipoint")) add("multipoint")
         }
 
         big.chunked(2).forEach { pair ->

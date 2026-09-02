@@ -140,6 +140,10 @@ class Strings(private val code: String) {
             "sleep" to "Сон", "limit" to "Лимит", "find" to "Найти", "stop" to "Стоп",
             "equalizerTitle" to "Эквалайзер", "caseTitle" to "Кейс", "sleepShort" to "Сон",
             "limitShort" to "Лимит", "findShort" to "Найти",
+            "catalogTitle" to "Каталог моделей", "catalogHint" to "Что умеет каждая модель",
+            "catalogOpenHint" to "Выбрать модель из списка или через поиск",
+            "catalogSearch" to "Модель или функция", "catalogEmpty" to "Ничего не нашлось",
+            "catalogFeatures" to "функций",
         )
 
         private val EN = mapOf(
@@ -212,6 +216,10 @@ class Strings(private val code: String) {
             "sleep" to "Sleep", "limit" to "Limit", "find" to "Find", "stop" to "Stop",
             "equalizerTitle" to "Equalizer", "caseTitle" to "Case", "sleepShort" to "Sleep",
             "limitShort" to "Limit", "findShort" to "Find",
+            "catalogTitle" to "Model catalog", "catalogHint" to "What each model can do",
+            "catalogOpenHint" to "Pick a model from the list or search",
+            "catalogSearch" to "Model or feature", "catalogEmpty" to "Nothing found",
+            "catalogFeatures" to "features",
         )
 
         // Остальные языки: переведено главное, остальное падает на английский.
@@ -236,6 +244,10 @@ class Strings(private val code: String) {
             "notConnected" to "Навушники не підключені", "connecting" to "підключаюся",
             "equalizerTitle" to "Еквалайзер", "caseTitle" to "Кейс", "sleepShort" to "Сон",
             "limitShort" to "Ліміт", "findShort" to "Знайти",
+            "catalogTitle" to "Каталог моделей", "catalogHint" to "Що вміє кожна модель",
+            "catalogOpenHint" to "Обери модель зі списку або через пошук",
+            "catalogSearch" to "Модель або функція", "catalogEmpty" to "Нічого не знайдено",
+            "catalogFeatures" to "функцій",
         )
 
         private val DE = mapOf(
@@ -259,6 +271,10 @@ class Strings(private val code: String) {
             "notConnected" to "Kopfhörer nicht verbunden", "connecting" to "verbinde",
             "equalizerTitle" to "Equalizer", "caseTitle" to "Ladecase", "sleepShort" to "Schlaf",
             "limitShort" to "Limit", "findShort" to "Finden",
+            "catalogTitle" to "Modellkatalog", "catalogHint" to "Was jedes Modell kann",
+            "catalogOpenHint" to "Modell aus der Liste oder per Suche wählen",
+            "catalogSearch" to "Modell oder Funktion", "catalogEmpty" to "Nichts gefunden",
+            "catalogFeatures" to "Funktionen",
         )
 
         private val ES = mapOf(
@@ -282,6 +298,10 @@ class Strings(private val code: String) {
             "notConnected" to "Auriculares no conectados", "connecting" to "conectando",
             "equalizerTitle" to "Ecualizador", "caseTitle" to "Estuche", "sleepShort" to "Dormir",
             "limitShort" to "Límite", "findShort" to "Buscar",
+            "catalogTitle" to "Catálogo de modelos", "catalogHint" to "Qué puede hacer cada modelo",
+            "catalogOpenHint" to "Elige un modelo de la lista o busca",
+            "catalogSearch" to "Modelo o función", "catalogEmpty" to "No se encontró nada",
+            "catalogFeatures" to "funciones",
         )
 
         private val PL = mapOf(
@@ -305,6 +325,10 @@ class Strings(private val code: String) {
             "notConnected" to "Słuchawki niepodłączone", "connecting" to "łączę",
             "equalizerTitle" to "Korektor", "caseTitle" to "Etui", "sleepShort" to "Sen",
             "limitShort" to "Limit", "findShort" to "Znajdź",
+            "catalogTitle" to "Katalog modeli", "catalogHint" to "Co potrafi każdy model",
+            "catalogOpenHint" to "Wybierz model z listy lub wyszukaj",
+            "catalogSearch" to "Model lub funkcja", "catalogEmpty" to "Nic nie znaleziono",
+            "catalogFeatures" to "funkcji",
         )
 
         private val TR = mapOf(
@@ -328,6 +352,10 @@ class Strings(private val code: String) {
             "notConnected" to "Kulaklık bağlı değil", "connecting" to "bağlanıyor",
             "equalizerTitle" to "Ekolayzer", "caseTitle" to "Kutu", "sleepShort" to "Uyku",
             "limitShort" to "Sınır", "findShort" to "Bul",
+            "catalogTitle" to "Model kataloğu", "catalogHint" to "Her modelin yapabildikleri",
+            "catalogOpenHint" to "Listeden model seç veya ara",
+            "catalogSearch" to "Model veya özellik", "catalogEmpty" to "Hiçbir şey bulunamadı",
+            "catalogFeatures" to "özellik",
         )
 
         private val ZH = mapOf(
@@ -351,6 +379,10 @@ class Strings(private val code: String) {
             "notConnected" to "耳机未连接", "connecting" to "连接中",
             "equalizerTitle" to "均衡器", "caseTitle" to "充电盒", "sleepShort" to "睡眠",
             "limitShort" to "限制", "findShort" to "查找",
+            "catalogTitle" to "型号目录", "catalogHint" to "每个型号支持的功能",
+            "catalogOpenHint" to "从列表中选择型号或搜索",
+            "catalogSearch" to "型号或功能", "catalogEmpty" to "未找到内容",
+            "catalogFeatures" to "项功能",
         )
     }
 }

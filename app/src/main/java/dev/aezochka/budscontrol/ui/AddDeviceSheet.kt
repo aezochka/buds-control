@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.FormatListBulleted
 import androidx.compose.material.icons.outlined.Headphones
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -30,6 +31,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -46,8 +50,19 @@ fun AddDeviceSheet(vm: BudsViewModel, onDismiss: () -> Unit) {
     val found by vm.found.collectAsState()
     val scanning by vm.scanning.collectAsState()
     val profiles by vm.profiles.collectAsState()
+    var showCatalog by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) { vm.startAddDevice() }
+
+    if (showCatalog) {
+        ModelCatalogSheet(
+            onPick = { spec ->
+                vm.addModelFromCatalog(spec)
+                showCatalog = false
+            },
+            onDismiss = { showCatalog = false },
+        )
+    }
 
     ModalBottomSheet(
         onDismissRequest = { vm.stopScan(); onDismiss() },
@@ -71,6 +86,32 @@ fun AddDeviceSheet(vm: BudsViewModel, onDismiss: () -> Unit) {
                 }
                 if (scanning) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp, color = scheme.primary)
             }
+            Spacer(Modifier.height(14.dp))
+            // Вход в каталог: посмотреть, что умеет модель, и добавить её
+            // без наличия самой гарнитуры под рукой.
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(scheme.primary.copy(alpha = 0.16f))
+                    .pressBounce { showCatalog = true }
+                    .padding(horizontal = 15.dp, vertical = 13.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(11.dp),
+            ) {
+                Icon(Icons.Outlined.FormatListBulleted, null, tint = scheme.primary, modifier = Modifier.size(19.dp))
+                Column(Modifier.fillMaxWidth(0.9f)) {
+                    Text(
+                        tr("catalogTitle"),
+                        style = MaterialTheme.typography.bodyMedium, color = scheme.onSurface,
+                    )
+                    Text(
+                        tr("catalogOpenHint"),
+                        style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant,
+                    )
+                }
+            }
+
             Spacer(Modifier.height(16.dp))
 
             if (found.isEmpty()) {

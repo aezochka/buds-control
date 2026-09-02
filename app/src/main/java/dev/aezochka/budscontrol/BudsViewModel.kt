@@ -18,6 +18,7 @@ import dev.aezochka.budscontrol.data.PhotoFinder
 import dev.aezochka.budscontrol.update.Updater
 import dev.aezochka.budscontrol.data.EarbudProfile
 import dev.aezochka.budscontrol.data.LocalStore
+import dev.aezochka.budscontrol.data.ModelSpec
 import dev.aezochka.budscontrol.data.UserSettings
 import dev.aezochka.budscontrol.device.BluetoothScanner
 import dev.aezochka.budscontrol.device.BudsSession
@@ -83,6 +84,28 @@ class BudsViewModel(app: Application) : AndroidViewModel(app) {
     fun stopScan() { _scanning.value = false }
 
     /** Профиль создаётся из результата скана, руками MAC вводить не нужно. */
+    /**
+     * Добавляет модель из каталога — без самой гарнитуры под рукой.
+     *
+     * Профиль-заготовка: адреса ещё нет, поэтому подключение не запускаем.
+     * Когда наушники реально найдутся сканом, у них появится свой профиль
+     * с MAC-адресом. Набор функций всё равно подтвердит сама гарнитура.
+     */
+    fun addModelFromCatalog(spec: ModelSpec) = viewModelScope.launch {
+        val existing = store.profiles.first()
+        val id = "catalog:${spec.modelId}"
+        if (existing.any { it.id == id }) return@launch
+        val profile = EarbudProfile(
+            id = id,
+            displayName = spec.modelId,
+            address = "",
+            vendor = "realme",
+            lastSeenMillis = 0L,
+            isSelected = false,
+        )
+        store.saveProfiles(existing + profile)
+    }
+
     fun addProfile(device: BluetoothScanner.Found) = viewModelScope.launch {
         val existing = store.profiles.first()
         if (existing.any { it.address == device.address }) return@launch

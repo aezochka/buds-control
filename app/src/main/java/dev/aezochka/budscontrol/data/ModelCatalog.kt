@@ -17,7 +17,14 @@ data class ModelSpec(
 )
 
 object ModelCatalog {
-    val models: List<ModelSpec> = listOf(
+    /**
+     * Записи как они лежат в конфигах realme Link.
+     *
+     * Здесь ЕСТЬ дубликаты modelId: у одной модели бывает несколько файлов
+     * (разные регионы/ревизии). Наружу отдаём склеенный список — иначе
+     * LazyColumn падал с "Key was already used".
+     */
+    private val rawModels: List<ModelSpec> = listOf(
         ModelSpec("050812", "TYPE_NECK", "PROTOCOL_STANDARD", listOf("ITEM_3D_SOUND_EFFECT", "ITEM_DOLBY_ATMOS", "ITEM_DOUBLE_DEVICE_CONNECT_CONFIG", "ITEM_DYNAMIC_LOW_SOUND", "ITEM_FIND_PHONE", "ITEM_GAME_MODE", "ITEM_GESTURE_OPERATION", "ITEM_NOISE_CLOSE", "ITEM_NOISE_CONTROL_WIND_NOISE", "ITEM_NOISE_REDUCTION", "ITEM_NOISE_TRANSPARENT", "ITEM_SOUND_EFFECT_CONFIG", "ITEM_SOUND_ENHANCE", "ITEM_TAKE_PHOTO")),
         ModelSpec("050C12", "TYPE_NECK", "PROTOCOL_STANDARD", listOf("ITEM_ACTION_DOUBLE_CLICK", "ITEM_ACTION_LONG_CLICK_1S", "ITEM_ACTION_SINGLE_CLICK", "ITEM_ACTION_TRI_CLICK", "ITEM_AUTO_ANSWER", "ITEM_DOLBY_ATMOS", "ITEM_DOUBLE_DEVICE_CONNECT_CONFIG", "ITEM_DYNAMIC_LOW_SOUND", "ITEM_FIND_PHONE", "ITEM_GAME_MODE", "ITEM_KEY_SETTING", "ITEM_OREALITY_AUDIO", "ITEM_SOUND_EFFECT_CONFIG", "ITEM_SOUND_ENHANCE")),
         ModelSpec("051412", "TYPE_NECK", "PROTOCOL_STANDARD", listOf("ITEM_3D_SOUND_EFFECT", "ITEM_ACTION_DOUBLE_CLICK", "ITEM_ACTION_LONG_CLICK_1S", "ITEM_ACTION_SINGLE_CLICK", "ITEM_ACTION_TRI_CLICK", "ITEM_AUTO_ANSWER", "ITEM_COMPACTNESS_DETECT", "ITEM_DEEP_REDUCTION", "ITEM_DOLBY_ATMOS", "ITEM_DOUBLE_DEVICE_CONNECT_CONFIG", "ITEM_DYNAMIC_SOUND_EFFECT", "ITEM_FIND_PHONE", "ITEM_GAME_MODE", "ITEM_KEY_SETTING", "ITEM_LIGHT_REDUCTION", "ITEM_MEDIUM_REDUCTION", "ITEM_NOISE_CLOSE", "ITEM_NOISE_CONTROL_STRENGTHEN_VOICE", "ITEM_NOISE_CONTROL_WIND_NOISE", "ITEM_NOISE_REDUCTION", "ITEM_NOISE_TRANSPARENT", "ITEM_OREALITY_AUDIO", "ITEM_SMART_REDUCTION", "ITEM_SOUND_EFFECT_CONFIG", "ITEM_SOUND_ENHANCE")),
@@ -52,6 +59,23 @@ object ModelCatalog {
         ModelSpec("067852", "TYPE_TWS", "PROTOCOL_STANDARD", listOf("ITEM_3D_SOUND_EFFECT", "ITEM_ACTION_DOUBLE_CLICK", "ITEM_ACTION_LONG_CLICK_1S", "ITEM_ACTION_TRI_CLICK", "ITEM_AI_TRANSLATE", "ITEM_AUTO_ANSWER", "ITEM_COMPACTNESS_DETECT", "ITEM_DEEP_REDUCTION", "ITEM_DYNAMIC_SOUND_EFFECT", "ITEM_FIND_PHONE", "ITEM_GAME_MODE", "ITEM_HI_RES_MODE", "ITEM_KEY_SETTING", "ITEM_LIGHT_REDUCTION", "ITEM_MEDIUM_REDUCTION", "ITEM_NOISE_CLOSE", "ITEM_NOISE_CONTROL_STRENGTHEN_VOICE", "ITEM_NOISE_CONTROL_WIND_NOISE", "ITEM_NOISE_REDUCTION", "ITEM_NOISE_TRANSPARENT", "ITEM_PERSONALIZED_THEME", "ITEM_SEARCH_HEADSET", "ITEM_SMART_PLAY_PAUSE", "ITEM_SMART_REDUCTION", "ITEM_SOUND_EFFECT_CONFIG", "ITEM_SOUND_ENHANCE", "ITEM_TAKE_PHOTO", "ITEM_TRIBBLE_DEVICE_CONNECT_CONFIG", "ITEM_WHITE_NOISE")),
         ModelSpec("067C52", "TYPE_TWS", "PROTOCOL_STANDARD", listOf("ITEM_ACTION_DOUBLE_CLICK", "ITEM_ACTION_LONG_CLICK_1S", "ITEM_ACTION_TRI_CLICK", "ITEM_DOUBLE_DEVICE_CONNECT_CONFIG", "ITEM_GAME_MODE", "ITEM_KEY_SETTING", "ITEM_PERSONALIZED_THEME", "ITEM_SOUND_EFFECT_CONFIG", "ITEM_SOUND_ENHANCE")),
     )
+
+    /**
+     * Уникальные модели: записи с одинаковым modelId склеены, их функции
+     * объединены. modelId здесь гарантированно уникален и годится как ключ
+     * списка.
+     */
+    val models: List<ModelSpec> = rawModels
+        .groupBy { it.modelId }
+        .map { (id, group) ->
+            ModelSpec(
+                modelId = id,
+                deviceType = group.first().deviceType,
+                noiseProtocol = group.first().noiseProtocol,
+                features = group.flatMap { it.features }.distinct().sorted(),
+            )
+        }
+        .sortedBy { it.modelId }
 
     fun find(query: String): List<ModelSpec> {
         val q = query.trim().lowercase()

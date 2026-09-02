@@ -279,7 +279,9 @@ fun PhotoSheet(
 
             // Готовые картинки + скелетоны на те, что ещё грузятся.
             LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                items(variants, key = { it }) { path ->
+                // distinct() обязателен: повторяющийся путь дал бы
+                // "Key was already used" и краш при скролле.
+                items(variants.distinct(), key = { it }) { path ->
                     val active = path == current
                     VariantCard(active = active, onClick = { vm.choosePhoto(address, path) }) {
                         AsyncImage(

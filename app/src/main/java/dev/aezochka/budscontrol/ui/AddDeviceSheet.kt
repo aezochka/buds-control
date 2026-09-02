@@ -115,7 +115,8 @@ fun AddDeviceSheet(
                 )
             } else {
                 LazyColumn(Modifier.height(340.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
-                    items(found, key = { it.address }) { device ->
+                    // Один адрес может прийти и из сопряжённых, и из скана.
+                    items(found.distinctBy { it.address }, key = { it.address }) { device ->
                         val added = profiles.any { it.address == device.address }
                         val bg by animateColorAsState(
                             if (added) scheme.primary else scheme.surfaceContainer, Motion.effects(), label = "devBg",

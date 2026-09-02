@@ -282,7 +282,8 @@ private fun DevicesStep(vm: BudsViewModel, onRequestBluetooth: () -> Unit) {
             }
         } else {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                items(found, key = { it.address }) { device ->
+                // Один адрес может прийти и из сопряжённых, и из скана.
+                items(found.distinctBy { it.address }, key = { it.address }) { device ->
                     val added = profiles.any { it.address == device.address }
                     DeviceRow(device, added) {
                         // Раньше всегда вызывался addProfile, поэтому «Убрать»

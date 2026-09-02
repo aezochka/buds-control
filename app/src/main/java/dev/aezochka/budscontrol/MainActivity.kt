@@ -41,6 +41,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Ставим до UI: иначе падение на старте не попадёт в лог.
+        CrashLog.install(applicationContext)
         enableEdgeToEdge()
         setContent {
             val vm: BudsViewModel = viewModel(factory = BudsViewModel.Factory)

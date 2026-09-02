@@ -110,6 +110,36 @@ object Updater {
         }
     }
 
+    /**
+     * Уже скачанный APK этой версии, если он целый.
+     *
+     * Без этой проверки повторный тап начинал загрузку заново — выглядело
+     * как «качает приложение ещё раз».
+     */
+    fun readyFile(context: Context, release: Release): File? {
+        val target = File(context.cacheDir, "update_${release.version}.apk")
+        if (!target.exists()) return null
+        // Размер должен совпасть с релизом, иначе файл недокачан.
+        if (release.sizeBytes > 0 && target.length() != release.sizeBytes) return null
+        return target
+    }
+
+    /**
+     * Удаляет скачанные APK от других версий.
+     *
+     * Файл текущего релиза не трогаем: он может быть недокачан, и его
+     * продолжает докачка по Range.
+     */
+    fun clearStaleCache(context: Context, keepVersion: String?) {
+        val keep = keepVersion?.let { "update_$it.apk" }
+        runCatching {
+            context.cacheDir.listFiles()
+                ?.filter { it.name.startsWith("update_") && it.name.endsWith(".apk") }
+                ?.filter { it.name != keep }
+                ?.forEach { it.delete() }
+        }
+    }
+
     /** Открывает системный установщик. */
     fun install(context: Context, apk: File) {
         runCatching {

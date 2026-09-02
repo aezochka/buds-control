@@ -119,12 +119,26 @@ fun BudsTab(vm: BudsViewModel, onDragActive: (Boolean) -> Unit = {}) {
 
     var showEq by remember { mutableStateOf(false) }
     var showAddDevice by remember { mutableStateOf(false) }
+    var showCatalog by remember { mutableStateOf(false) }
     var showPhoto by remember { mutableStateOf(false) }
     var showSleep by remember { mutableStateOf(false) }
     var showVolume by remember { mutableStateOf(false) }
 
+    // Шторки взаимоисключающие: две сразу роняли приложение.
     if (showAddDevice) {
-        AddDeviceSheet(vm) { showAddDevice = false }
+        AddDeviceSheet(
+            vm = vm,
+            onOpenCatalog = { showAddDevice = false; showCatalog = true },
+        ) { showAddDevice = false }
+    }
+    if (showCatalog) {
+        ModelCatalogSheet(
+            onPick = { spec ->
+                vm.addModelFromCatalog(spec)
+                showCatalog = false
+            },
+            onDismiss = { showCatalog = false },
+        )
     }
     if (showPhoto && selected != null) {
         PhotoSheet(

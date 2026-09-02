@@ -240,6 +240,10 @@ class BudsViewModel(app: Application) : AndroidViewModel(app) {
         val release: Updater.Release? = null,
         val progress: Float = 0f,
         val error: String? = null,
+        /** Идёт загрузка: второй тап не должен начинать её заново. */
+        val downloading: Boolean = false,
+        /** Файл уже на диске — осталось только запустить установку. */
+        val readyToInstall: Boolean = false,
     )
 
     private val _updateState = MutableStateFlow(UpdateState())
@@ -254,23 +258,55 @@ class BudsViewModel(app: Application) : AndroidViewModel(app) {
         val current = installedVersion()
         _updateState.value = UpdateState(checking = true, currentVersion = current)
         val release = Updater.check(current)
+        // Чистим APK от прошлых версий, файл актуального релиза сохраняем —
+        // его докачивает Range-загрузка.
+        Updater.clearStaleCache(getApplication(), release?.version)
         _updateState.value = UpdateState(
             checking = false,
             currentVersion = current,
             release = release,
+            // Если файл уже целиком на диске, сразу предлагаем установку.
+            readyToInstall = release != null &&
+                Updater.readyFile(getApplication(), release) != null,
+            progress = if (release != null &&
+                Updater.readyFile(getApplication(), release) != null
+            ) 1f else 0f,
         )
     }
 
+    fun checkUpdateIfIdle() {
+        val s = _updateState.value
+        if (s.checking || s.downloading || s.release != null) return
+        checkUpdate()
+    }
+
     fun downloadAndInstall() = viewModelScope.launch {
-        val release = _updateState.value.release ?: return@launch
+        val state = _updateState.value
+        val release = state.release ?: return@launch
+        // Повторный тап не должен начинать загрузку заново.
+        if (state.downloading) return@launch
+
+        // Файл уже скачан — сразу установка, без повторного скачивания.
+        Updater.readyFile(getApplication(), release)?.let { done ->
+            _updateState.value = state.copy(progress = 1f, readyToInstall = true, error = null)
+            Updater.install(getApplication(), done)
+            return@launch
+        }
+
+        _updateState.value = state.copy(downloading = true, error = null)
         val file = Updater.download(getApplication(), release) { p ->
             _updateState.value = _updateState.value.copy(progress = p)
         }
         if (file == null) {
-            _updateState.value = _updateState.value.copy(error = "Не удалось скачать обновление")
+            _updateState.value = _updateState.value.copy(
+                downloading = false,
+                error = "Не удалось скачать обновление",
+            )
             return@launch
         }
-        _updateState.value = _updateState.value.copy(progress = 1f, error = null)
+        _updateState.value = _updateState.value.copy(
+            progress = 1f, downloading = false, readyToInstall = true, error = null,
+        )
         Updater.install(getApplication(), file)
     }
 

@@ -146,6 +146,9 @@ class Strings(private val code: String) {
             "catalogFeatures" to "функций",
             "noiseControl" to "Шумодав", "ancOn" to "Шумодав", "ancTransparency" to "Прозрачность",
             "spatialAudio" to "Объёмный звук", "multipoint" to "Два устройства",
+            "updateAvailable" to "Доступно обновление", "updateAction" to "Обновить",
+            "updateReady" to "Загружено, можно ставить", "updateLatest" to "Последняя версия",
+            "crashTitle" to "Отчёт о сбое", "crashHint" to "Скопируй и пришли мне",
         )
 
         private val EN = mapOf(
@@ -224,6 +227,9 @@ class Strings(private val code: String) {
             "catalogFeatures" to "features",
             "noiseControl" to "Noise control", "ancOn" to "Noise cancelling", "ancTransparency" to "Transparency",
             "spatialAudio" to "Spatial audio", "multipoint" to "Multipoint",
+            "updateAvailable" to "Update available", "updateAction" to "Update",
+            "updateReady" to "Downloaded, ready to install", "updateLatest" to "Up to date",
+            "crashTitle" to "Crash report", "crashHint" to "Copy it and send it over",
         )
 
         // Остальные языки: переведено главное, остальное падает на английский.
@@ -254,6 +260,9 @@ class Strings(private val code: String) {
             "catalogFeatures" to "функцій",
             "noiseControl" to "Шумозаглушення", "ancOn" to "Шумозаглушення", "ancTransparency" to "Прозорість",
             "spatialAudio" to "Об'ємний звук", "multipoint" to "Два пристрої",
+            "updateAvailable" to "Доступне оновлення", "updateAction" to "Оновити",
+            "updateReady" to "Завантажено, можна ставити", "updateLatest" to "Найновіша версія",
+            "crashTitle" to "Звіт про збій", "crashHint" to "Скопіюй і надішли мені",
         )
 
         private val DE = mapOf(
@@ -283,6 +292,9 @@ class Strings(private val code: String) {
             "catalogFeatures" to "Funktionen",
             "noiseControl" to "Geräuschunterdrückung", "ancOn" to "ANC aktiv", "ancTransparency" to "Transparenz",
             "spatialAudio" to "Raumklang", "multipoint" to "Multipoint",
+            "updateAvailable" to "Update verfügbar", "updateAction" to "Aktualisieren",
+            "updateReady" to "Geladen, bereit zur Installation", "updateLatest" to "Aktuell",
+            "crashTitle" to "Fehlerbericht", "crashHint" to "Kopieren und senden",
         )
 
         private val ES = mapOf(
@@ -312,6 +324,9 @@ class Strings(private val code: String) {
             "catalogFeatures" to "funciones",
             "noiseControl" to "Cancelación de ruido", "ancOn" to "Cancelación activa", "ancTransparency" to "Transparencia",
             "spatialAudio" to "Audio espacial", "multipoint" to "Multipunto",
+            "updateAvailable" to "Actualización disponible", "updateAction" to "Actualizar",
+            "updateReady" to "Descargado, listo para instalar", "updateLatest" to "Actualizado",
+            "crashTitle" to "Informe de fallo", "crashHint" to "Cópialo y envíalo",
         )
 
         private val PL = mapOf(
@@ -341,6 +356,9 @@ class Strings(private val code: String) {
             "catalogFeatures" to "funkcji",
             "noiseControl" to "Redukcja szumów", "ancOn" to "Redukcja aktywna", "ancTransparency" to "Przejrzystość",
             "spatialAudio" to "Dźwięk przestrzenny", "multipoint" to "Multipoint",
+            "updateAvailable" to "Dostępna aktualizacja", "updateAction" to "Aktualizuj",
+            "updateReady" to "Pobrano, gotowe do instalacji", "updateLatest" to "Aktualna wersja",
+            "crashTitle" to "Raport awarii", "crashHint" to "Skopiuj i wyślij",
         )
 
         private val TR = mapOf(
@@ -370,6 +388,9 @@ class Strings(private val code: String) {
             "catalogFeatures" to "özellik",
             "noiseControl" to "Gürültü engelleme", "ancOn" to "Gürültü engelleme", "ancTransparency" to "Şeffaflık",
             "spatialAudio" to "Uzamsal ses", "multipoint" to "Çoklu bağlantı",
+            "updateAvailable" to "Güncelleme var", "updateAction" to "Güncelle",
+            "updateReady" to "İndirildi, kurulabilir", "updateLatest" to "Güncel",
+            "crashTitle" to "Çökme raporu", "crashHint" to "Kopyala ve gönder",
         )
 
         private val ZH = mapOf(
@@ -399,6 +420,9 @@ class Strings(private val code: String) {
             "catalogFeatures" to "项功能",
             "noiseControl" to "降噪", "ancOn" to "降噪开启", "ancTransparency" to "通透模式",
             "spatialAudio" to "空间音频", "multipoint" to "双设备连接",
+            "updateAvailable" to "有可用更新", "updateAction" to "更新",
+            "updateReady" to "已下载，可安装", "updateLatest" to "已是最新版本",
+            "crashTitle" to "崩溃报告", "crashHint" to "复制并发送给我",
         )
     }
 }

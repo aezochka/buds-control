@@ -13,8 +13,8 @@ android {
         applicationId = "dev.aezochka.budscontrol"
         minSdk = 26
         targetSdk = 36
-        versionCode = 12
-        versionName = "4.8"
+        versionCode = 13
+        versionName = "4.9"
     }
 
     // Постоянный ключ: без него каждая сборка подписывалась новым debug-ключом
@@ -53,7 +53,8 @@ android {
             )
         }
     }
-    buildFeatures { compose = true }
+    // buildConfig нужен для записи версии в лог краша.
+    buildFeatures { compose = true; buildConfig = true }
     packaging { resources.excludes += "/META-INF/{AL2.0,LGPL2.1}" }
 }
 

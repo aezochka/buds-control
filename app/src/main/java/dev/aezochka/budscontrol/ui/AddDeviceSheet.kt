@@ -44,25 +44,17 @@ import dev.aezochka.budscontrol.i18n.tr
 
 /** Шторка добавления гарнитуры: живой Bluetooth-скан по плюсику. */
 @Composable
-fun AddDeviceSheet(vm: BudsViewModel, onDismiss: () -> Unit) {
+fun AddDeviceSheet(
+    vm: BudsViewModel,
+    onOpenCatalog: () -> Unit = {},
+    onDismiss: () -> Unit,
+) {
     val scheme = MaterialTheme.colorScheme
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val found by vm.found.collectAsState()
     val scanning by vm.scanning.collectAsState()
     val profiles by vm.profiles.collectAsState()
-    var showCatalog by remember { mutableStateOf(false) }
-
     LaunchedEffect(Unit) { vm.startAddDevice() }
-
-    if (showCatalog) {
-        ModelCatalogSheet(
-            onPick = { spec ->
-                vm.addModelFromCatalog(spec)
-                showCatalog = false
-            },
-            onDismiss = { showCatalog = false },
-        )
-    }
 
     ModalBottomSheet(
         onDismissRequest = { vm.stopScan(); onDismiss() },
@@ -94,7 +86,9 @@ fun AddDeviceSheet(vm: BudsViewModel, onDismiss: () -> Unit) {
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(20.dp))
                     .background(scheme.primary.copy(alpha = 0.16f))
-                    .pressBounce { showCatalog = true }
+                    // Каталог открываем ВМЕСТО этой шторки, а не поверх неё:
+                    // вложенные ModalBottomSheet роняли приложение.
+                    .pressBounce { vm.stopScan(); onOpenCatalog() }
                     .padding(horizontal = 15.dp, vertical = 13.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(11.dp),

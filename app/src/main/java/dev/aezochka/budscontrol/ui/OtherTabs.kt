@@ -67,14 +67,12 @@ fun SettingsTab(vm: BudsViewModel) {
     val live by vm.live.collectAsState()
     var showTheme by remember { mutableStateOf(false) }
     var showEq by remember { mutableStateOf(false) }
-    var showUpdate by remember { mutableStateOf(false) }
     var showLang by remember { mutableStateOf(false) }
     var showSleep by remember { mutableStateOf(false) }
     var showVolume by remember { mutableStateOf(false) }
     val sleepMin by vm.sleepMinutes.collectAsState()
     val limit by vm.volumeLimit.collectAsState()
     if (showEq) { EqualizerSheet(vm) { showEq = false } }
-    if (showUpdate) { UpdateSheet(vm) { showUpdate = false } }
     if (showLang) { LanguageSheet(vm) { showLang = false } }
     if (showSleep) { SleepSheet(vm) { showSleep = false } }
     if (showVolume) { VolumeLimitSheet(vm) { showVolume = false } }
@@ -135,11 +133,12 @@ fun SettingsTab(vm: BudsViewModel) {
                     checked = settings.lowBatteryAlert,
                     onToggle = { vm.setLowBatteryAlert(it) },
                 )
-                SettingsRow(
-                    Icons.Outlined.Download, tr("update"),
-                    tr("updateHint"),
-                    onClick = { showUpdate = true; vm.checkUpdate() },
-                )
+                // Обновление одной строкой: состояние и прогресс прямо здесь,
+                // без отдельной шторки — она выглядела как «скачать заново».
+                UpdateRow(vm)
+                // Появляется только если краш реально был: пустую строку
+                // показывать смысла нет.
+                CrashLogRow()
                 SettingsRow(
                     Icons.Outlined.Language, tr("language"),
                     tr("langCount"),

@@ -62,7 +62,7 @@ fun TileContent(
             val tuned = eqGains.any { it != 0 }
             StatTile(
                 icon = null,
-                label = "Эквалайзер",
+                label = tr("equalizerTitle"),
                 value = if (!fxOn) "—" else if (tuned) tr("eqTuned") else tr("eqFlat"),
                 active = tuned,
                 onClick = { vm.tick(); onEq() },
@@ -85,7 +85,7 @@ fun TileContent(
 
         "case" -> StatTile(
             icon = Icons.Outlined.Inventory2,
-            label = if (live.caseFromMemory) tr("caseLast") else "Кейс",
+            label = if (live.caseFromMemory) tr("caseLast") else tr("caseTitle"),
             value = live.batteryCase?.let { "$it%" } ?: tr("noData"),
             active = false,
             onClick = null,
@@ -103,8 +103,8 @@ fun TileContent(
             val left by vm.sleepLeft.collectAsState()
             val short = when {
                 left > 0 -> "%d:%02d".format(left / 60, left % 60)
-                minutes > 0 -> "$minutes м"
-                else -> "Сон"
+                minutes > 0 -> "$minutes ${tr("min15").take(3)}"
+                else -> tr("sleepShort")
             }
             if (compact) {
                 MiniTile(Icons.Outlined.Bedtime, short, minutes > 0) { vm.tick(); onSleep() }
@@ -124,7 +124,7 @@ fun TileContent(
             if (compact) {
                 MiniTile(
                     Icons.Outlined.VolumeUp,
-                    if (limit > 0) "$limit%" else "Лимит",
+                    if (limit > 0) "$limit%" else tr("limitShort"),
                     limit > 0,
                 ) { vm.tick(); onVolume() }
             } else {
@@ -143,7 +143,7 @@ fun TileContent(
             if (compact) {
                 MiniTile(
                     Icons.Outlined.NotificationsActive,
-                    if (ringing) tr("stop") else "Найти",
+                    if (ringing) tr("stop") else tr("findShort"),
                     ringing,
                 ) {
                     ringing = !ringing

@@ -138,6 +138,8 @@ class Strings(private val code: String) {
             "langCount" to "8 языков, меняется сразу", "accent" to "Акцент: %s",
             "inCase" to "В кейсе", "unavailable" to "нет",
             "sleep" to "Сон", "limit" to "Лимит", "find" to "Найти", "stop" to "Стоп",
+            "equalizerTitle" to "Эквалайзер", "caseTitle" to "Кейс", "sleepShort" to "Сон",
+            "limitShort" to "Лимит", "findShort" to "Найти",
         )
 
         private val EN = mapOf(
@@ -208,6 +210,8 @@ class Strings(private val code: String) {
             "langCount" to "8 languages, applies instantly", "accent" to "Accent: %s",
             "inCase" to "In case", "unavailable" to "n/a",
             "sleep" to "Sleep", "limit" to "Limit", "find" to "Find", "stop" to "Stop",
+            "equalizerTitle" to "Equalizer", "caseTitle" to "Case", "sleepShort" to "Sleep",
+            "limitShort" to "Limit", "findShort" to "Find",
         )
 
         // Остальные языки: переведено главное, остальное падает на английский.
@@ -230,6 +234,8 @@ class Strings(private val code: String) {
             "update" to "Оновлення", "soundLog" to "Лог звуку",
             "sleep" to "Сон", "limit" to "Ліміт", "find" to "Знайти", "stop" to "Стоп",
             "notConnected" to "Навушники не підключені", "connecting" to "підключаюся",
+            "equalizerTitle" to "Еквалайзер", "caseTitle" to "Кейс", "sleepShort" to "Сон",
+            "limitShort" to "Ліміт", "findShort" to "Знайти",
         )
 
         private val DE = mapOf(
@@ -251,6 +257,8 @@ class Strings(private val code: String) {
             "update" to "Update", "soundLog" to "Audio-Log",
             "sleep" to "Schlaf", "limit" to "Limit", "find" to "Finden", "stop" to "Stopp",
             "notConnected" to "Kopfhörer nicht verbunden", "connecting" to "verbinde",
+            "equalizerTitle" to "Equalizer", "caseTitle" to "Ladecase", "sleepShort" to "Schlaf",
+            "limitShort" to "Limit", "findShort" to "Finden",
         )
 
         private val ES = mapOf(
@@ -272,6 +280,8 @@ class Strings(private val code: String) {
             "update" to "Actualización", "soundLog" to "Registro de audio",
             "sleep" to "Dormir", "limit" to "Límite", "find" to "Buscar", "stop" to "Parar",
             "notConnected" to "Auriculares no conectados", "connecting" to "conectando",
+            "equalizerTitle" to "Ecualizador", "caseTitle" to "Estuche", "sleepShort" to "Dormir",
+            "limitShort" to "Límite", "findShort" to "Buscar",
         )
 
         private val PL = mapOf(
@@ -293,6 +303,8 @@ class Strings(private val code: String) {
             "update" to "Aktualizacja", "soundLog" to "Dziennik audio",
             "sleep" to "Sen", "limit" to "Limit", "find" to "Znajdź", "stop" to "Stop",
             "notConnected" to "Słuchawki niepodłączone", "connecting" to "łączę",
+            "equalizerTitle" to "Korektor", "caseTitle" to "Etui", "sleepShort" to "Sen",
+            "limitShort" to "Limit", "findShort" to "Znajdź",
         )
 
         private val TR = mapOf(
@@ -314,6 +326,8 @@ class Strings(private val code: String) {
             "update" to "Güncelleme", "soundLog" to "Ses kaydı",
             "sleep" to "Uyku", "limit" to "Sınır", "find" to "Bul", "stop" to "Dur",
             "notConnected" to "Kulaklık bağlı değil", "connecting" to "bağlanıyor",
+            "equalizerTitle" to "Ekolayzer", "caseTitle" to "Kutu", "sleepShort" to "Uyku",
+            "limitShort" to "Sınır", "findShort" to "Bul",
         )
 
         private val ZH = mapOf(
@@ -335,6 +349,8 @@ class Strings(private val code: String) {
             "update" to "更新", "soundLog" to "音频日志",
             "sleep" to "睡眠", "limit" to "限制", "find" to "查找", "stop" to "停止",
             "notConnected" to "耳机未连接", "connecting" to "连接中",
+            "equalizerTitle" to "均衡器", "caseTitle" to "充电盒", "sleepShort" to "睡眠",
+            "limitShort" to "限制", "findShort" to "查找",
         )
     }
 }

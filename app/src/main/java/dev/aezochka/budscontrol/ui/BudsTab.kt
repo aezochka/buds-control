@@ -62,10 +62,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.graphicsLayer
@@ -158,17 +162,33 @@ fun BudsTab(vm: BudsViewModel, onDragActive: (Boolean) -> Unit = {}) {
     // По индексу элемента не работало: элементов в списке всего три,
     // firstVisibleItemIndex почти не менялся и панель висела всегда.
     val listState = rememberLazyListState()
-    val budsSettings by vm.settings.collectAsState()
-    val hideOnScroll = budsSettings.hideNameOnScroll
-    // Телефон экраном вниз — название прячется, поднял — вернулось.
-    val faceDown by vm.faceDown.collectAsState()
+    // Шторка профилей прячется по НАПРАВЛЕНИЮ скролла — как было.
+    // Датчик положения тут не участвует: он влияет только на размытие
+    // названия под фото, а не на весь интерфейс.
     var barVisible by remember { mutableStateOf(true) }
-    val scrollConnection = remember { object : NestedScrollConnection {} }
-
-    // Панель видна, пока телефон не лежит экраном вниз.
-    LaunchedEffect(hideOnScroll, faceDown) {
-        barVisible = !(hideOnScroll && faceDown)
+    val scrollConnection = remember {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                val dy = available.y
+                if (dy < -4f) barVisible = false   // палец вверх => контент вниз
+                if (dy > 4f) barVisible = true
+                return Offset.Zero
+            }
+        }
     }
+
+    // Наверху списка панель всегда открыта.
+    LaunchedEffect(listState) {
+        snapshotFlow { listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset }
+            .collect { (index, offset) -> if (index == 0 && offset < 12) barVisible = true }
+    }
+
+    // Размытие названия по наклону телефона. Настройка позволяет отключить.
+    val budsSettings by vm.settings.collectAsState()
+    val faceDownAmount by vm.faceDownAmount.collectAsState()
+    val blurTarget = if (budsSettings.hideNameOnScroll) faceDownAmount * 9f else 0f
+    val nameBlurValue by animateFloatAsState(blurTarget, Motion.effects(), label = "nameBlur")
+    val nameBlur = nameBlurValue.dp
 
     Column(Modifier.fillMaxWidth().nestedScroll(scrollConnection)) {
         AnimatedVisibility(
@@ -205,6 +225,7 @@ fun BudsTab(vm: BudsViewModel, onDragActive: (Boolean) -> Unit = {}) {
                     onPhotoLoaded = vm::onPhotoLoaded,
                     connecting = live.connecting,
                     connected = live.connected,
+                    nameBlur = nameBlur,
                     onRefresh = vm::refresh,
                 )
             }
@@ -237,6 +258,8 @@ private fun ProductHero(
     onPhotoLoaded: (androidx.compose.ui.graphics.ImageBitmap) -> Unit,
     connecting: Boolean,
     connected: Boolean,
+    /** Радиус размытия названия — растёт, когда телефон кладут экраном вниз. */
+    nameBlur: androidx.compose.ui.unit.Dp,
     onRefresh: () -> Unit,
 ) {
     val scheme = MaterialTheme.colorScheme
@@ -396,16 +419,25 @@ private fun ProductHero(
                         else -> PulsingDot(scheme.outline)
                     }
                 }
-                Text(
-                    buildString {
-                        append(name)
-                        if (connecting) append(" · подключаюсь")
-                    },
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = scheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center,
-                )
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                // Название и кнопка в одной строке: раньше кнопка стояла
+                // ниже отдельным блоком и упиралась в плитки под ней.
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    Text(
+                        buildString {
+                            append(name)
+                            if (connecting) append(" · подключаюсь")
+                        },
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = scheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                        // Размывается ТОЛЬКО название, когда телефон
+                        // переворачивают экраном вниз. Значение непрерывное,
+                        // поэтому эффект нарастает и спадает как рычаг.
+                        modifier = Modifier.blur(nameBlur),
+                    )
                     Box(
                         Modifier
                             .size(38.dp)

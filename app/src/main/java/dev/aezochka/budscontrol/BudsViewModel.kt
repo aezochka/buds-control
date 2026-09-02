@@ -329,8 +329,10 @@ class BudsViewModel(app: Application) : AndroidViewModel(app) {
      * в фоне ничего не тратится.
      */
     private val faceDownSensor = FaceDownSensor(app)
-    val faceDown: StateFlow<Boolean> = faceDownSensor.faceDown
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(2_000), false)
+
+    /** 0f — экран вверх, 1f — экран вниз. Для плавного размытия названия. */
+    val faceDownAmount: StateFlow<Float> = faceDownSensor.faceDownAmount
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(2_000), 0f)
 
     /**
      * AirPods и Beats: состояние приходит BLE-рекламой, без подключения.

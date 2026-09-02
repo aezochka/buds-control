@@ -83,6 +83,51 @@ object OppoProtocol {
 
     // ---- Конкретные команды ----
 
+    /** Спросить у гарнитуры, что она умеет. */
+    fun capabilityReq() = encode(Cmd.CAPABILITY_REQ)
+
+    /**
+     * Раскладка битов возможностей — перенесена из realme Link (Protocol.b2).
+     *
+     * Индекс = номер бита в маске, значение = коды команд, которые он открывает.
+     * Пустой список — бит есть, но за ним нет интересной нам команды.
+     */
+    private val CAPABILITY_BITS: List<List<Int>> = listOf(
+        listOf(0x0105), listOf(0x0106), listOf(0x0107), listOf(0x0108, 0x0401),
+        listOf(0x0109), listOf(0x0400), listOf(0x0402), listOf(0x010D, 0x0403),
+        listOf(0x010C, 0x0404), listOf(0x0405), listOf(0x0406, 0x010F),
+        listOf(0x0110, 0x0407), emptyList(), listOf(0x0408), listOf(0x0409),
+        listOf(0x040A, 0x0111), emptyList(), emptyList(), emptyList(),
+        listOf(0x040E, 0x040D, 0x0115, 0x0116), emptyList(), emptyList(),
+        listOf(0x0205), listOf(0x0F00), emptyList(), listOf(0x0118, 0x0411),
+        listOf(0x011A, 0x0412), emptyList(), emptyList(), listOf(0x0112, 0x040B),
+        listOf(0x011E, 0x011F, 0x0415), emptyList(), listOf(0x0120), emptyList(),
+        listOf(0x0122, 0x0418), emptyList(), emptyList(), emptyList(),
+        listOf(0x0124, 0x041B), emptyList(), emptyList(), emptyList(),
+        emptyList(), listOf(0x041E), emptyList(), emptyList(),
+        listOf(0x0128, 0x050E), emptyList(), emptyList(), emptyList(),
+        emptyList(), emptyList(), emptyList(), emptyList(), listOf(0x012C),
+        emptyList(), emptyList(), emptyList(), listOf(0x0131, 0x0428),
+        emptyList(), listOf(0x042C),
+    )
+
+    /**
+     * Разбор ответа 0x8100 в набор поддерживаемых команд.
+     *
+     * Формат как в PollCommandManager.l0: [0] статус, дальше битовая маска
+     * младшими битами вперёд.
+     */
+    fun parseCapabilities(payload: ByteArray): Set<Int> {
+        if (payload.isEmpty() || payload[0].toInt() != 0 || payload.size <= 1) return emptySet()
+        val out = mutableSetOf<Int>()
+        val bits = minOf((payload.size - 1) * 8, CAPABILITY_BITS.size)
+        for (bit in 0 until bits) {
+            val byte = payload[1 + bit / 8].toInt() and 0xFF
+            if (byte and (1 shl (bit % 8)) != 0) out += CAPABILITY_BITS[bit]
+        }
+        return out
+    }
+
     fun batteryReq() = encode(Cmd.BATTERY_REQ)
     fun statusReq() = encode(Cmd.STATUS_REQ)
 
@@ -178,6 +223,16 @@ object OppoProtocol {
 }
 
 enum class Cmd(val code: Short) {
+    /**
+     * Таблица возможностей модели (realme Link: Protocol.k = 33024).
+     *
+     * Гарнитура отдаёт битовую маску: бит = индекс в таблице команд.
+     * Именно так вендорское приложение решает, какие кнопки показывать —
+     * у дорогих моделей появляются новые, потому что у них выставлены
+     * дополнительные биты, а не потому что в приложении зашит список моделей.
+     */
+    CAPABILITY_REQ(0x0100),
+    CAPABILITY_RET(0x8100.toShort()),
     BATTERY_REQ(0x0106),
     BATTERY_RET(0x8106.toShort()),
     STATUS_REQ(0x0109),

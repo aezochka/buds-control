@@ -50,6 +50,8 @@ data class LiveState(
     val eqAcked: Boolean = false,
     val touch: Map<Pair<TouchSide, TouchType>, TouchAction> = emptyMap(),
     val supported: Set<String> = emptySet(),
+    /** Коды команд, которые гарнитура объявила поддерживаемыми (ответ 0x8100). */
+    val capabilities: Set<Int> = emptySet(),
     val probed: Boolean = false,
     val error: String? = null,
 )
@@ -167,6 +169,9 @@ class BudsSession(private val context: Context) {
         // Только отправляем запросы. supported наполняется в обработчиках
         // ответов — раньше функции помечались поддерживаемыми заранее,
         // из-за чего эквалайзер выглядел рабочим, хотя ответа не было.
+        // Сначала спрашиваем таблицу возможностей: у разных моделей набор
+        // функций отличается, и вендорское приложение узнаёт его именно так.
+        c.send(OppoProtocol.capabilityReq())
         c.send(OppoProtocol.firmwareReq())
         c.send(OppoProtocol.batteryReq())
         c.send(OppoProtocol.miscConfigReq(listOf(MiscType.GAME_MODE, MiscType.MULTIPOINT, MiscType.LDAC, MiscType.SPATIAL_AUDIO)))
@@ -201,6 +206,7 @@ class BudsSession(private val context: Context) {
                     _state.update { it.copy(supported = it.supported + "firmware") }
                     applyFirmware(frame.payload)
                 }
+                Cmd.CAPABILITY_RET -> applyCapabilities(frame.payload)
                 Cmd.MISC_CONFIG_RET -> applyMisc(frame.payload)
                 Cmd.ANC_CONFIG_RET -> applyAnc(frame.payload)
                 Cmd.TOUCH_CONFIG_RET -> applyTouch(frame.payload)
@@ -276,6 +282,31 @@ class BudsSession(private val context: Context) {
                 else -> Unit
             }
             i += 2
+        }
+    }
+
+    /**
+     * Таблица возможностей от самой гарнитуры.
+     *
+     * Отвечает на вопрос «почему у дорогих моделей больше кнопок»: набор
+     * функций приходит битовой маской от устройства, а не берётся из
+     * зашитого списка моделей. Поэтому у T110 часть плиток честно не появится,
+     * а у модели с ANC/LDAC — появится без правок кода.
+     */
+    private fun applyCapabilities(p: ByteArray) {
+        val codes = OppoProtocol.parseCapabilities(p)
+        if (codes.isEmpty()) return
+        val names = buildSet {
+            if (0x0418 in codes) add("eq")
+            if (0x0404 in codes) add("anc")
+            if (0x0403 in codes) add("misc")
+            if (0x0401 in codes) add("touch")
+            if (0x0400 in codes) add("find")
+            if (0x0105 in codes) add("firmware")
+            if (0x0106 in codes) add("battery")
+        }
+        _state.update {
+            it.copy(capabilities = codes, supported = it.supported + names)
         }
     }
 

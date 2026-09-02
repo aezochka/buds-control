@@ -155,6 +155,8 @@ class Strings(private val code: String) {
             "bothInEar" to "Оба в ушах", "notWorn" to "Сняты", "caseLid" to "Крышка",
             "lidOpen" to "Открыта", "lidClosed" to "Закрыта",
             "testAlert" to "Проверить сигнал", "testAlertHint" to "Музыка приглушится и вернётся",
+            "sectionSound" to "ЗВУК", "sectionFeedback" to "ОТКЛИК И УВЕДОМЛЕНИЯ",
+            "sectionApp" to "ПРИЛОЖЕНИЕ", "sectionDevices" to "УСТРОЙСТВА",
         )
 
         private val EN = mapOf(
@@ -242,6 +244,8 @@ class Strings(private val code: String) {
             "bothInEar" to "Both in ears", "notWorn" to "Not worn", "caseLid" to "Lid",
             "lidOpen" to "Open", "lidClosed" to "Closed",
             "testAlert" to "Test the alert", "testAlertHint" to "Music ducks, then comes back",
+            "sectionSound" to "SOUND", "sectionFeedback" to "FEEDBACK & ALERTS",
+            "sectionApp" to "APP", "sectionDevices" to "DEVICES",
         )
 
         // Остальные языки: переведено главное, остальное падает на английский.
@@ -281,6 +285,8 @@ class Strings(private val code: String) {
             "bothInEar" to "Обидва у вухах", "notWorn" to "Зняті", "caseLid" to "Кришка",
             "lidOpen" to "Відкрита", "lidClosed" to "Закрита",
             "testAlert" to "Перевірити сигнал", "testAlertHint" to "Музика стишиться і повернеться",
+            "sectionSound" to "ЗВУК", "sectionFeedback" to "ВІДДАЧА ТА СПОВІЩЕННЯ",
+            "sectionApp" to "ДОДАТОК", "sectionDevices" to "ПРИСТРОЇ",
         )
 
         private val DE = mapOf(
@@ -319,6 +325,8 @@ class Strings(private val code: String) {
             "bothInEar" to "Beide im Ohr", "notWorn" to "Abgenommen", "caseLid" to "Deckel",
             "lidOpen" to "Offen", "lidClosed" to "Geschlossen",
             "testAlert" to "Signal testen", "testAlertHint" to "Musik wird leiser und kommt zurück",
+            "sectionSound" to "KLANG", "sectionFeedback" to "FEEDBACK & HINWEISE",
+            "sectionApp" to "APP", "sectionDevices" to "GERÄTE",
         )
 
         private val ES = mapOf(
@@ -357,6 +365,8 @@ class Strings(private val code: String) {
             "bothInEar" to "Ambos puestos", "notWorn" to "Sin poner", "caseLid" to "Tapa",
             "lidOpen" to "Abierta", "lidClosed" to "Cerrada",
             "testAlert" to "Probar el aviso", "testAlertHint" to "La música baja y vuelve",
+            "sectionSound" to "SONIDO", "sectionFeedback" to "RESPUESTA Y AVISOS",
+            "sectionApp" to "APLICACIÓN", "sectionDevices" to "DISPOSITIVOS",
         )
 
         private val PL = mapOf(
@@ -395,6 +405,8 @@ class Strings(private val code: String) {
             "bothInEar" to "Oba w uszach", "notWorn" to "Zdjęte", "caseLid" to "Klapka",
             "lidOpen" to "Otwarta", "lidClosed" to "Zamknięta",
             "testAlert" to "Sprawdź sygnał", "testAlertHint" to "Muzyka ścisza się i wraca",
+            "sectionSound" to "DŹWIĘK", "sectionFeedback" to "REAKCJE I POWIADOMIENIA",
+            "sectionApp" to "APLIKACJA", "sectionDevices" to "URZĄDZENIA",
         )
 
         private val TR = mapOf(
@@ -433,6 +445,8 @@ class Strings(private val code: String) {
             "bothInEar" to "İkisi de kulakta", "notWorn" to "Takılı değil", "caseLid" to "Kapak",
             "lidOpen" to "Açık", "lidClosed" to "Kapalı",
             "testAlert" to "Uyarıyı dene", "testAlertHint" to "Müzik kısılır ve geri döner",
+            "sectionSound" to "SES", "sectionFeedback" to "GERİ BİLDİRİM VE UYARILAR",
+            "sectionApp" to "UYGULAMA", "sectionDevices" to "CİHAZLAR",
         )
 
         private val ZH = mapOf(
@@ -471,6 +485,8 @@ class Strings(private val code: String) {
             "bothInEar" to "双耳已戴", "notWorn" to "未佩戴", "caseLid" to "仓盖",
             "lidOpen" to "已打开", "lidClosed" to "已关闭",
             "testAlert" to "测试提示音", "testAlertHint" to "音乐会先降低再恢复",
+            "sectionSound" to "声音", "sectionFeedback" to "反馈与提醒",
+            "sectionApp" to "应用", "sectionDevices" to "设备",
         )
     }
 }

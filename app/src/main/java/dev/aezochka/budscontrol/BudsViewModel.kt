@@ -138,7 +138,9 @@ class BudsViewModel(app: Application) : AndroidViewModel(app) {
     fun selectProfile(id: String) = viewModelScope.launch {
         val list = store.profiles.first().map { it.copy(isSelected = it.id == id) }
         store.saveProfiles(list)
-        list.firstOrNull { it.isSelected }?.let { session.connect(it.address, it.displayName) }
+        // Подключение здесь НЕ вызываем: на смену выбранного профиля
+        // реагирует LaunchedEffect на экране и делает это сам. Раньше
+        // connect срабатывал дважды — отсюда реконект после свапа.
     }
 
     /**

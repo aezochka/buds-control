@@ -101,11 +101,13 @@ class Feedback(private val context: Context) {
     private fun tone(kind: Kind) {
         val sampleRate = 44100
         val spec = when (kind) {
-            Kind.Tap -> Spec(0.045, 880.0, 880.0, 0.55)
-            Kind.On -> Spec(0.12, 660.0, 1180.0, 0.70)
-            Kind.Off -> Spec(0.12, 1180.0, 620.0, 0.62)
-            Kind.Switch -> Spec(0.05, 1040.0, 1040.0, 0.48)
-            Kind.Alarm -> Spec(0.8, 520.0, 900.0, 0.85)
+            // Ноты вместо произвольных частот: A5, E5→A5, A5→E5.
+            // Музыкальные интервалы на слух приятнее случайных значений.
+            Kind.Tap -> Spec(0.075, 880.0, 880.0, 0.42)
+            Kind.On -> Spec(0.16, 659.25, 987.77, 0.50)
+            Kind.Off -> Spec(0.16, 987.77, 659.25, 0.46)
+            Kind.Switch -> Spec(0.09, 783.99, 783.99, 0.38)
+            Kind.Alarm -> Spec(0.8, 659.25, 880.0, 0.62)
         }
         val frames = (sampleRate * spec.seconds).toInt().coerceAtLeast(64)
         val buffer = ShortArray(frames)
@@ -113,9 +115,15 @@ class Feedback(private val context: Context) {
             val t = i.toDouble() / sampleRate
             val progress = i.toDouble() / frames
             val freq = spec.startHz + (spec.endHz - spec.startHz) * progress
-            // Экспоненциальное затухание: щелчок без хвоста и без клика на конце.
-            val envelope = exp(-4.0 * progress) * minOf(1.0, progress * 40)
-            val value = sin(2 * PI * freq * t) * envelope * spec.volume
+            // Мягкая атака вместо мгновенной: резкий фронт давал «щёлк»,
+            // который и звучал неприятно.
+            val attack = 1 - exp(-18.0 * progress)
+            val envelope = attack * exp(-5.0 * progress)
+            // Обертоны тише основного тона: чистая синусоида звучит дёшево.
+            val wave = sin(2 * PI * freq * t) +
+                sin(2 * PI * freq * 2 * t) * 0.18 +
+                sin(2 * PI * freq * 3 * t) * 0.07
+            val value = (wave * envelope * spec.volume).coerceIn(-1.0, 1.0)
             buffer[i] = (value * Short.MAX_VALUE).toInt().toShort()
         }
         runCatching {

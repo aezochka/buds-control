@@ -201,19 +201,16 @@ fun BudsTab(vm: BudsViewModel, onDragActive: (Boolean) -> Unit = {}) {
                     onReorder = { vm.reorderProfiles(it) },
                     onAdd = { showAddDevice = true },
                     onDragActive = onDragActive,
+                    // Название скрывается и здесь: иначе блюр под фото есть,
+                    // а в баре сверху модель по-прежнему читается.
+                    nameBlur = nameBlur,
                 )
             }
         }
 
-        // Когда шторка спрятана, статус-бар перестаёт её отодвигать, и фото
-        // подъезжает вплотную к верху. Добавляем отступ ровно на это время.
-        AnimatedVisibility(
-            visible = !barVisible,
-            enter = expandVertically(Motion.spatial()),
-            exit = shrinkVertically(Motion.spatial()),
-        ) {
-            Spacer(Modifier.statusBarsPadding().height(18.dp))
-        }
+        // Отступ под статус-бар держим ВСЕГДА: раньше он появлялся только
+        // когда шторка скрыта, и фото прыгало под системную панель.
+        Spacer(Modifier.statusBarsPadding())
 
         LazyColumn(Modifier.fillMaxWidth(), state = listState) {
             item {
@@ -548,13 +545,9 @@ private fun BentoGrid(
             if (show("game")) add("game")
             if (show("spatial")) add("spatial")
             if (show("multipoint")) add("multipoint")
-            // AirPods рядом — показываем их плитки. Они читаются рекламой,
-            // поэтому не зависят от SPP-подключения.
-            if (applePods != null) {
-                add("airpods")
-                add("inear")
-                add("lid")
-            }
+            // Из плиток AirPods оставлено только ношение: заряд дублировал
+            // чипы на фото, а состояние крышки кейса ничего не решало.
+            if (applePods != null) add("inear")
         }
 
         big.chunked(2).forEach { pair ->
@@ -567,9 +560,8 @@ private fun BentoGrid(
             }
         }
 
-        Box(Modifier.fillMaxWidth()) {
-            TileContent("case", vm, live, editing, onEq, onSleep, onVolume)
-        }
+        // Плитка кейса убрана: заряд кейса и так виден чипом на фото,
+        // отдельная широкая плитка только занимала место.
 
         // Дополнительные — компактный ряд.
         Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {

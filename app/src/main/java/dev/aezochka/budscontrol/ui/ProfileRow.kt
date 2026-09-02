@@ -4,9 +4,10 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.draw.blur
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -55,12 +56,21 @@ fun ProfileRow(
     onReorder: (List<String>) -> Unit,
     onAdd: () -> Unit,
     onDragActive: (Boolean) -> Unit = {},
+    /** Размытие названия — то же, что под фото. */
+    nameBlur: androidx.compose.ui.unit.Dp = 0.dp,
 ) {
     val scheme = MaterialTheme.colorScheme
     val density = LocalDensity.current
 
     // Локальный порядок — двигаем визуально, наружу отдаём только при отпускании.
-    var order by remember(profiles.map { it.id }) { mutableStateOf(profiles.map { it.id }) }
+    var order by remember { mutableStateOf(profiles.map { it.id }) }
+    // Синхронизируем с приходящим списком, но НЕ пересоздаём состояние:
+    // remember(profiles) сбрасывал его сразу после сохранения порядка, и чип
+    // повторно перескакивал — это и выглядело как лаг при отпускании.
+    LaunchedEffect(profiles) {
+        val incoming = profiles.map { it.id }
+        if (incoming.toSet() != order.toSet()) order = incoming
+    }
     var dragId by remember { mutableStateOf<String?>(null) }
     var dragOffset by remember { mutableStateOf(0f) }
     // На сколько позиций уехал палец от исходного места.
@@ -138,7 +148,9 @@ fun ProfileRow(
                                     onDragActive(true)
                                 },
                                 onDragEnd = {
-                                    // Вставляем чип на новое место ОДИН раз, при отпускании.
+                                    // Порядок применяем СРАЗУ и синхронно, до
+                                    // сброса перетаскивания: раньше чип успевал
+                                    // отрисоваться на старом месте и дёргался.
                                     val from = order.indexOf(profile.id)
                                     val to = (startIndex + slots).coerceIn(0, order.lastIndex)
                                     if (from >= 0 && to != from) {
@@ -148,9 +160,11 @@ fun ProfileRow(
                                         order = list
                                         onReorder(list)
                                     }
-                                    dragId = null
+                                    // Обнуляем без анимации: смещение уже учтено
+                                    // новым порядком, иначе чип ехал обратно.
                                     dragOffset = 0f
                                     slots = 0
+                                    dragId = null
                                     onDragActive(false)
                                 },
                                 onDragCancel = {
@@ -183,7 +197,8 @@ fun ProfileRow(
                         modifier = Modifier.size(18.dp),
                     )
                     Text(
-                        profile.displayName.removePrefix("realme ").removePrefix("OnePlus "),
+                        modifier = Modifier.blur(nameBlur),
+                        text = profile.displayName.removePrefix("realme ").removePrefix("OnePlus "),
                         style = MaterialTheme.typography.bodyMedium,
                         color = if (active) scheme.onPrimary else scheme.onSurfaceVariant,
                     )

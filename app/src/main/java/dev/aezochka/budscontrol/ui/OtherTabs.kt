@@ -107,7 +107,7 @@ fun SettingsTab(vm: BudsViewModel) {
             // скруглён снаружи. Между блоками отступ больше — так видно,
             // где одна группа заканчивается.
             Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
-                // Блок 1: звук.
+                SectionLabel(tr("sectionSound"))
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     SettingsRow(
                         Icons.Outlined.GraphicEq, "Эквалайзер",
@@ -129,7 +129,7 @@ fun SettingsTab(vm: BudsViewModel) {
                     )
                 }
 
-                // Блок 2: поведение приложения.
+                SectionLabel(tr("sectionFeedback"))
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     SettingsToggle(
                         icon = Icons.Outlined.Vibration,
@@ -181,7 +181,7 @@ fun SettingsTab(vm: BudsViewModel) {
                     )
                 }
 
-                // Блок 3: приложение и оформление.
+                SectionLabel(tr("sectionApp"))
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     UpdateRow(vm, shape = groupShape(0, 4))
                     CrashLogRow()
@@ -200,6 +200,7 @@ fun SettingsTab(vm: BudsViewModel) {
                     AuthorRow(shape = groupShape(3, 4))
                 }
 
+                SectionLabel(tr("sectionDevices"))
                 // Каталог моделей: справочник, поэтому живёт в настройках,
                 // а не в шторке подключения.
                 SettingsRow(
@@ -226,6 +227,22 @@ fun SettingsTab(vm: BudsViewModel) {
         }
         item { BottomSpacer() }
     }
+}
+
+/**
+ * Подпись раздела настроек.
+ *
+ * Без них список читался как одна куча: блоки визуально разделены отступом,
+ * но непонятно, за что отвечает каждый.
+ */
+@Composable
+private fun SectionLabel(text: String) {
+    Text(
+        text,
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.padding(start = 6.dp, bottom = 2.dp),
+    )
 }
 
 @Composable

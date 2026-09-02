@@ -46,7 +46,7 @@ data class UserSettings(
 
 val defaultTileOrder = listOf(
     "eq", "anc", "game", "spatial", "multipoint",
-    "case", "sleep", "volume", "find", "firmware",
+    "sleep", "volume", "find", "firmware",
 )
 
 /**

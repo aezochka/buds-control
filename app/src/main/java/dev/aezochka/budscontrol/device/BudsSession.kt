@@ -109,7 +109,26 @@ class BudsSession(private val context: Context) {
             conn = null
         }
         disconnect()
-        _state.value = LiveState(connecting = true, deviceName = name, address = address)
+        // При переподключении к ТОМУ ЖЕ устройству сохраняем уже известные
+        // значения: полный сброс гасил игровой режим и другие тумблеры, и они
+        // мигали, пока гарнитура не ответит заново.
+        val keep = if (s.address == address) s else null
+        _state.value = LiveState(
+            connecting = true,
+            deviceName = name,
+            address = address,
+            gameMode = keep?.gameMode ?: false,
+            multipoint = keep?.multipoint ?: false,
+            spatialAudio = keep?.spatialAudio ?: false,
+            ancMode = keep?.ancMode,
+            firmware = keep?.firmware,
+            touch = keep?.touch ?: emptyMap(),
+            supported = keep?.supported ?: emptySet(),
+            capabilities = keep?.capabilities ?: emptySet(),
+            batteryLeft = keep?.batteryLeft,
+            batteryRight = keep?.batteryRight,
+            batteryCase = keep?.batteryCase,
+        )
         scope.launch {
             val adapter: BluetoothAdapter? =
                 (context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager)?.adapter

@@ -28,14 +28,14 @@ private const val TELEGRAM = "rz3nx"
 
 /** Автор приложения: тап открывает Telegram. */
 @Composable
-fun AuthorRow() {
+fun AuthorRow(shape: RoundedCornerShape = RoundedCornerShape(24.dp)) {
     val scheme = MaterialTheme.colorScheme
     val context = LocalContext.current
 
     Row(
         Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(24.dp))
+            .clip(shape)
             .background(scheme.surfaceContainer)
             .pressBounce {
                 // Сначала пробуем само приложение, иначе браузер.

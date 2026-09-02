@@ -51,7 +51,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import dev.aezochka.budscontrol.BudsViewModel
 import dev.aezochka.budscontrol.i18n.tr
@@ -90,78 +89,101 @@ fun SettingsTab(vm: BudsViewModel) {
     LazyColumn(Modifier.fillMaxSize()) {
         item { Spacer(Modifier.statusBarsPadding().height(14.dp)) }
         item {
-            // Плотный зазор внутри группы: иерархия задаётся расстоянием,
-            // а не разделителями.
-            Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                SettingsRow(
-                    Icons.Outlined.GraphicEq, "Эквалайзер",
-                    "Системный: полосы, басы, пресеты",
-                    onClick = { showEq = true },
-                )
-                SettingsRow(
-                    Icons.Outlined.Bedtime, tr("sleepTimer"),
-                    if (sleepMin > 0) "Активен: $sleepMin мин" else "Пауза по времени",
-                    onClick = { showSleep = true },
-                )
-                SettingsRow(
-                    Icons.Outlined.VolumeUp, tr("volumeLimit"),
-                    if (limit > 0) "Не выше $limit%" else "Защита слуха",
-                    onClick = { showVolume = true },
-                )
-                SettingsToggle(
-                    icon = Icons.Outlined.Vibration,
-                    title = tr("haptics"),
-                    subtitle = tr("hapticsHint"),
-                    checked = settings.hapticFeedback,
-                    onToggle = { vm.tick(); vm.setHaptic(it) },
-                )
-                SettingsToggle(
-                    icon = Icons.Outlined.MusicNote,
-                    title = tr("sounds"),
-                    subtitle = tr("soundsHint"),
-                    checked = settings.soundEffects,
-                    onToggle = { vm.setSoundEffects(it) },
-                )
-                SettingsToggle(
-                    icon = Icons.Outlined.Bolt,
-                    title = tr("autoConnect"),
-                    subtitle = tr("autoConnectHint"),
-                    checked = settings.autoConnect,
-                    onToggle = { vm.setAutoConnect(it) },
-                )
-                SettingsToggle(
-                    icon = Icons.Outlined.BatteryAlert,
-                    title = tr("lowBattery"),
-                    subtitle = "Когда наушник ниже 20%",
-                    checked = settings.lowBatteryAlert,
-                    onToggle = { vm.setLowBatteryAlert(it) },
-                )
-                // Обновление одной строкой: состояние и прогресс прямо здесь,
-                // без отдельной шторки — она выглядела как «скачать заново».
-                UpdateRow(vm)
-                // Появляется только если краш реально был: пустую строку
-                // показывать смысла нет.
-                CrashLogRow()
-                SettingsRow(
-                    Icons.Outlined.Language, tr("language"),
-                    tr("langCount"),
-                    onClick = { showLang = true },
-                )
-                SettingsRow(
-                    Icons.Outlined.Palette, "Тема",
-                    "Акцент: ${dev.aezochka.budscontrol.data.Accent.from(settings.accent).title}",
-                    onClick = { showTheme = true },
-                )
-                profiles.forEach { profile ->
+            // Строки собраны в блоки: внутри блока стык прямой, а сам блок
+            // скруглён снаружи. Между блоками отступ больше — так видно,
+            // где одна группа заканчивается.
+            Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
+                // Блок 1: звук.
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     SettingsRow(
-                        Icons.Outlined.DashboardCustomize,
-                        profile.displayName,
-                        "${profile.vendor} · ${profile.address}" + if (profile.isSelected) " · активный" else "",
-                        onClick = { vm.selectProfile(profile.id) },
+                        Icons.Outlined.GraphicEq, "Эквалайзер",
+                        "Системный: полосы, басы, пресеты",
+                        shape = groupShape(0, 3),
+                        onClick = { showEq = true },
+                    )
+                    SettingsRow(
+                        Icons.Outlined.Bedtime, tr("sleepTimer"),
+                        if (sleepMin > 0) "Активен: $sleepMin мин" else "Пауза по времени",
+                        shape = groupShape(1, 3),
+                        onClick = { showSleep = true },
+                    )
+                    SettingsRow(
+                        Icons.Outlined.VolumeUp, tr("volumeLimit"),
+                        if (limit > 0) "Не выше $limit%" else "Защита слуха",
+                        shape = groupShape(2, 3),
+                        onClick = { showVolume = true },
                     )
                 }
-                // Автор — в самом низу списка настроек.
-                AuthorRow()
+
+                // Блок 2: поведение приложения.
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    SettingsToggle(
+                        icon = Icons.Outlined.Vibration,
+                        title = tr("haptics"),
+                        subtitle = tr("hapticsHint"),
+                        checked = settings.hapticFeedback,
+                        shape = groupShape(0, 4),
+                        onToggle = { vm.tick(); vm.setHaptic(it) },
+                    )
+                    SettingsToggle(
+                        icon = Icons.Outlined.MusicNote,
+                        title = tr("sounds"),
+                        subtitle = tr("soundsHint"),
+                        checked = settings.soundEffects,
+                        shape = groupShape(1, 4),
+                        onToggle = { vm.setSoundEffects(it) },
+                    )
+                    SettingsToggle(
+                        icon = Icons.Outlined.Bolt,
+                        title = tr("autoConnect"),
+                        subtitle = tr("autoConnectHint"),
+                        checked = settings.autoConnect,
+                        shape = groupShape(2, 4),
+                        onToggle = { vm.setAutoConnect(it) },
+                    )
+                    SettingsToggle(
+                        icon = Icons.Outlined.BatteryAlert,
+                        title = tr("lowBattery"),
+                        subtitle = "Когда наушник ниже 20%",
+                        checked = settings.lowBatteryAlert,
+                        shape = groupShape(3, 4),
+                        onToggle = { vm.setLowBatteryAlert(it) },
+                    )
+                }
+
+                // Блок 3: приложение и оформление.
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    UpdateRow(vm, shape = groupShape(0, 4))
+                    CrashLogRow()
+                    SettingsRow(
+                        Icons.Outlined.Language, tr("language"),
+                        tr("langCount"),
+                        shape = groupShape(1, 4),
+                        onClick = { showLang = true },
+                    )
+                    SettingsRow(
+                        Icons.Outlined.Palette, "Тема",
+                        "Акцент: ${dev.aezochka.budscontrol.data.Accent.from(settings.accent).title}",
+                        shape = groupShape(2, 4),
+                        onClick = { showTheme = true },
+                    )
+                    AuthorRow(shape = groupShape(3, 4))
+                }
+
+                // Блок 4: сохранённые наушники.
+                if (profiles.isNotEmpty()) {
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        profiles.forEachIndexed { index, profile ->
+                            SettingsRow(
+                                Icons.Outlined.DashboardCustomize,
+                                profile.displayName,
+                                "${profile.vendor} · ${profile.address}" + if (profile.isSelected) " · активный" else "",
+                                shape = groupShape(index, profiles.size),
+                                onClick = { vm.selectProfile(profile.id) },
+                            )
+                        }
+                    }
+                }
             }
         }
         item { BottomSpacer() }
@@ -169,11 +191,17 @@ fun SettingsTab(vm: BudsViewModel) {
 }
 
 @Composable
-private fun SettingsRow(icon: ImageVector, title: String, subtitle: String, onClick: (() -> Unit)? = null) {
+private fun SettingsRow(
+    icon: ImageVector,
+    title: String,
+    subtitle: String,
+    shape: RoundedCornerShape = RoundedCornerShape(24.dp),
+    onClick: (() -> Unit)? = null,
+) {
     val scheme = MaterialTheme.colorScheme
     var base = Modifier
         .fillMaxWidth()
-        .clip(RoundedCornerShape(24.dp))
+        .clip(shape)
         .background(scheme.surfaceContainer)
     if (onClick != null) base = base.pressBounce(onClick = onClick)
     Row(
@@ -185,21 +213,10 @@ private fun SettingsRow(icon: ImageVector, title: String, subtitle: String, onCl
             Modifier.size(48.dp).clip(RoundedCornerShape(17.dp)).background(scheme.surfaceContainerHighest),
             contentAlignment = Alignment.Center,
         ) { Icon(icon, null, tint = scheme.onSurfaceVariant, modifier = Modifier.size(23.dp)) }
-        // Заголовок слева, значение справа — как на системном экране
-        // «Об устройстве»: так значение читается сразу, без поиска глазами.
-        Text(
-            title,
-            style = MaterialTheme.typography.bodyLarge,
-            color = scheme.onSurface,
-        )
-        Spacer(Modifier.weight(1f))
-        Text(
-            subtitle,
-            style = MaterialTheme.typography.bodyMedium,
-            color = scheme.onSurfaceVariant,
-            textAlign = TextAlign.End,
-            modifier = Modifier.fillMaxWidth(0.52f),
-        )
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.bodyLarge, color = scheme.onSurface)
+            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant)
+        }
     }
 }
 
@@ -209,6 +226,7 @@ private fun SettingsToggle(
     title: String,
     subtitle: String,
     checked: Boolean,
+    shape: RoundedCornerShape = RoundedCornerShape(24.dp),
     onToggle: (Boolean) -> Unit,
 ) {
     val scheme = MaterialTheme.colorScheme
@@ -218,7 +236,7 @@ private fun SettingsToggle(
     Row(
         Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(24.dp))
+            .clip(shape)
             .background(bg)
             .pressBounce { onToggle(!checked) }
             .padding(17.dp),

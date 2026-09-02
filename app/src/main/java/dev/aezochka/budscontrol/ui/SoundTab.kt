@@ -31,7 +31,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import dev.aezochka.budscontrol.BudsViewModel
 import dev.aezochka.budscontrol.i18n.tr
@@ -116,6 +115,8 @@ fun SoundTab(vm: BudsViewModel) {
 
         // Сон и лимит — в одном фоне, отдельно от эквалайзера.
         item { GroupLabel("Тише и по времени") }
+        // Одна группа: у верхней строки скруглён верх, у нижней — низ,
+        // стык между ними прямой.
         item {
             SoundRow(
                 icon = Icons.Outlined.Bedtime,
@@ -126,6 +127,8 @@ fun SoundTab(vm: BudsViewModel) {
                     else -> tr("off")
                 },
                 active = sleepMin > 0,
+                shape = groupShape(0, 2),
+                topPadding = 11.dp,
             ) { showSleep = true }
         }
         item {
@@ -134,6 +137,8 @@ fun SoundTab(vm: BudsViewModel) {
                 title = tr("volumeLimit"),
                 value = if (limit > 0) "$limit%" else tr("noLimit"),
                 active = limit > 0,
+                shape = groupShape(1, 2),
+                topPadding = 2.dp,
             ) { showVolume = true }
         }
         item { BottomSpacer() }
@@ -146,15 +151,17 @@ private fun SoundRow(
     title: String,
     value: String,
     active: Boolean,
+    shape: RoundedCornerShape = RoundedCornerShape(22.dp),
+    topPadding: androidx.compose.ui.unit.Dp = 11.dp,
     onClick: () -> Unit,
 ) {
     val scheme = MaterialTheme.colorScheme
     Row(
         Modifier
             .padding(horizontal = 20.dp)
-            .padding(top = 11.dp)
+            .padding(top = topPadding)
             .fillMaxWidth()
-            .clip(RoundedCornerShape(22.dp))
+            .clip(shape)
             .background(if (active) scheme.primary else scheme.surfaceContainer)
             .pressBounce(onClick = onClick)
             .padding(16.dp),
@@ -166,18 +173,16 @@ private fun SoundRow(
             tint = if (active) scheme.onPrimary else scheme.primary,
             modifier = Modifier.size(22.dp),
         )
-        // Значение справа, как на системном экране «Об устройстве».
-        Text(
-            title, style = MaterialTheme.typography.bodyLarge,
-            color = if (active) scheme.onPrimary else scheme.onSurface,
-        )
-        Spacer(Modifier.weight(1f))
-        Text(
-            value, style = MaterialTheme.typography.bodyMedium,
-            color = if (active) scheme.onPrimary.copy(alpha = 0.85f) else scheme.onSurfaceVariant,
-            textAlign = TextAlign.End,
-            modifier = Modifier.fillMaxWidth(0.5f),
-        )
+        Column(Modifier.fillMaxWidth(0.78f)) {
+            Text(
+                title, style = MaterialTheme.typography.bodyLarge,
+                color = if (active) scheme.onPrimary else scheme.onSurface,
+            )
+            Text(
+                value, style = MaterialTheme.typography.bodySmall,
+                color = if (active) scheme.onPrimary.copy(alpha = 0.85f) else scheme.onSurfaceVariant,
+            )
+        }
     }
 }
 

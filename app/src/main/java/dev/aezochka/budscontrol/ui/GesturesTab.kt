@@ -37,7 +37,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import dev.aezochka.budscontrol.BudsViewModel
 import dev.aezochka.budscontrol.i18n.tr
@@ -99,9 +98,11 @@ private fun SideGestures(
             TouchType.TAP_2 to strings["tap2"],
             TouchType.TAP_3 to strings["tap3"],
             TouchType.HOLD to strings["hold"],
-        ).forEach { (type, label) ->
+        ).forEachIndexed { index, (type, label) ->
             GestureRow(
                 label = label,
+                // Три жеста одного наушника — один блок.
+                shape = groupShape(index, 3),
                 current = touch[side to type] ?: touch[TouchSide.BOTH to type],
                 enabled = enabled,
                 // Заводское значение, пока гарнитура не прислала своё.
@@ -125,6 +126,7 @@ private fun GestureRow(
     enabled: Boolean,
     strings: dev.aezochka.budscontrol.i18n.Strings,
     fallbackLabel: String,
+    shape: RoundedCornerShape = RoundedCornerShape(22.dp),
     onPick: (TouchAction) -> Unit,
 ) {
     val scheme = MaterialTheme.colorScheme
@@ -134,8 +136,10 @@ private fun GestureRow(
     Column(
         Modifier
             .fillMaxWidth()
-            .padding(bottom = 8.dp)
-            .clip(RoundedCornerShape(22.dp))
+            // 2dp вместо 8dp: строки блока стоят почти вплотную,
+            // поэтому прямой стык читается как одна фигура.
+            .padding(bottom = 2.dp)
+            .clip(shape)
             .background(scheme.surfaceContainer),
     ) {
         Row(
@@ -144,17 +148,15 @@ private fun GestureRow(
             Modifier.pressBounce { expanded = !expanded }.padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            // Жест слева, назначенное действие справа.
-            Text(label, style = MaterialTheme.typography.bodyLarge, color = scheme.onSurface)
-            Spacer(Modifier.weight(1f))
-            Text(
-                current?.let { actionLabel(it, strings) } ?: fallbackLabel,
-                style = MaterialTheme.typography.bodyMedium,
-                color = if (current == null) scheme.outline else scheme.onSurfaceVariant,
-                textAlign = TextAlign.End,
-                modifier = Modifier.fillMaxWidth(0.52f),
-            )
-            Spacer(Modifier.size(10.dp))
+            Column(Modifier.fillMaxWidth(0.84f)) {
+                Text(label, style = MaterialTheme.typography.bodyLarge, color = scheme.onSurface)
+                Text(
+                    current?.let { actionLabel(it, strings) } ?: fallbackLabel,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (current == null) scheme.outline else scheme.onSurfaceVariant,
+                )
+            }
+            Spacer(Modifier.fillMaxWidth(0.08f))
             Icon(
                 Icons.Outlined.ExpandMore, null, tint = scheme.outline,
                 modifier = Modifier.size(20.dp).rotate(rotation),

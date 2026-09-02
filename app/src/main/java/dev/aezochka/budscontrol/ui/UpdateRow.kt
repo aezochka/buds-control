@@ -43,7 +43,10 @@ import kotlin.math.roundToInt
  * поэтому второй тап не начинает загрузку с нуля.
  */
 @Composable
-fun UpdateRow(vm: BudsViewModel) {
+fun UpdateRow(
+    vm: BudsViewModel,
+    shape: RoundedCornerShape = RoundedCornerShape(24.dp),
+) {
     val scheme = MaterialTheme.colorScheme
     val state by vm.updateState.collectAsState()
 
@@ -66,7 +69,7 @@ fun UpdateRow(vm: BudsViewModel) {
     Column(
         Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(24.dp))
+            .clip(shape)
             .background(if (release != null) scheme.primary.copy(alpha = 0.16f) else scheme.surfaceContainer)
             // Тап осмысленен только когда есть что ставить.
             .let { base ->

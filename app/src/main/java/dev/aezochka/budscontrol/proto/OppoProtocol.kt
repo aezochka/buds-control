@@ -17,6 +17,16 @@ object OppoProtocol {
     const val PREAMBLE: Byte = 0xAA.toByte()
     const val SPP_UUID = "00001101-0000-1000-8000-00805F9B34FB"
 
+    /** action в кадре 0x0418: 0..4 — записать, 5 — запросить текущее. */
+    const val EQ_ACTION_SET = 0
+    const val EQ_ACTION_QUERY = 5
+
+    /** id пользовательской кривой. */
+    const val EQ_ID_CUSTOM = 0
+
+    /** Частоты полос, как их показывает realme Link. */
+    val EQ_FREQUENCIES = listOf(60, 230, 910, 3600, 14000)
+
     private var seq = 0
 
     fun encode(cmd: Cmd, payload: ByteArray = ByteArray(0)): ByteArray {
@@ -102,6 +112,48 @@ object OppoProtocol {
     fun miscConfigSet(type: MiscType, enable: Boolean) =
         encode(Cmd.MISC_CONFIG_SET, byteArrayOf(type.code.toByte(), if (enable) 1 else 0))
 
+    /**
+     * Загрузка кривой эквалайзера прямо в гарнитуру (0x0418).
+     *
+     * Формат снят с realme Link (SetCommandManager.p):
+     *   [0] action, [1] minDb, [2] maxDb, [3] eqId, [4] nameLen,
+     *   name UTF-8, bandCount, затем на полосу: freq(2 байта LE) + gainDb(1 signed)
+     *
+     * Частоты передаются явно, поэтому кривая произвольная — не фиксированные полосы.
+     */
+    fun eqInfoSet(
+        gains: List<Int>,
+        frequencies: List<Int>,
+        eqId: Int = EQ_ID_CUSTOM,
+        minDb: Int = -6,
+        maxDb: Int = 6,
+        action: Int = EQ_ACTION_SET,
+    ): ByteArray {
+        require(gains.size == frequencies.size) { "gains и frequencies должны быть одной длины" }
+        val payload = ByteArray(5 + 1 + frequencies.size * 3)
+        payload[0] = action.toByte()
+        payload[1] = minDb.toByte()
+        payload[2] = maxDb.toByte()
+        payload[3] = eqId.toByte()
+        payload[4] = 0 // nameLen: имя не передаём
+        payload[5] = frequencies.size.toByte()
+        var i = 6
+        frequencies.forEachIndexed { index, freq ->
+            payload[i] = (freq and 0xFF).toByte()
+            payload[i + 1] = ((freq shr 8) and 0xFF).toByte()
+            payload[i + 2] = gains[index].coerceIn(minDb, maxDb).toByte()
+            i += 3
+        }
+        return encode(Cmd.EQ_INFO_SET, payload)
+    }
+
+    /** Запрос текущей кривой: тот же кадр с action=5 и пустым телом. */
+    fun eqInfoReq() = encode(Cmd.EQ_INFO_SET, ByteArray(5).also { it[0] = EQ_ACTION_QUERY.toByte() })
+
+    /** Включить/выключить эквалайзер в гарнитуре (0x0406). */
+    fun eqSwitchSet(on: Boolean) =
+        encode(Cmd.EQ_SWITCH_SET, byteArrayOf(if (on) 1 else 0))
+
     fun ancModeSet(mode: AncMode) =
         encode(Cmd.ANC_CONFIG_SET, byteArrayOf(AncType.MODE.code.toByte(), 0x01, mode.code.toByte()))
 
@@ -130,10 +182,17 @@ enum class Cmd(val code: Short) {
     BATTERY_RET(0x8106.toShort()),
     STATUS_REQ(0x0109),
     STATUS_RET(0x8109.toShort()),
-    EQUALIZER_REQ(0x010F),
-    EQUALIZER_SET(0x0406),
-    EQUALIZER_RET(0x810F.toShort()),
-    EQUALIZER_ACK(0x8406.toShort()),
+    /**
+     * Коды подтверждены декомпиляцией realme Link 5.5.514
+     * (Protocol.F1 = 1048, Protocol.j1 = 1030).
+     *
+     * Раньше EQUALIZER_SET стоял на 0x0406 — но это переключатель
+     * «включён ли эквалайзер», а не загрузка полос. Кривая уходит в 0x0418.
+     */
+    EQ_SWITCH_SET(0x0406),
+    EQ_SWITCH_ACK(0x8406.toShort()),
+    EQ_INFO_SET(0x0418),
+    EQ_INFO_ACK(0x8418.toShort()),
     SUBSCRIPTION_SET(0x0205),
     SUBSCRIPTION_ACK(0x8205.toShort()),
     SUBSCRIPTION_RET(0x0204),

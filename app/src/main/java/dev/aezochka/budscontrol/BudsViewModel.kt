@@ -432,7 +432,11 @@ class BudsViewModel(app: Application) : AndroidViewModel(app) {
 
     fun setBandDb(band: Int, db: Int) {
         audioFx.setBandDb(band, db)
-        _eqGains.value = audioFx.currentGainsDb()
+        val gains = audioFx.currentGainsDb()
+        _eqGains.value = gains
+        // Кривая уходит и в гарнитуру: команда 0x0418 из realme Link работает
+        // на любом плеере, в отличие от системного AudioEffect.
+        session.setEqGains(gains)
     }
 
 
@@ -443,7 +447,9 @@ class BudsViewModel(app: Application) : AndroidViewModel(app) {
 
     fun resetEq() {
         repeat(audioFx.bandCount) { audioFx.setBandDb(it, 0) }
-        _eqGains.value = audioFx.currentGainsDb()
+        val gains = audioFx.currentGainsDb()
+        _eqGains.value = gains
+        session.setEqGains(gains)
     }
 
     // ===== Таймер сна =====

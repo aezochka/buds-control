@@ -46,6 +46,8 @@ data class LiveState(
     val ancMode: AncMode? = null,
     /** Гарнитура подтвердила команду поиска. */
     val findAcked: Boolean = false,
+    /** Гарнитура подтвердила кадр эквалайзера (0x0418). */
+    val eqAcked: Boolean = false,
     val touch: Map<Pair<TouchSide, TouchType>, TouchAction> = emptyMap(),
     val supported: Set<String> = emptySet(),
     val probed: Boolean = false,
@@ -205,6 +207,11 @@ class BudsSession(private val context: Context) {
                 Cmd.FIND_DEVICE_ACK -> _state.update {
                     it.copy(supported = it.supported + "find", findAcked = true)
                 }
+                // Гарнитура подтвердила кадр эквалайзера — только теперь считаем,
+                // что модель реально умеет менять кривую на своей стороне.
+                Cmd.EQ_INFO_ACK -> _state.update {
+                    it.copy(supported = it.supported + "eq", eqAcked = true)
+                }
                 else -> Unit
             }
         }
@@ -317,6 +324,21 @@ class BudsSession(private val context: Context) {
     }
 
     fun setAnc(mode: AncMode) = send(OppoProtocol.ancModeSet(mode)) { _state.update { it.copy(ancMode = mode) } }
+
+    /**
+     * Кривая эквалайзера прямо в гарнитуру.
+     *
+     * Коды и формат сняты с realme Link, но конкретная модель может команду
+     * не поддерживать — поэтому ACK помечает функцию как реально доступную,
+     * и до подтверждения UI не выдаёт это за работающее.
+     */
+    fun setEqGains(gains: List<Int>) {
+        val freqs = OppoProtocol.EQ_FREQUENCIES.take(gains.size)
+        if (freqs.size != gains.size) return
+        send(OppoProtocol.eqInfoSet(gains = gains, frequencies = freqs)) {}
+    }
+
+    fun requestEq() = send(OppoProtocol.eqInfoReq()) {}
     fun setTouch(side: TouchSide, type: TouchType, action: TouchAction) =
         send(OppoProtocol.touchConfigSet(side, type, action)) {
             _state.update { it.copy(touch = it.touch + ((side to type) to action)) }

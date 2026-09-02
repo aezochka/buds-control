@@ -39,6 +39,8 @@ data class UserSettings(
     val lowBatteryAlert: Boolean = false,
     val tileOrder: List<String> = defaultTileOrder,
     val tileSpans: Map<String, Int> = emptyMap(),
+    /** Прятать панель с названием наушников при прокрутке вниз. */
+    val hideNameOnScroll: Boolean = true,
     val hiddenTiles: Set<String> = emptySet(),
 )
 

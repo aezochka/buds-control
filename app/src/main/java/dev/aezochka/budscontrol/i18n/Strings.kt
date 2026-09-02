@@ -150,6 +150,7 @@ class Strings(private val code: String) {
             "updateReady" to "Загружено, можно ставить", "updateLatest" to "Последняя версия",
             "crashTitle" to "Отчёт о сбое", "crashHint" to "Скопируй и пришли мне",
             "author" to "Автор",
+            "hideName" to "Прятать название", "hideNameHint" to "Скрывать панель при прокрутке вниз",
         )
 
         private val EN = mapOf(
@@ -232,6 +233,7 @@ class Strings(private val code: String) {
             "updateReady" to "Downloaded, ready to install", "updateLatest" to "Up to date",
             "crashTitle" to "Crash report", "crashHint" to "Copy it and send it over",
             "author" to "Author",
+            "hideName" to "Hide the name", "hideNameHint" to "Collapse the bar when scrolling down",
         )
 
         // Остальные языки: переведено главное, остальное падает на английский.
@@ -266,6 +268,7 @@ class Strings(private val code: String) {
             "updateReady" to "Завантажено, можна ставити", "updateLatest" to "Найновіша версія",
             "crashTitle" to "Звіт про збій", "crashHint" to "Скопіюй і надішли мені",
             "author" to "Автор",
+            "hideName" to "Приховувати назву", "hideNameHint" to "Ховати панель під час прокручування",
         )
 
         private val DE = mapOf(
@@ -299,6 +302,7 @@ class Strings(private val code: String) {
             "updateReady" to "Geladen, bereit zur Installation", "updateLatest" to "Aktuell",
             "crashTitle" to "Fehlerbericht", "crashHint" to "Kopieren und senden",
             "author" to "Autor",
+            "hideName" to "Namen ausblenden", "hideNameHint" to "Leiste beim Scrollen einklappen",
         )
 
         private val ES = mapOf(
@@ -332,6 +336,7 @@ class Strings(private val code: String) {
             "updateReady" to "Descargado, listo para instalar", "updateLatest" to "Actualizado",
             "crashTitle" to "Informe de fallo", "crashHint" to "Cópialo y envíalo",
             "author" to "Autor",
+            "hideName" to "Ocultar el nombre", "hideNameHint" to "Colapsar la barra al desplazar",
         )
 
         private val PL = mapOf(
@@ -365,6 +370,7 @@ class Strings(private val code: String) {
             "updateReady" to "Pobrano, gotowe do instalacji", "updateLatest" to "Aktualna wersja",
             "crashTitle" to "Raport awarii", "crashHint" to "Skopiuj i wyślij",
             "author" to "Autor",
+            "hideName" to "Ukrywaj nazwę", "hideNameHint" to "Zwijaj panel przy przewijaniu",
         )
 
         private val TR = mapOf(
@@ -398,6 +404,7 @@ class Strings(private val code: String) {
             "updateReady" to "İndirildi, kurulabilir", "updateLatest" to "Güncel",
             "crashTitle" to "Çökme raporu", "crashHint" to "Kopyala ve gönder",
             "author" to "Geliştirici",
+            "hideName" to "Adı gizle", "hideNameHint" to "Kaydırırken çubuğu daralt",
         )
 
         private val ZH = mapOf(
@@ -431,6 +438,7 @@ class Strings(private val code: String) {
             "updateReady" to "已下载，可安装", "updateLatest" to "已是最新版本",
             "crashTitle" to "崩溃报告", "crashHint" to "复制并发送给我",
             "author" to "作者",
+            "hideName" to "隐藏名称", "hideNameHint" to "向下滚动时收起顶栏",
         )
     }
 }

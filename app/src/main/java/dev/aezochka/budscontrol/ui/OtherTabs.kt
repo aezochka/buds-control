@@ -38,6 +38,7 @@ import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.TouchApp
+import androidx.compose.material.icons.outlined.UnfoldLess
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -122,7 +123,7 @@ fun SettingsTab(vm: BudsViewModel) {
                         title = tr("haptics"),
                         subtitle = tr("hapticsHint"),
                         checked = settings.hapticFeedback,
-                        shape = groupShape(0, 4),
+                        shape = groupShape(0, 5),
                         onToggle = { vm.tick(); vm.setHaptic(it) },
                     )
                     SettingsToggle(
@@ -130,7 +131,7 @@ fun SettingsTab(vm: BudsViewModel) {
                         title = tr("sounds"),
                         subtitle = tr("soundsHint"),
                         checked = settings.soundEffects,
-                        shape = groupShape(1, 4),
+                        shape = groupShape(1, 5),
                         onToggle = { vm.setSoundEffects(it) },
                     )
                     SettingsToggle(
@@ -138,7 +139,7 @@ fun SettingsTab(vm: BudsViewModel) {
                         title = tr("autoConnect"),
                         subtitle = tr("autoConnectHint"),
                         checked = settings.autoConnect,
-                        shape = groupShape(2, 4),
+                        shape = groupShape(2, 5),
                         onToggle = { vm.setAutoConnect(it) },
                     )
                     SettingsToggle(
@@ -146,8 +147,16 @@ fun SettingsTab(vm: BudsViewModel) {
                         title = tr("lowBattery"),
                         subtitle = "Когда наушник ниже 20%",
                         checked = settings.lowBatteryAlert,
-                        shape = groupShape(3, 4),
+                        shape = groupShape(3, 5),
                         onToggle = { vm.setLowBatteryAlert(it) },
+                    )
+                    SettingsToggle(
+                        icon = Icons.Outlined.UnfoldLess,
+                        title = tr("hideName"),
+                        subtitle = tr("hideNameHint"),
+                        checked = settings.hideNameOnScroll,
+                        shape = groupShape(4, 5),
+                        onToggle = { vm.setHideNameOnScroll(it) },
                     )
                 }
 

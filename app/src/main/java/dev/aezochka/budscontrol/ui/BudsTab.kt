@@ -161,10 +161,14 @@ fun BudsTab(vm: BudsViewModel, onDragActive: (Boolean) -> Unit = {}) {
     // По индексу элемента не работало: элементов в списке всего три,
     // firstVisibleItemIndex почти не менялся и панель висела всегда.
     val listState = rememberLazyListState()
+    // Скрытие можно выключить в настройках — тогда панель закреплена.
+    val budsSettings by vm.settings.collectAsState()
+    val hideOnScroll = budsSettings.hideNameOnScroll
     var barVisible by remember { mutableStateOf(true) }
-    val scrollConnection = remember {
+    val scrollConnection = remember(hideOnScroll) {
         object : NestedScrollConnection {
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                if (!hideOnScroll) return Offset.Zero
                 val dy = available.y
                 if (dy < -4f) barVisible = false   // палец вверх => контент вниз
                 if (dy > 4f) barVisible = true
@@ -174,7 +178,11 @@ fun BudsTab(vm: BudsViewModel, onDragActive: (Boolean) -> Unit = {}) {
     }
 
     // Наверху списка панель всегда открыта.
-    LaunchedEffect(listState) {
+    LaunchedEffect(listState, hideOnScroll) {
+        if (!hideOnScroll) {
+            barVisible = true
+            return@LaunchedEffect
+        }
         snapshotFlow { listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset }
             .collect { (index, offset) -> if (index == 0 && offset < 12) barVisible = true }
     }

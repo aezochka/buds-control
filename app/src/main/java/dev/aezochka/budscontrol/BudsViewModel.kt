@@ -164,7 +164,12 @@ class BudsViewModel(app: Application) : AndroidViewModel(app) {
     fun onResume() = viewModelScope.launch {
         session.syncState()
         val profile = store.profiles.first().firstOrNull { it.isSelected } ?: return@launch
-        if (!live.value.connected) session.connect(profile.address, profile.displayName, force = true)
+        // Живой сокет не трогаем. Раньше здесь стоял force = true, который
+        // закрывал рабочее соединение и открывал новое на каждом возврате
+        // на экран — отсюда постоянные переподключения.
+        if (live.value.connected || live.value.connecting) return@launch
+        if (session.hasLiveSocket()) return@launch
+        session.connect(profile.address, profile.displayName)
     }
 
     fun connectSelected() = viewModelScope.launch {
@@ -309,6 +314,10 @@ class BudsViewModel(app: Application) : AndroidViewModel(app) {
             progress = 1f, downloading = false, readyToInstall = true, error = null,
         )
         Updater.install(getApplication(), file)
+    }
+
+    fun setHideNameOnScroll(on: Boolean) = viewModelScope.launch {
+        store.saveSettings(settings.value.copy(hideNameOnScroll = on))
     }
 
     fun setSoundEffects(on: Boolean) = viewModelScope.launch {

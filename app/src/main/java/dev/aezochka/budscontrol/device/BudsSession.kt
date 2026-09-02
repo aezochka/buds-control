@@ -90,9 +90,15 @@ class BudsSession(private val context: Context) {
      * в приложение, иначе состояние «подключаюсь» залипало навсегда —
      * сокет уже умер, пока приложение было в фоне, а флаг остался.
      */
+    /** Сокет реально жив — переподключаться не нужно. */
+    fun hasLiveSocket(): Boolean = conn?.isConnected == true
+
     fun connect(address: String, name: String, force: Boolean = false) {
         val s = _state.value
         val alive = conn?.isConnected == true
+        // Живое соединение к тому же адресу не пересоздаём даже по force:
+        // иначе каждый повторный вызов рвёт рабочий сокет.
+        if (s.address == address && alive && (s.connected || s.connecting)) return
         if (!force && s.address == address && (s.connected || s.connecting) && alive) return
         if (force || !alive) {
             // Роняем мёртвую сессию перед новой попыткой.

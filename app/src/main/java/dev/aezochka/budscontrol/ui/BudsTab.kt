@@ -489,19 +489,40 @@ private fun BentoGrid(
         Modifier.padding(horizontal = 20.dp),
         verticalArrangement = Arrangement.spacedBy(11.dp),
     ) {
-        // Главные функции — крупные плитки.
-        Row(horizontalArrangement = Arrangement.spacedBy(11.dp)) {
-            Box(Modifier.weight(1f)) { TileContent("eq", vm, live, editing, onEq, onSleep, onVolume) }
-            Box(Modifier.weight(1f)) { TileContent("game", vm, live, editing, onEq, onSleep, onVolume) }
+        // Набор плиток зависит от гарнитуры: шумодав, spatial и multipoint
+        // появляются только если устройство их подтвердило. Раньше список был
+        // фиксированным, поэтому у одних моделей не хватало кнопок, а у других
+        // висели мёртвые.
+        val big = buildList {
+            add("eq")
+            if ("anc" in live.supported) add("anc")
+            if ("game" in live.supported) add("game")
+            if ("spatial" in live.supported) add("spatial")
+            if ("multipoint" in live.supported) add("multipoint")
         }
+
+        big.chunked(2).forEach { pair ->
+            Row(horizontalArrangement = Arrangement.spacedBy(11.dp)) {
+                pair.forEach { key ->
+                    Box(Modifier.weight(1f)) { TileContent(key, vm, live, editing, onEq, onSleep, onVolume) }
+                }
+                // Нечётный остаток не должен растягиваться на всю ширину.
+                if (pair.size == 1) Spacer(Modifier.weight(1f))
+            }
+        }
+
         Box(Modifier.fillMaxWidth()) {
             TileContent("case", vm, live, editing, onEq, onSleep, onVolume)
         }
 
-
-        // Дополнительные — компактный ряд из четырёх.
+        // Дополнительные — компактный ряд.
         Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-            listOf("sleep", "volume", "find", "firmware").forEach { key ->
+            buildList {
+                add("sleep")
+                add("volume")
+                if ("find" in live.supported) add("find")
+                add("firmware")
+            }.forEach { key ->
                 Box(Modifier.weight(1f)) {
                     TileContent(key, vm, live, editing, onEq, onSleep, onVolume, compact = true)
                 }

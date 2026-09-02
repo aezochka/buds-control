@@ -144,6 +144,8 @@ class Strings(private val code: String) {
             "catalogOpenHint" to "Выбрать модель из списка или через поиск",
             "catalogSearch" to "Модель или функция", "catalogEmpty" to "Ничего не нашлось",
             "catalogFeatures" to "функций",
+            "noiseControl" to "Шумодав", "ancOn" to "Шумодав", "ancTransparency" to "Прозрачность",
+            "spatialAudio" to "Объёмный звук", "multipoint" to "Два устройства",
         )
 
         private val EN = mapOf(
@@ -220,6 +222,8 @@ class Strings(private val code: String) {
             "catalogOpenHint" to "Pick a model from the list or search",
             "catalogSearch" to "Model or feature", "catalogEmpty" to "Nothing found",
             "catalogFeatures" to "features",
+            "noiseControl" to "Noise control", "ancOn" to "Noise cancelling", "ancTransparency" to "Transparency",
+            "spatialAudio" to "Spatial audio", "multipoint" to "Multipoint",
         )
 
         // Остальные языки: переведено главное, остальное падает на английский.
@@ -248,6 +252,8 @@ class Strings(private val code: String) {
             "catalogOpenHint" to "Обери модель зі списку або через пошук",
             "catalogSearch" to "Модель або функція", "catalogEmpty" to "Нічого не знайдено",
             "catalogFeatures" to "функцій",
+            "noiseControl" to "Шумозаглушення", "ancOn" to "Шумозаглушення", "ancTransparency" to "Прозорість",
+            "spatialAudio" to "Об'ємний звук", "multipoint" to "Два пристрої",
         )
 
         private val DE = mapOf(
@@ -275,6 +281,8 @@ class Strings(private val code: String) {
             "catalogOpenHint" to "Modell aus der Liste oder per Suche wählen",
             "catalogSearch" to "Modell oder Funktion", "catalogEmpty" to "Nichts gefunden",
             "catalogFeatures" to "Funktionen",
+            "noiseControl" to "Geräuschunterdrückung", "ancOn" to "ANC aktiv", "ancTransparency" to "Transparenz",
+            "spatialAudio" to "Raumklang", "multipoint" to "Multipoint",
         )
 
         private val ES = mapOf(
@@ -302,6 +310,8 @@ class Strings(private val code: String) {
             "catalogOpenHint" to "Elige un modelo de la lista o busca",
             "catalogSearch" to "Modelo o función", "catalogEmpty" to "No se encontró nada",
             "catalogFeatures" to "funciones",
+            "noiseControl" to "Cancelación de ruido", "ancOn" to "Cancelación activa", "ancTransparency" to "Transparencia",
+            "spatialAudio" to "Audio espacial", "multipoint" to "Multipunto",
         )
 
         private val PL = mapOf(
@@ -329,6 +339,8 @@ class Strings(private val code: String) {
             "catalogOpenHint" to "Wybierz model z listy lub wyszukaj",
             "catalogSearch" to "Model lub funkcja", "catalogEmpty" to "Nic nie znaleziono",
             "catalogFeatures" to "funkcji",
+            "noiseControl" to "Redukcja szumów", "ancOn" to "Redukcja aktywna", "ancTransparency" to "Przejrzystość",
+            "spatialAudio" to "Dźwięk przestrzenny", "multipoint" to "Multipoint",
         )
 
         private val TR = mapOf(
@@ -356,6 +368,8 @@ class Strings(private val code: String) {
             "catalogOpenHint" to "Listeden model seç veya ara",
             "catalogSearch" to "Model veya özellik", "catalogEmpty" to "Hiçbir şey bulunamadı",
             "catalogFeatures" to "özellik",
+            "noiseControl" to "Gürültü engelleme", "ancOn" to "Gürültü engelleme", "ancTransparency" to "Şeffaflık",
+            "spatialAudio" to "Uzamsal ses", "multipoint" to "Çoklu bağlantı",
         )
 
         private val ZH = mapOf(
@@ -383,6 +397,8 @@ class Strings(private val code: String) {
             "catalogOpenHint" to "从列表中选择型号或搜索",
             "catalogSearch" to "型号或功能", "catalogEmpty" to "未找到内容",
             "catalogFeatures" to "项功能",
+            "noiseControl" to "降噪", "ancOn" to "降噪开启", "ancTransparency" to "通透模式",
+            "spatialAudio" to "空间音频", "multipoint" to "双设备连接",
         )
     }
 }

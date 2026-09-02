@@ -16,7 +16,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Bedtime
 import androidx.compose.material.icons.outlined.Inventory2
 import androidx.compose.material.icons.outlined.Memory
+import androidx.compose.material.icons.outlined.NoiseAware
 import androidx.compose.material.icons.outlined.NotificationsActive
+import androidx.compose.material.icons.outlined.Devices
+import androidx.compose.material.icons.outlined.SurroundSound
 import androidx.compose.material.icons.outlined.SportsEsports
 import androidx.compose.material.icons.outlined.VolumeUp
 import androidx.compose.material3.Icon
@@ -38,6 +41,7 @@ import dev.aezochka.budscontrol.BudsViewModel
 import dev.aezochka.budscontrol.i18n.tr
 import dev.aezochka.budscontrol.audio.Feedback
 import dev.aezochka.budscontrol.device.LiveState
+import dev.aezochka.budscontrol.proto.AncMode
 
 /**
  * Плитки собраны по ОДНОЙ схеме: иконка 24dp, подпись, значение.
@@ -72,6 +76,24 @@ fun TileContent(
             )
         }
 
+        // Шумодав: команда в протоколе была давно, но кнопки не существовало.
+        // Тап гоняет режимы по кругу, как на самих наушниках.
+        "anc" -> StatTile(
+            icon = Icons.Outlined.NoiseAware,
+            label = tr("noiseControl"),
+            value = when (live.ancMode) {
+                AncMode.ON -> tr("ancOn")
+                AncMode.TRANSPARENCY -> tr("ancTransparency")
+                AncMode.OFF -> tr("off")
+                null -> if (live.connected) tr("requesting") else tr("noLink")
+            },
+            active = live.ancMode == AncMode.ON || live.ancMode == AncMode.TRANSPARENCY,
+            onClick = {
+                vm.tick(if (live.ancMode == AncMode.OFF) Feedback.Kind.On else Feedback.Kind.Off)
+                vm.cycleAnc()
+            },
+        )
+
         "game" -> StatTile(
             icon = Icons.Outlined.SportsEsports,
             label = tr("actGame"),
@@ -80,6 +102,28 @@ fun TileContent(
             onClick = {
                 vm.tick(if (live.gameMode) Feedback.Kind.Off else Feedback.Kind.On)
                 vm.setGameMode(!live.gameMode)
+            },
+        )
+
+        "spatial" -> StatTile(
+            icon = Icons.Outlined.SurroundSound,
+            label = tr("spatialAudio"),
+            value = if (live.spatialAudio) tr("on") else tr("off"),
+            active = live.spatialAudio,
+            onClick = {
+                vm.tick(if (live.spatialAudio) Feedback.Kind.Off else Feedback.Kind.On)
+                vm.setSpatialAudio(!live.spatialAudio)
+            },
+        )
+
+        "multipoint" -> StatTile(
+            icon = Icons.Outlined.Devices,
+            label = tr("multipoint"),
+            value = if (live.multipoint) tr("on") else tr("off"),
+            active = live.multipoint,
+            onClick = {
+                vm.tick(if (live.multipoint) Feedback.Kind.Off else Feedback.Kind.On)
+                vm.setMultipoint(!live.multipoint)
             },
         )
 

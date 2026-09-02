@@ -438,6 +438,24 @@ class BudsViewModel(app: Application) : AndroidViewModel(app) {
         feedback.play(kind, soundOn = s.soundEffects, hapticOn = s.hapticFeedback)
     }
 
+    /**
+     * Переключение шумодава по кругу: выкл → шумодав → прозрачность.
+     *
+     * Состояние меняем сразу, не дожидаясь ответа гарнитуры — иначе кнопка
+     * выглядит залипшей до следующего опроса.
+     */
+    fun cycleAnc() {
+        val current = live.value.ancMode
+        val next = when (current) {
+            dev.aezochka.budscontrol.proto.AncMode.OFF -> dev.aezochka.budscontrol.proto.AncMode.ON
+            dev.aezochka.budscontrol.proto.AncMode.ON -> dev.aezochka.budscontrol.proto.AncMode.TRANSPARENCY
+            else -> dev.aezochka.budscontrol.proto.AncMode.OFF
+        }
+        session.setAnc(next)
+    }
+
+    fun setAnc(mode: dev.aezochka.budscontrol.proto.AncMode) = session.setAnc(mode)
+
     private val _fxReady = MutableStateFlow(false)
     val fxReady: StateFlow<Boolean> = _fxReady.asStateFlow()
     private val _eqGains = MutableStateFlow<List<Int>>(emptyList())

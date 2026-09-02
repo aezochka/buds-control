@@ -34,8 +34,10 @@ import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class BudsViewModel(app: Application) : AndroidViewModel(app) {
     private val store = LocalStore(app)
@@ -258,19 +260,18 @@ class BudsViewModel(app: Application) : AndroidViewModel(app) {
         val current = installedVersion()
         _updateState.value = UpdateState(checking = true, currentVersion = current)
         val release = Updater.check(current)
-        // Чистим APK от прошлых версий, файл актуального релиза сохраняем —
-        // его докачивает Range-загрузка.
-        Updater.clearStaleCache(getApplication(), release?.version)
+        // Работа с диском — вне главного потока, иначе на входе в настройки
+        // ловятся микрофризы.
+        val ready = withContext(Dispatchers.IO) {
+            Updater.clearStaleCache(getApplication(), release?.version)
+            release != null && Updater.readyFile(getApplication(), release) != null
+        }
         _updateState.value = UpdateState(
             checking = false,
             currentVersion = current,
             release = release,
-            // Если файл уже целиком на диске, сразу предлагаем установку.
-            readyToInstall = release != null &&
-                Updater.readyFile(getApplication(), release) != null,
-            progress = if (release != null &&
-                Updater.readyFile(getApplication(), release) != null
-            ) 1f else 0f,
+            readyToInstall = ready,
+            progress = if (ready) 1f else 0f,
         )
     }
 
@@ -287,7 +288,7 @@ class BudsViewModel(app: Application) : AndroidViewModel(app) {
         if (state.downloading) return@launch
 
         // Файл уже скачан — сразу установка, без повторного скачивания.
-        Updater.readyFile(getApplication(), release)?.let { done ->
+        withContext(Dispatchers.IO) { Updater.readyFile(getApplication(), release) }?.let { done ->
             _updateState.value = state.copy(progress = 1f, readyToInstall = true, error = null)
             Updater.install(getApplication(), done)
             return@launch

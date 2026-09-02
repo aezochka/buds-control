@@ -149,6 +149,7 @@ class Strings(private val code: String) {
             "updateAvailable" to "Доступно обновление", "updateAction" to "Обновить",
             "updateReady" to "Загружено, можно ставить", "updateLatest" to "Последняя версия",
             "crashTitle" to "Отчёт о сбое", "crashHint" to "Скопируй и пришли мне",
+            "author" to "Автор",
         )
 
         private val EN = mapOf(
@@ -230,6 +231,7 @@ class Strings(private val code: String) {
             "updateAvailable" to "Update available", "updateAction" to "Update",
             "updateReady" to "Downloaded, ready to install", "updateLatest" to "Up to date",
             "crashTitle" to "Crash report", "crashHint" to "Copy it and send it over",
+            "author" to "Author",
         )
 
         // Остальные языки: переведено главное, остальное падает на английский.
@@ -263,6 +265,7 @@ class Strings(private val code: String) {
             "updateAvailable" to "Доступне оновлення", "updateAction" to "Оновити",
             "updateReady" to "Завантажено, можна ставити", "updateLatest" to "Найновіша версія",
             "crashTitle" to "Звіт про збій", "crashHint" to "Скопіюй і надішли мені",
+            "author" to "Автор",
         )
 
         private val DE = mapOf(
@@ -295,6 +298,7 @@ class Strings(private val code: String) {
             "updateAvailable" to "Update verfügbar", "updateAction" to "Aktualisieren",
             "updateReady" to "Geladen, bereit zur Installation", "updateLatest" to "Aktuell",
             "crashTitle" to "Fehlerbericht", "crashHint" to "Kopieren und senden",
+            "author" to "Autor",
         )
 
         private val ES = mapOf(
@@ -327,6 +331,7 @@ class Strings(private val code: String) {
             "updateAvailable" to "Actualización disponible", "updateAction" to "Actualizar",
             "updateReady" to "Descargado, listo para instalar", "updateLatest" to "Actualizado",
             "crashTitle" to "Informe de fallo", "crashHint" to "Cópialo y envíalo",
+            "author" to "Autor",
         )
 
         private val PL = mapOf(
@@ -359,6 +364,7 @@ class Strings(private val code: String) {
             "updateAvailable" to "Dostępna aktualizacja", "updateAction" to "Aktualizuj",
             "updateReady" to "Pobrano, gotowe do instalacji", "updateLatest" to "Aktualna wersja",
             "crashTitle" to "Raport awarii", "crashHint" to "Skopiuj i wyślij",
+            "author" to "Autor",
         )
 
         private val TR = mapOf(
@@ -391,6 +397,7 @@ class Strings(private val code: String) {
             "updateAvailable" to "Güncelleme var", "updateAction" to "Güncelle",
             "updateReady" to "İndirildi, kurulabilir", "updateLatest" to "Güncel",
             "crashTitle" to "Çökme raporu", "crashHint" to "Kopyala ve gönder",
+            "author" to "Geliştirici",
         )
 
         private val ZH = mapOf(
@@ -423,6 +430,7 @@ class Strings(private val code: String) {
             "updateAvailable" to "有可用更新", "updateAction" to "更新",
             "updateReady" to "已下载，可安装", "updateLatest" to "已是最新版本",
             "crashTitle" to "崩溃报告", "crashHint" to "复制并发送给我",
+            "author" to "作者",
         )
     }
 }

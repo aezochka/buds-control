@@ -157,6 +157,8 @@ fun SettingsTab(vm: BudsViewModel) {
                         onClick = { vm.selectProfile(profile.id) },
                     )
                 }
+                // Автор — в самом низу списка настроек.
+                AuthorRow()
             }
         }
         item { BottomSpacer() }

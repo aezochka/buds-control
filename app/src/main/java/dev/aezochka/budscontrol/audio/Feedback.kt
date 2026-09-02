@@ -9,6 +9,10 @@ import android.os.CombinedVibration
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import kotlin.math.PI
 import kotlin.math.exp
 import kotlin.math.sin
@@ -18,6 +22,9 @@ import kotlin.math.sin
  * Ничего не качается — тон генерируется на месте, поэтому APK не растёт.
  */
 class Feedback(private val context: Context) {
+    /** Отдельная область: звук переживает пересоздание экрана. */
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
 
     enum class Kind {
         /** Обычный тап по плитке. */
@@ -45,7 +52,10 @@ class Feedback(private val context: Context) {
     /** Проигрывает щелчок. soundOn/hapticOn берутся из настроек. */
     fun play(kind: Kind, soundOn: Boolean, hapticOn: Boolean) {
         if (hapticOn) vibrate(kind)
-        if (soundOn) tone(kind)
+        // Синтез тона — это цикл на тысячи сэмплов плюс создание AudioTrack.
+        // В главном потоке он давал микрофризы на каждом нажатии, поэтому
+        // уводим звук в фон: UI не должен ждать генерацию буфера.
+        if (soundOn) scope.launch { tone(kind) }
     }
 
     private fun vibrate(kind: Kind) {

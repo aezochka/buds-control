@@ -22,6 +22,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -33,6 +34,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import dev.aezochka.budscontrol.CrashLog
 import dev.aezochka.budscontrol.i18n.tr
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
  * Строка с логом последнего краша.
@@ -44,7 +47,14 @@ import dev.aezochka.budscontrol.i18n.tr
 fun CrashLogRow() {
     val scheme = MaterialTheme.colorScheme
     val context = LocalContext.current
-    var log by remember { mutableStateOf(runCatching { CrashLog.read(context) }.getOrDefault("")) }
+    // Читаем файл вне композиции: чтение в теле composable давало
+    // микрофриз при каждом заходе в настройки.
+    var log by remember { mutableStateOf("") }
+    LaunchedEffect(Unit) {
+        log = withContext(Dispatchers.IO) {
+            runCatching { CrashLog.read(context) }.getOrDefault("")
+        }
+    }
 
     if (log.isBlank()) return
 

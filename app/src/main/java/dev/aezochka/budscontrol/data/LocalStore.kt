@@ -28,7 +28,12 @@ class LocalStore(private val context: Context) {
     val settings: Flow<UserSettings?> = context.budsDataStore.data.map { prefs ->
         val raw = prefs[settingsKey]
         if (raw == null) UserSettings()
-        else runCatching { json.decodeFromString<UserSettings>(raw) }.getOrElse { UserSettings() }
+        else runCatching { json.decodeFromString<UserSettings>(raw) }
+            .getOrElse { UserSettings() }
+            // Новые плитки нужно доложить в уже сохранённый порядок:
+            // иначе после обновления они не появятся у тех, кто уже
+            // пользовался приложением.
+            .withLaterTiles()
     }
 
     val profiles: Flow<List<EarbudProfile>> = context.budsDataStore.data.map { prefs ->

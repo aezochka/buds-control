@@ -42,7 +42,34 @@ data class UserSettings(
     val hiddenTiles: Set<String> = emptySet(),
 )
 
-val defaultTileOrder = listOf("eq", "game", "case", "sleep", "volume", "find", "firmware")
+val defaultTileOrder = listOf(
+    "eq", "anc", "game", "spatial", "multipoint",
+    "case", "sleep", "volume", "find", "firmware",
+)
+
+/**
+ * Плитки, добавленные после первых версий.
+ *
+ * Порядок плиток сохраняется в настройках, поэтому у тех, кто уже пользовался
+ * приложением, лежит старый список — и новые плитки не появлялись сами.
+ * Их нужно доложить в сохранённый порядок при чтении настроек.
+ */
+val laterTiles = listOf("anc", "spatial", "multipoint")
+
+/**
+ * Докладывает новые плитки в уже сохранённый порядок.
+ *
+ * Вставляем сразу после "eq", а не в конец: иначе шумодав уезжал бы вниз,
+ * под мелкие плитки. Скрытые пользователем плитки не трогаем.
+ */
+fun UserSettings.withLaterTiles(): UserSettings {
+    val missing = laterTiles.filter { it !in tileOrder }
+    if (missing.isEmpty()) return this
+    val updated = tileOrder.toMutableList()
+    val at = (updated.indexOf("eq") + 1).coerceAtLeast(0)
+    updated.addAll(at, missing)
+    return copy(tileOrder = updated)
+}
 
 /** Акценты темы — выбираются пользователем, сохраняются локально. */
 enum class Accent(val key: String, val title: String, val seed: Long) {

@@ -489,16 +489,15 @@ private fun BentoGrid(
         Modifier.padding(horizontal = 20.dp),
         verticalArrangement = Arrangement.spacedBy(11.dp),
     ) {
-        // Набор плиток зависит от гарнитуры: шумодав, spatial и multipoint
-        // появляются только если устройство их подтвердило. Раньше список был
-        // фиксированным, поэтому у одних моделей не хватало кнопок, а у других
-        // висели мёртвые.
+        // Базовые плитки показываем ВСЕГДА. Ответ гарнитуры может только
+        // ДОБАВИТЬ функции, но не убрать: пока связи нет, supported пустой,
+        // и по нему игровой режим пропадал, хотя наушники его умеют.
         val big = buildList {
             add("eq")
-            if ("anc" in live.supported) add("anc")
-            if ("game" in live.supported) add("game")
-            if ("spatial" in live.supported) add("spatial")
-            if ("multipoint" in live.supported) add("multipoint")
+            add("anc")
+            add("game")
+            add("spatial")
+            add("multipoint")
         }
 
         big.chunked(2).forEach { pair ->
@@ -517,12 +516,7 @@ private fun BentoGrid(
 
         // Дополнительные — компактный ряд.
         Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-            buildList {
-                add("sleep")
-                add("volume")
-                if ("find" in live.supported) add("find")
-                add("firmware")
-            }.forEach { key ->
+            listOf("sleep", "volume", "find", "firmware").forEach { key ->
                 Box(Modifier.weight(1f)) {
                     TileContent(key, vm, live, editing, onEq, onSleep, onVolume, compact = true)
                 }

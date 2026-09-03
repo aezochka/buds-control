@@ -433,7 +433,7 @@ private fun ProductHero(
                 AnimatedContent(
                     targetState = when {
                         connecting -> "connecting"
-                        live.bluetoothConnected -> "connected"
+                        connected -> "connected"
                         else -> "idle"
                     },
                     transitionSpec = { fadeIn(Motion.effects()) togetherWith fadeOut(Motion.effects()) },

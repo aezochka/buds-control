@@ -80,6 +80,7 @@ fun ClickSoundSheet(
     }
 }
 
+@Composable
 fun clickSoundTitle(key: String): String = when (key) {
     "click_a" -> tr("clickSoundA")
     "click_b" -> tr("clickSoundB")

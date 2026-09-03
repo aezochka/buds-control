@@ -14,7 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -76,8 +76,6 @@ fun AddDeviceSheet(
                 }
                 if (scanning) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp, color = scheme.primary)
             }
-            // Каталог моделей переехал в «Ещё»: в шторке поиска он мешал
-            // главному действию — выбрать реальные наушники рядом.
             Spacer(Modifier.height(16.dp))
 
             if (found.isEmpty()) {
@@ -86,9 +84,10 @@ fun AddDeviceSheet(
                     style = MaterialTheme.typography.bodyMedium, color = scheme.onSurfaceVariant,
                 )
             } else {
+                // Один адрес может прийти и из сопряжённых, и из скана.
+                val distinct = found.distinctBy { it.address }
                 LazyColumn(Modifier.height(340.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
-                    // Один адрес может прийти и из сопряжённых, и из скана.
-                    items(found.distinctBy { it.address }, key = { it.address }) { device ->
+                    itemsIndexed(distinct, key = { _, device -> device.address }) { idx, device ->
                         val added = profiles.any { it.address == device.address }
                         val bg by animateColorAsState(
                             if (added) scheme.primary else scheme.surfaceContainer, Motion.effects(), label = "devBg",
@@ -96,7 +95,7 @@ fun AddDeviceSheet(
                         Row(
                             Modifier
                                 .fillMaxWidth()
-                                .clip(RoundedCornerShape(22.dp))
+                                .clip(groupShape(idx, distinct.size))
                                 .background(bg)
                                 .pressBounce { if (added) vm.removeProfileByAddress(device.address) else vm.addProfile(device) }
                                 .padding(15.dp),

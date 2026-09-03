@@ -182,7 +182,7 @@ fun SettingsTab(vm: BudsViewModel) {
                         title = tr("autoConnect"),
                         subtitle = tr("autoConnectHint"),
                         checked = settings.autoConnect,
-                        shape = groupShape(4, 5),
+                        shape = groupShape(4, 6),
                         onToggle = { vm.setAutoConnect(it) },
                     )
                     SettingsToggle(
@@ -190,7 +190,7 @@ fun SettingsTab(vm: BudsViewModel) {
                         title = tr("hideName"),
                         subtitle = tr("hideNameHint"),
                         checked = settings.hideNameOnScroll,
-                        shape = groupShape(5, 5),
+                        shape = groupShape(5, 6),
                         onToggle = { vm.setHideNameOnScroll(it) },
                     )
                 }

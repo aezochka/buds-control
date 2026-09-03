@@ -5,6 +5,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -192,11 +193,28 @@ fun TileContent(
         )
 
         "case" -> StatTile(
-            icon = Icons.Outlined.Inventory2,
+            icon = null,
             label = if (live.caseFromMemory) tr("caseLast") else tr("caseTitle"),
             value = live.batteryCase?.let { "$it%" } ?: tr("noData"),
-            active = false,
+            active = live.chargingCase,
             onClick = null,
+            topContent = { primary ->
+                // Иконка кейса — крупнее обычного 24dp, соответствует фото наушников.
+                Row(
+                    Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Icon(Icons.Outlined.Inventory2, null, tint = primary, modifier = Modifier.size(42.dp))
+                    if (live.chargingCase) {
+                        Text(
+                            tr("charging"),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = primary.copy(alpha = 0.8f),
+                        )
+                    }
+                }
+            },
             bottomContent = { primary, secondary ->
                 SmoothBar(
                     progress = (live.batteryCase ?: 0) / 100f,

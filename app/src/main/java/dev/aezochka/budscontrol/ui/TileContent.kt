@@ -65,15 +65,19 @@ fun TileContent(
             val eqGains by vm.eqGains.collectAsState()
             val fxOn by vm.fxReady.collectAsState()
             val tuned = eqGains.any { it != 0 }
+            val presetLabel = when {
+                eqGains.isEmpty() -> "—"
+                eqGains.take(3).average() > eqGains.drop(eqGains.size - 3).average() + 2 -> "Басс+"
+                eqGains.drop(eqGains.size - 3).average() > eqGains.take(3).average() + 2 -> "Чётк"
+                else -> "Балнс"
+            }
             StatTile(
                 icon = null,
                 label = tr("equalizerTitle"),
-                value = if (!fxOn) "—" else if (tuned) tr("eqTuned") else tr("eqFlat"),
+                value = if (!fxOn) "—" else presetLabel,
                 active = tuned,
                 onClick = { vm.tick(); onEq() },
-                topContent = { color ->
-                    EqBars(bars = eqCurve(eqGains), animated = tuned, color = color)
-                },
+                topContent = null,
             )
         }
 

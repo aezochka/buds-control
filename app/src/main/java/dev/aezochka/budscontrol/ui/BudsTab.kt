@@ -17,6 +17,7 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.background
+import androidx.compose.ui.zIndex
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -201,7 +202,17 @@ fun BudsTab(vm: BudsViewModel, onDragActive: (Boolean) -> Unit = {}) {
             exit = shrinkVertically(tween(240, easing = FastOutSlowInEasing)) +
                 fadeOut(tween(160, easing = FastOutSlowInEasing)),
         ) {
-            Column(Modifier.statusBarsPadding().padding(horizontal = 20.dp, vertical = 8.dp)) {
+            // Непрозрачный фон и слой выше фото. Без этого шторка во время
+            // анимации выхода оставалась полупрозрачной поверх картинки —
+            // получалась чёрная полоса, залезающая на наушники.
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .zIndex(1f)
+                    .background(MaterialTheme.colorScheme.background)
+                    .statusBarsPadding()
+                    .padding(horizontal = 20.dp, vertical = 8.dp)
+            ) {
                 ProfileRow(
                     profiles = profiles,
                     onSelect = { vm.selectProfile(it) },

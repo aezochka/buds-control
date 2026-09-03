@@ -159,6 +159,10 @@ class Strings(private val code: String) {
             "sectionApp" to "ПРИЛОЖЕНИЕ", "sectionDevices" to "УСТРОЙСТВА",
             "sectionSoundHint" to "Эквалайзер, таймер, громкость", "sectionFeedbackHint" to "Вибро, звуки, уведомления",
             "sectionAppHint" to "Обновление, язык, тема", "sectionDevicesHint" to "Каталог и сохранённые наушники",
+            "clickSound" to "Звук нажатия", "clickSoundHint" to "Нажми, чтобы послушать",
+            "clickSoundA" to "Клик 1", "clickSoundB" to "Клик 2",
+            "clickSoundC" to "Клик 3",
+            "clickSoundSystem" to "Системный", "clickSoundOff" to "Без звука",
         )
 
         private val EN = mapOf(
@@ -250,6 +254,10 @@ class Strings(private val code: String) {
             "sectionApp" to "APP", "sectionDevices" to "DEVICES",
             "sectionSoundHint" to "Equalizer, timer, volume", "sectionFeedbackHint" to "Haptics, sounds, alerts",
             "sectionAppHint" to "Updates, language, theme", "sectionDevicesHint" to "Catalog and saved buds",
+            "clickSound" to "Tap sound", "clickSoundHint" to "Tap to preview",
+            "clickSoundA" to "Click 1", "clickSoundB" to "Click 2",
+            "clickSoundC" to "Click 3",
+            "clickSoundSystem" to "System", "clickSoundOff" to "No sound",
         )
 
         // Остальные языки: переведено главное, остальное падает на английский.
@@ -293,6 +301,10 @@ class Strings(private val code: String) {
             "sectionApp" to "ДОДАТОК", "sectionDevices" to "ПРИСТРОЇ",
             "sectionSoundHint" to "Еквалайзер, таймер, гучність", "sectionFeedbackHint" to "Вібро, звуки, сповіщення",
             "sectionAppHint" to "Оновлення, мова, тема", "sectionDevicesHint" to "Каталог і збережені навушники",
+            "clickSound" to "Звук натискання", "clickSoundHint" to "Натисни, щоб прослухати",
+            "clickSoundA" to "Клік 1", "clickSoundB" to "Клік 2",
+            "clickSoundC" to "Клік 3",
+            "clickSoundSystem" to "Системний", "clickSoundOff" to "Без звуку",
         )
 
         private val DE = mapOf(
@@ -335,6 +347,10 @@ class Strings(private val code: String) {
             "sectionApp" to "APP", "sectionDevices" to "GERÄTE",
             "sectionSoundHint" to "Equalizer, Timer, Lautstärke", "sectionFeedbackHint" to "Haptik, Töne, Hinweise",
             "sectionAppHint" to "Updates, Sprache, Thema", "sectionDevicesHint" to "Katalog und gespeicherte Buds",
+            "clickSound" to "Tipp-Ton", "clickSoundHint" to "Zum Anhören antippen",
+            "clickSoundA" to "Klick 1", "clickSoundB" to "Klick 2",
+            "clickSoundC" to "Klick 3",
+            "clickSoundSystem" to "System", "clickSoundOff" to "Kein Ton",
         )
 
         private val ES = mapOf(
@@ -377,6 +393,10 @@ class Strings(private val code: String) {
             "sectionApp" to "APLICACIÓN", "sectionDevices" to "DISPOSITIVOS",
             "sectionSoundHint" to "Ecualizador, temporizador, volumen", "sectionFeedbackHint" to "Vibración, sonidos, avisos",
             "sectionAppHint" to "Actualización, idioma, tema", "sectionDevicesHint" to "Catálogo y auriculares guardados",
+            "clickSound" to "Sonido de toque", "clickSoundHint" to "Toca para escuchar",
+            "clickSoundA" to "Clic 1", "clickSoundB" to "Clic 2",
+            "clickSoundC" to "Clic 3",
+            "clickSoundSystem" to "Sistema", "clickSoundOff" to "Sin sonido",
         )
 
         private val PL = mapOf(
@@ -419,6 +439,10 @@ class Strings(private val code: String) {
             "sectionApp" to "APLIKACJA", "sectionDevices" to "URZĄDZENIA",
             "sectionSoundHint" to "Korektor, timer, głośność", "sectionFeedbackHint" to "Wibracje, dźwięki, alerty",
             "sectionAppHint" to "Aktualizacja, język, motyw", "sectionDevicesHint" to "Katalog i zapisane słuchawki",
+            "clickSound" to "Dźwięk dotknięcia", "clickSoundHint" to "Dotknij, aby odsłuchać",
+            "clickSoundA" to "Klik 1", "clickSoundB" to "Klik 2",
+            "clickSoundC" to "Klik 3",
+            "clickSoundSystem" to "Systemowy", "clickSoundOff" to "Bez dźwięku",
         )
 
         private val TR = mapOf(
@@ -461,6 +485,10 @@ class Strings(private val code: String) {
             "sectionApp" to "UYGULAMA", "sectionDevices" to "CİHAZLAR",
             "sectionSoundHint" to "Ekolayzer, zamanlayıcı, ses", "sectionFeedbackHint" to "Titreşim, sesler, uyarılar",
             "sectionAppHint" to "Güncelleme, dil, tema", "sectionDevicesHint" to "Katalog ve kayıtlı kulaklıklar",
+            "clickSound" to "Dokunma sesi", "clickSoundHint" to "Dinlemek için dokun",
+            "clickSoundA" to "Tık 1", "clickSoundB" to "Tık 2",
+            "clickSoundC" to "Tık 3",
+            "clickSoundSystem" to "Sistem", "clickSoundOff" to "Ses yok",
         )
 
         private val ZH = mapOf(
@@ -503,6 +531,10 @@ class Strings(private val code: String) {
             "sectionApp" to "应用", "sectionDevices" to "设备",
             "sectionSoundHint" to "均衡器、定时器、音量", "sectionFeedbackHint" to "振动、声音、提醒",
             "sectionAppHint" to "更新、语言、主题", "sectionDevicesHint" to "目录与已保存耳机",
+            "clickSound" to "点击声音", "clickSoundHint" to "点击试听",
+            "clickSoundA" to "点击音 1", "clickSoundB" to "点击音 2",
+            "clickSoundC" to "点击音 3",
+            "clickSoundSystem" to "系统", "clickSoundOff" to "无声音",
         )
     }
 }

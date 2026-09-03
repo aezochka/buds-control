@@ -46,9 +46,22 @@ class Feedback(private val context: Context) {
         ToneGenerator(AudioManager.STREAM_SYSTEM, 70)
     }.getOrNull()
 
-    fun play(kind: Kind, soundOn: Boolean, hapticOn: Boolean) {
+    private val clicks = ClickSounds(context)
+
+    /**
+     * @param soundPack ключ набора звуков из настроек. Пустой или "system"
+     *   означает системные тоны, "off" — без звука.
+     */
+    fun play(kind: Kind, soundOn: Boolean, hapticOn: Boolean, soundPack: String = "click_a") {
         if (hapticOn) vibrate(kind)
-        if (soundOn) sound(kind)
+        if (!soundOn) return
+        when (soundPack) {
+            "off" -> Unit
+            "system" -> sound(kind)
+            // Тревожный сигнал оставляем системным: сэмпл клика для него
+            // слишком короткий и не читается как предупреждение.
+            else -> if (kind == Kind.Alarm) sound(kind) else clicks.play(soundPack)
+        }
     }
 
     private fun sound(kind: Kind) {

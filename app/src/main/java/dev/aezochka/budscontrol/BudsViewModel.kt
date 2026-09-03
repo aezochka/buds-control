@@ -9,7 +9,6 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
 import dev.aezochka.budscontrol.audio.AudioTools
 import dev.aezochka.budscontrol.audio.Feedback
-import dev.aezochka.budscontrol.audio.LowBatteryAlert
 import dev.aezochka.budscontrol.notify.SleepNotifier
 import dev.aezochka.budscontrol.audio.SystemAudioFx
 import kotlinx.coroutines.Job
@@ -137,11 +136,17 @@ class BudsViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun selectProfile(id: String) = viewModelScope.launch {
-        val list = store.profiles.first().map { it.copy(isSelected = it.id == id) }
+        val current = store.profiles.first()
+        val wanted = current.firstOrNull { it.id == id } ?: return@launch
+
+        // Виртуальная модель из каталога — это карточка-справочник, не
+        // Bluetooth-устройство. Не делаем её выбранной: иначе приложение
+        // переставало видеть реальные подключённые наушники при свайпе по
+        // верхнему бару. Реальная гарнитура остаётся активной и на связи.
+        if (wanted.address.isBlank()) return@launch
+
+        val list = current.map { it.copy(isSelected = it.id == id) }
         store.saveProfiles(list)
-        // Подключение здесь НЕ вызываем: на смену выбранного профиля
-        // реагирует LaunchedEffect на экране и делает это сам. Раньше
-        // connect срабатывал дважды — отсюда реконект после свапа.
     }
 
     /**
@@ -194,7 +199,7 @@ class BudsViewModel(app: Application) : AndroidViewModel(app) {
      */
     fun onResume() = viewModelScope.launch {
         session.syncState()
-        val profile = store.profiles.first().firstOrNull { it.isSelected } ?: return@launch
+        val profile = selectedRealProfile() ?: return@launch
         // Живой сокет не трогаем. Раньше здесь стоял force = true, который
         // закрывал рабочее соединение и открывал новое на каждом возврате
         // на экран — отсюда постоянные переподключения.
@@ -218,11 +223,17 @@ class BudsViewModel(app: Application) : AndroidViewModel(app) {
         autoConnectStarted = true
         viewModelScope.launch {
             store.profiles
-                .map { list -> list.firstOrNull { it.isSelected } }
+                // Подключаемся только к реальным устройствам. Виртуальные
+                // карточки каталога адреса не имеют; если такая оказалась
+                // выбранной (осталась от прошлых версий), берём первую
+                // реальную — иначе приложение не подключалось вообще.
+                .map { list ->
+                    val real = list.filter { it.address.isNotBlank() }
+                    real.firstOrNull { it.isSelected } ?: real.firstOrNull()
+                }
                 .distinctUntilChangedBy { it?.address }
                 .collect { profile ->
                     if (profile == null) return@collect
-                    if (profile.address.isBlank()) return@collect
                     attachCaseListener(profile.id)
                     session.connect(profile.address, profile.displayName)
                     profile.caseBattery?.let {
@@ -246,10 +257,20 @@ class BudsViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /**
+     * Выбранная РЕАЛЬНАЯ гарнитура.
+     *
+     * Виртуальные карточки каталога пропускаем: у них нет MAC-адреса, и
+     * попытка «подключиться» к ним обрывала связь с настоящими наушниками.
+     */
+    private suspend fun selectedRealProfile(): EarbudProfile? {
+        val real = store.profiles.first().filter { it.address.isNotBlank() }
+        return real.firstOrNull { it.isSelected } ?: real.firstOrNull()
+    }
+
     fun connectSelected() = viewModelScope.launch {
         startAutoConnect()
-        val profile = store.profiles.first().firstOrNull { it.isSelected } ?: return@launch
-        if (profile.address.isBlank()) return@launch
+        val profile = selectedRealProfile() ?: return@launch
         attachCaseListener(profile.id)
         session.connect(profile.address, profile.displayName)
         profile.caseBattery?.let { session.seedCaseBattery(it.percent, it.charging, it.atMillis) }
@@ -381,11 +402,6 @@ class BudsViewModel(app: Application) : AndroidViewModel(app) {
         Updater.install(getApplication(), file)
     }
 
-    /** Проверка сигнала о низком заряде: приглушение музыки + звук. */
-    fun testLowBatteryAlert() = viewModelScope.launch {
-        LowBatteryAlert.play(getApplication())
-    }
-
     fun setHideNameOnScroll(on: Boolean) = viewModelScope.launch {
         store.saveSettings(settings.value.copy(hideNameOnScroll = on))
     }
@@ -443,10 +459,6 @@ class BudsViewModel(app: Application) : AndroidViewModel(app) {
 
     fun setAutoConnect(on: Boolean) = viewModelScope.launch {
         store.saveSettings(settings.value.copy(autoConnect = on))
-    }
-
-    fun setLowBatteryAlert(on: Boolean) = viewModelScope.launch {
-        store.saveSettings(settings.value.copy(lowBatteryAlert = on))
     }
 
     fun setCustomAccent(argb: Long) = viewModelScope.launch {
@@ -591,9 +603,20 @@ class BudsViewModel(app: Application) : AndroidViewModel(app) {
     private val feedback = Feedback(getApplication())
 
     /** Щелчок на действие: звук и вибро по настройкам пользователя. */
+    fun setClickSound(pack: String) = viewModelScope.launch {
+        store.saveSettings(settings.value.copy(clickSound = pack))
+        // Сразу прослушивание выбранного варианта.
+        feedback.play(Feedback.Kind.Tap, soundOn = pack != "off", hapticOn = false, soundPack = pack)
+    }
+
     fun tick(kind: Feedback.Kind = Feedback.Kind.Tap) {
         val s = settings.value
-        feedback.play(kind, soundOn = s.soundEffects, hapticOn = s.hapticFeedback)
+        feedback.play(
+            kind,
+            soundOn = s.soundEffects,
+            hapticOn = s.hapticFeedback,
+            soundPack = s.clickSound,
+        )
     }
 
     /**

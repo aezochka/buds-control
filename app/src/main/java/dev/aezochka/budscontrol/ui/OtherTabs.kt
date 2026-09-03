@@ -78,6 +78,7 @@ fun SettingsTab(vm: BudsViewModel) {
     var showSleep by remember { mutableStateOf(false) }
     var showVolume by remember { mutableStateOf(false) }
     var showCatalog by remember { mutableStateOf(false) }
+    var showClickSounds by remember { mutableStateOf(false) }
     // Открыт только один раздел за раз: так список остаётся коротким.
     var openSection by remember { mutableStateOf<String?>(null) }
     val catalogIds by vm.catalogModelIds.collectAsState()
@@ -96,6 +97,13 @@ fun SettingsTab(vm: BudsViewModel) {
     if (showLang) { LanguageSheet(vm) { showLang = false } }
     if (showSleep) { SleepSheet(vm) { showSleep = false } }
     if (showVolume) { VolumeLimitSheet(vm) { showVolume = false } }
+    if (showClickSounds) {
+        ClickSoundSheet(
+            current = settings.clickSound,
+            vm = vm,
+            onDismiss = { showClickSounds = false },
+        )
+    }
     if (showTheme) {
         ThemeSheet(
             current = settings.accent,
@@ -163,37 +171,27 @@ fun SettingsTab(vm: BudsViewModel) {
                         shape = groupShape(2, 7),
                         onToggle = { vm.setSoundEffects(it) },
                     )
+                    SettingsRow(
+                        Icons.Outlined.MusicNote, tr("clickSound"),
+                        clickSoundTitle(settings.clickSound),
+                        shape = groupShape(3, 7),
+                        onClick = { showClickSounds = true },
+                    )
                     SettingsToggle(
                         icon = Icons.Outlined.Bolt,
                         title = tr("autoConnect"),
                         subtitle = tr("autoConnectHint"),
                         checked = settings.autoConnect,
-                        shape = groupShape(3, 7),
+                        shape = groupShape(4, 5),
                         onToggle = { vm.setAutoConnect(it) },
-                    )
-                    SettingsToggle(
-                        icon = Icons.Outlined.BatteryAlert,
-                        title = tr("lowBattery"),
-                        subtitle = "Когда наушник ниже 20%",
-                        checked = settings.lowBatteryAlert,
-                        shape = groupShape(4, 7),
-                        onToggle = { vm.setLowBatteryAlert(it) },
                     )
                     SettingsToggle(
                         icon = Icons.Outlined.UnfoldLess,
                         title = tr("hideName"),
                         subtitle = tr("hideNameHint"),
                         checked = settings.hideNameOnScroll,
-                        shape = groupShape(5, 7),
+                        shape = groupShape(5, 5),
                         onToggle = { vm.setHideNameOnScroll(it) },
-                    )
-                    // Проверка сигнала: музыка приглушается, играет звук,
-                    // потом громкость возвращается.
-                    SettingsRow(
-                        Icons.Outlined.NotificationsActive, tr("testAlert"),
-                        tr("testAlertHint"),
-                        shape = groupShape(6, 7),
-                        onClick = { vm.testLowBatteryAlert() },
                     )
                 }
 

@@ -35,8 +35,9 @@ data class UserSettings(
     val customAccent: Long = 0L,
     val hapticFeedback: Boolean = true,
     val soundEffects: Boolean = true,
+    /** Набор клика: click_a/click_b/system/off. */
+    val clickSound: String = "click_a",
     val autoConnect: Boolean = true,
-    val lowBatteryAlert: Boolean = false,
     val tileOrder: List<String> = defaultTileOrder,
     val tileSpans: Map<String, Int> = emptyMap(),
     /** Прятать панель с названием наушников при прокрутке вниз. */

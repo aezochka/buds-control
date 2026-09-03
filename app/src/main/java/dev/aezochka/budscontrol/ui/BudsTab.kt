@@ -566,11 +566,24 @@ private fun BentoGrid(
         // завершён, а гарнитура о ней не сообщила. Пока идёт handshake или
         // связи нет — показываем всё, иначе рабочие плитки (как игровой режим)
         // пропадают на ровном месте.
-        // Правило одно: после завершённого опроса на связи показываем ТОЛЬКО
-        // подтверждённые гарнитурой функции. Ранее нажатая плитка больше не
-        // может остаться на экране — именно так у T110 висел чужой шумодав.
+        // Правило: скрываем функцию только когда опрос ЗАВЕРШЁН и гарнитура о
+        // ней не сообщила. Пока связи нет или опрос идёт — показываем всё,
+        // иначе рабочий игровой режим пропадает на ровном месте.
+        //
+        // Дополнительно: если функция уже подтверждалась в этой сессии, она
+        // остаётся видимой. Ответ может прийти позже окна опроса, и плитка не
+        // должна исчезать у того, у кого она реально работает.
+        val confirmed = remember(live.address) { mutableStateOf(setOf<String>()) }
+        LaunchedEffect(live.supported, live.address) {
+            if (live.supported.isNotEmpty()) {
+                confirmed.value = confirmed.value + live.supported
+            }
+        }
+
         fun show(key: String): Boolean = when {
-            live.probeComplete -> key in live.supported
+            key in live.supported -> true
+            key in confirmed.value -> true
+            live.probeComplete -> false
             else -> true
         }
 

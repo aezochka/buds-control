@@ -218,11 +218,18 @@ class BudsViewModel(app: Application) : AndroidViewModel(app) {
      */
     private var autoConnectStarted = false
 
-    @OptIn(ExperimentalCoroutinesApi::class)
     private fun startAutoConnect() {
         if (autoConnectStarted) return
         autoConnectStarted = true
         viewModelScope.launch {
+            // Ошибка в наблюдении за Bluetooth не должна ронять приложение:
+            // именно необработанное исключение отсюда крашило запуск.
+            runCatching { observeBluetoothLink() }
+        }
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private suspend fun observeBluetoothLink() {
             // Следим сразу за ВСЕМИ реальными профилями, а не только за тем,
             // который сейчас показан в верхнем баре. Выбор карточки — это UI:
             // он может быть виртуальной моделью или выключенными ушами и не
@@ -265,7 +272,6 @@ class BudsViewModel(app: Application) : AndroidViewModel(app) {
                         session.markBluetoothGone()
                     }
                 }
-        }
     }
 
     /** Сохраняет заряд кейса, когда гарнитура его прислала. */
@@ -461,10 +467,14 @@ class BudsViewModel(app: Application) : AndroidViewModel(app) {
         // от того, открыт экран наушников или нет.
         startAutoConnect()
         viewModelScope.launch {
-            faceDownSensor.faceDown.collect { down ->
-                // Реагируем только на вход в положение «экраном вниз»:
-                // возврат в нормальное положение состояние не меняет.
-                if (down) _nameBlurred.value = !_nameBlurred.value
+            // Датчик тоже не должен ронять запуск, если его нет или он
+            // недоступен на устройстве.
+            runCatching {
+                faceDownSensor.faceDown.collect { down ->
+                    // Реагируем только на вход в положение «экраном вниз»:
+                    // возврат в нормальное положение состояние не меняет.
+                    if (down) _nameBlurred.value = !_nameBlurred.value
+                }
             }
         }
     }

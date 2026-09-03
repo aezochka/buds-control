@@ -2,7 +2,9 @@ package dev.aezochka.budscontrol.audio
 
 import android.content.Context
 import android.media.AudioManager
+import android.media.ToneGenerator
 import android.os.Build
+import android.os.VibrationAttributes
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
@@ -10,19 +12,22 @@ import android.os.VibratorManager
 /**
  * Отклик на действия: вибрация и звук.
  *
- * Свой синтез тонов убран. Две попытки сделать «приятный» звук вручную
- * провалились: синусоида с обертонами всё равно звучит дёшево и чуждо
- * системе. Здесь используются штатные звуки Android (те же, что у клавиатуры
- * и системных переключателей) и предопределённые тактильные эффекты — они
- * настроены производителем под конкретный телефон и совпадают с остальной
- * системой.
+ * Важное про прошлые попытки. Свой синтез тонов через AudioTrack звучал
+ * дёшево, а системные `playSoundEffect` и «предопределённые» тактильные
+ * эффекты вообще не срабатывали: и то и другое ГАСИТСЯ системными
+ * переключателями «звук нажатий» и «вибрация при касании». Если пользователь
+ * их выключил (а это частая настройка), приложение молчало — при том, что
+ * свои тумблеры в настройках включены.
+ *
+ * Поэтому здесь:
+ *  - звук через ToneGenerator на канале STREAM_SYSTEM — короткие системные
+ *    тоны, которые не зависят от «звука нажатий»;
+ *  - вибрация с VibrationAttributes.USAGE_NOTIFICATION вместо касания, чтобы
+ *    её не подавляла настройка тактильного отклика при нажатии.
  */
 class Feedback(private val context: Context) {
 
     enum class Kind { Tap, On, Off, Switch, Alarm }
-
-    private val audio: AudioManager? =
-        context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
 
     private val vibrator: Vibrator? = runCatching {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -33,35 +38,31 @@ class Feedback(private val context: Context) {
         }
     }.getOrNull()
 
+    /**
+     * ToneGenerator создаётся один раз и переиспользуется: создание на каждый
+     * тап занимает десятки миллисекунд и давало микрофризы.
+     */
+    private val tones: ToneGenerator? = runCatching {
+        ToneGenerator(AudioManager.STREAM_SYSTEM, 70)
+    }.getOrNull()
+
     fun play(kind: Kind, soundOn: Boolean, hapticOn: Boolean) {
         if (hapticOn) vibrate(kind)
         if (soundOn) sound(kind)
     }
 
-    /**
-     * Системный звук интерфейса.
-     *
-     * playSoundEffect работает мгновенно и не создаёт AudioTrack, поэтому
-     * не нужен фоновый поток и не бывает микрофризов.
-     */
     private fun sound(kind: Kind) {
-        val effect = when (kind) {
-            Kind.Tap -> AudioManager.FX_KEY_CLICK
-            Kind.On -> AudioManager.FX_FOCUS_NAVIGATION_UP
-            Kind.Off -> AudioManager.FX_FOCUS_NAVIGATION_DOWN
-            Kind.Switch -> AudioManager.FX_KEYPRESS_STANDARD
-            Kind.Alarm -> AudioManager.FX_FOCUS_NAVIGATION_UP
+        val gen = tones ?: return
+        val (tone, ms) = when (kind) {
+            Kind.Tap -> ToneGenerator.TONE_PROP_BEEP to 55
+            Kind.Switch -> ToneGenerator.TONE_PROP_BEEP to 45
+            Kind.On -> ToneGenerator.TONE_PROP_ACK to 110
+            Kind.Off -> ToneGenerator.TONE_PROP_NACK to 110
+            Kind.Alarm -> ToneGenerator.TONE_PROP_BEEP2 to 260
         }
-        runCatching { audio?.playSoundEffect(effect, 1f) }
+        runCatching { gen.startTone(tone, ms) }
     }
 
-    /**
-     * Тактильный отклик.
-     *
-     * Предопределённые эффекты (TICK/CLICK/DOUBLE_CLICK) вместо ручных
-     * длительностей и амплитуд: производитель уже подобрал их под свой
-     * вибромотор, поэтому они ощущаются как системные, а не как жужжание.
-     */
     private fun vibrate(kind: Kind) {
         val v = vibrator ?: return
         if (!v.hasVibrator()) return
@@ -69,20 +70,27 @@ class Feedback(private val context: Context) {
         runCatching {
             val effect = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 val id = when (kind) {
-                    Kind.Tap -> VibrationEffect.EFFECT_TICK
-                    Kind.Switch -> VibrationEffect.EFFECT_TICK
-                    Kind.On -> VibrationEffect.EFFECT_CLICK
-                    Kind.Off -> VibrationEffect.EFFECT_CLICK
+                    Kind.Tap, Kind.Switch -> VibrationEffect.EFFECT_TICK
+                    Kind.On, Kind.Off -> VibrationEffect.EFFECT_CLICK
                     Kind.Alarm -> VibrationEffect.EFFECT_DOUBLE_CLICK
                 }
                 VibrationEffect.createPredefined(id)
             } else {
-                // На старых версиях предопределённых эффектов нет.
-                val ms = if (kind == Kind.Alarm) 60L else 20L
+                val ms = if (kind == Kind.Alarm) 60L else 22L
                 VibrationEffect.createOneShot(ms, VibrationEffect.DEFAULT_AMPLITUDE)
             }
-            @Suppress("DEPRECATION")
-            v.vibrate(effect)
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                // USAGE_NOTIFICATION, а не TOUCH: с TOUCH система подавляет
+                // вибрацию, когда выключен тактильный отклик при нажатии.
+                v.vibrate(
+                    effect,
+                    VibrationAttributes.createForUsage(VibrationAttributes.USAGE_NOTIFICATION),
+                )
+            } else {
+                @Suppress("DEPRECATION")
+                v.vibrate(effect)
+            }
         }
     }
 }

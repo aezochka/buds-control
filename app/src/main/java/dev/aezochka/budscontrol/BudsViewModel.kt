@@ -35,6 +35,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.distinctUntilChangedBy
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -202,21 +203,55 @@ class BudsViewModel(app: Application) : AndroidViewModel(app) {
         session.connect(profile.address, profile.displayName)
     }
 
-    fun connectSelected() = viewModelScope.launch {
-        val profile = store.profiles.first().firstOrNull { it.isSelected } ?: return@launch
-        // Сохраняем заряд кейса, когда гарнитура его прислала.
+    /**
+     * Следит за выбранным профилем и подключается сам.
+     *
+     * Живёт в ViewModel, а не на экране: пейджер уничтожает вкладку при
+     * свайпе, и LaunchedEffect на экране вызывал подключение заново при
+     * каждом возврате. distinctUntilChanged по адресу гарантирует, что на
+     * прочие изменения профилей (например запись заряда кейса) реакции нет.
+     */
+    private var autoConnectStarted = false
+
+    private fun startAutoConnect() {
+        if (autoConnectStarted) return
+        autoConnectStarted = true
+        viewModelScope.launch {
+            store.profiles
+                .map { list -> list.firstOrNull { it.isSelected } }
+                .distinctUntilChangedBy { it?.address }
+                .collect { profile ->
+                    if (profile == null) return@collect
+                    if (profile.address.isBlank()) return@collect
+                    attachCaseListener(profile.id)
+                    session.connect(profile.address, profile.displayName)
+                    profile.caseBattery?.let {
+                        session.seedCaseBattery(it.percent, it.charging, it.atMillis)
+                    }
+                }
+        }
+    }
+
+    /** Сохраняет заряд кейса, когда гарнитура его прислала. */
+    private fun attachCaseListener(profileId: String) {
         session.onCaseReported = { percent, charging ->
             viewModelScope.launch {
                 val list = store.profiles.first().map {
-                    if (it.id == profile.id) it.copy(
+                    if (it.id == profileId) it.copy(
                         caseBattery = CaseBatteryMemo(percent, charging, System.currentTimeMillis())
                     ) else it
                 }
                 store.saveProfiles(list)
             }
         }
+    }
+
+    fun connectSelected() = viewModelScope.launch {
+        startAutoConnect()
+        val profile = store.profiles.first().firstOrNull { it.isSelected } ?: return@launch
+        if (profile.address.isBlank()) return@launch
+        attachCaseListener(profile.id)
         session.connect(profile.address, profile.displayName)
-        // Подставляем последнее известное значение: кейс молчит, когда закрыт.
         profile.caseBattery?.let { session.seedCaseBattery(it.percent, it.charging, it.atMillis) }
     }
 
@@ -375,6 +410,9 @@ class BudsViewModel(app: Application) : AndroidViewModel(app) {
     val nameBlurred: StateFlow<Boolean> = _nameBlurred.asStateFlow()
 
     init {
+        // Подключение начинает следить за выбранным профилем сразу, независимо
+        // от того, открыт экран наушников или нет.
+        startAutoConnect()
         viewModelScope.launch {
             faceDownSensor.faceDown.collect { down ->
                 // Реагируем только на вход в положение «экраном вниз»:

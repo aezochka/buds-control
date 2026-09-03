@@ -97,9 +97,10 @@ fun BudsTab(vm: BudsViewModel, onDragActive: (Boolean) -> Unit = {}) {
     val profiles by vm.profiles.collectAsState()
     val selected = profiles.firstOrNull { it.isSelected }
 
-    // Ключ только по адресу: раньше эффект перезапускался на каждое изменение
-    // live.connected и уходил в бесконечный цикл подключений.
-    LaunchedEffect(selected?.address) { if (selected != null) vm.connectSelected() }
+    // Подключением управляет ViewModel, а не экран. HorizontalPager держит
+    // beyondViewportPageCount = 0, поэтому при свайпе на другую вкладку эта
+    // composable уничтожается, а при возврате LaunchedEffect срабатывал заново
+    // и переподключался. Теперь связь живёт вне жизненного цикла экрана.
 
     // Возврат на экран: сбрасываем залипшее «подключаюсь» и переподключаемся.
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -566,8 +567,11 @@ private fun BentoGrid(
             }
         }
 
-        // Плитка кейса убрана: заряд кейса и так виден чипом на фото,
-        // отдельная широкая плитка только занимала место.
+        // Кейс — отдельной широкой плиткой: заряд кейса на фото не показан,
+        // и без неё пропадала единственная индикация зарядки футляра.
+        Box(Modifier.fillMaxWidth()) {
+            TileContent("case", vm, live, editing, onEq, onSleep, onVolume)
+        }
 
         // Дополнительные — компактный ряд.
         Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {

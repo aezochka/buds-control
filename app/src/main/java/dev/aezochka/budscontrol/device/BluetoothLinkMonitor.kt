@@ -1,9 +1,12 @@
 package dev.aezochka.budscontrol.device
 
 import android.annotation.SuppressLint
+import android.bluetooth.BluetoothA2dp
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
+import android.bluetooth.BluetoothHeadset
 import android.bluetooth.BluetoothManager
+import android.bluetooth.BluetoothProfile
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -18,44 +21,26 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 /**
- * Какие из наших гарнитур реально подключены к телефону по Bluetooth.
+ * Какие из наших гарнитур РЕАЛЬНО подключены к телефону.
  *
- * Это отдельный слой от SPP: Android может уже держать наушники как медиа-
- * устройство, пока наш служебный RFCOMM-канал ещё не открыт. UI показывает
- * именно это состояние, поэтому свайпы по вкладкам и бару больше не могут
- * выглядеть как «отключилось».
+ * История ошибок здесь важна:
+ *  - `BluetoothManager.getConnectedDevices(A2DP)` бросает исключение: этот
+ *    метод только для GATT. Он ронял приложение на старте.
+ *  - `BluetoothDevice.isConnected` через рефлексию оказался ненадёжным: он
+ *    отдавал true для просто сопряжённых устройств, поэтому зелёный индикатор
+ *    горел для выключенных наушников и даже при выключенном Bluetooth.
  *
- * Важно: BluetoothManager.getConnectedDevices() работает ТОЛЬКО с GATT и на
- * профиль A2DP/HEADSET бросает IllegalArgumentException — именно этот вызов
- * ронял приложение на старте. Состояние берём через сам BluetoothDevice
- * (скрытый isConnected) с честным запасным вариантом.
+ * Правильный путь — прокси профилей A2DP и HEADSET через
+ * `BluetoothAdapter.getProfileProxy`: они дают именно подключённые устройства.
+ * Если адаптер выключен, ответ всегда пустой.
  */
 class BluetoothLinkMonitor(private val context: Context) {
 
     private fun adapter(): BluetoothAdapter? =
         (context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager)?.adapter
 
-    /**
-     * Реально подключённое устройство определяем через BluetoothDevice.isConnected.
-     * Метод скрыт из публичного SDK, но стабилен и используется всеми
-     * подобными приложениями; при отсутствии — считаем не подключённым, а не
-     * падаем.
-     */
-    @SuppressLint("MissingPermission")
-    private fun isDeviceConnected(device: BluetoothDevice): Boolean = runCatching {
-        val m = BluetoothDevice::class.java.getMethod("isConnected")
-        m.invoke(device) as? Boolean ?: false
-    }.getOrDefault(false)
-
-    @SuppressLint("MissingPermission")
-    private fun connectedFrom(addresses: Set<String>): Set<String> = runCatching {
-        val bonded = adapter()?.bondedDevices.orEmpty()
-        bonded.filter { it.address.uppercase() in addresses && isDeviceConnected(it) }
-            .map { it.address.uppercase() }
-            .toSet()
-    }.getOrDefault(emptySet())
-
     /** Набор подключённых адресов из переданного списка профилей. */
+    @SuppressLint("MissingPermission")
     fun observeAny(addresses: Set<String>): Flow<Set<String>> = callbackFlow {
         if (addresses.isEmpty()) {
             trySend(emptySet())
@@ -63,7 +48,46 @@ class BluetoothLinkMonitor(private val context: Context) {
             return@callbackFlow
         }
 
-        fun publish() { trySend(connectedFrom(addresses)) }
+        var a2dp: BluetoothA2dp? = null
+        var headset: BluetoothHeadset? = null
+
+        fun connectedNow(): Set<String> {
+            val bt = adapter()
+            // Bluetooth выключен — никаких подключений быть не может.
+            if (bt == null || !bt.isEnabled) return emptySet()
+            val devices = buildList {
+                addAll(runCatching { a2dp?.connectedDevices.orEmpty() }.getOrDefault(emptyList()))
+                addAll(runCatching { headset?.connectedDevices.orEmpty() }.getOrDefault(emptyList()))
+            }
+            return devices
+                .map { it.address.uppercase() }
+                .filter { it in addresses }
+                .toSet()
+        }
+
+        fun publish() { trySend(connectedNow()) }
+
+        val serviceListener = object : BluetoothProfile.ServiceListener {
+            override fun onServiceConnected(profile: Int, proxy: BluetoothProfile) {
+                when (profile) {
+                    BluetoothProfile.A2DP -> a2dp = proxy as? BluetoothA2dp
+                    BluetoothProfile.HEADSET -> headset = proxy as? BluetoothHeadset
+                }
+                publish()
+            }
+
+            override fun onServiceDisconnected(profile: Int) {
+                when (profile) {
+                    BluetoothProfile.A2DP -> a2dp = null
+                    BluetoothProfile.HEADSET -> headset = null
+                }
+                publish()
+            }
+        }
+
+        val bt = adapter()
+        runCatching { bt?.getProfileProxy(context, serviceListener, BluetoothProfile.A2DP) }
+        runCatching { bt?.getProfileProxy(context, serviceListener, BluetoothProfile.HEADSET) }
 
         val receiver = object : BroadcastReceiver() {
             override fun onReceive(ctx: Context?, intent: Intent?) { publish() }
@@ -71,19 +95,19 @@ class BluetoothLinkMonitor(private val context: Context) {
         val filter = IntentFilter().apply {
             addAction(BluetoothDevice.ACTION_ACL_CONNECTED)
             addAction(BluetoothDevice.ACTION_ACL_DISCONNECTED)
-            addAction(BluetoothAdapter.ACTION_CONNECTION_STATE_CHANGED)
             addAction(BluetoothAdapter.ACTION_STATE_CHANGED)
+            addAction(BluetoothA2dp.ACTION_CONNECTION_STATE_CHANGED)
+            addAction(BluetoothHeadset.ACTION_CONNECTION_STATE_CHANGED)
         }
         runCatching {
             ContextCompat.registerReceiver(context, receiver, filter, ContextCompat.RECEIVER_EXPORTED)
         }
         publish()
 
-        // Подстраховка: часть прошивок не рассылает ACL-события для TWS,
-        // поэтому раз в несколько секунд перепроверяем состояние сами.
+        // Часть прошивок не рассылает события для TWS — перепроверяем сами.
         val poller = launch {
             while (isActive) {
-                delay(4_000)
+                delay(3_000)
                 publish()
             }
         }
@@ -91,6 +115,9 @@ class BluetoothLinkMonitor(private val context: Context) {
         awaitClose {
             poller.cancel()
             runCatching { context.unregisterReceiver(receiver) }
+            val current = adapter()
+            runCatching { a2dp?.let { current?.closeProfileProxy(BluetoothProfile.A2DP, it) } }
+            runCatching { headset?.let { current?.closeProfileProxy(BluetoothProfile.HEADSET, it) } }
         }
     }.distinctUntilChanged()
 
@@ -101,9 +128,8 @@ class BluetoothLinkMonitor(private val context: Context) {
             awaitClose { }
             return@callbackFlow
         }
-        val target = setOf(address.uppercase())
         val job = launch {
-            observeAny(target).collect { trySend(it.isNotEmpty()) }
+            observeAny(setOf(address.uppercase())).collect { trySend(it.isNotEmpty()) }
         }
         awaitClose { job.cancel() }
     }.distinctUntilChanged()

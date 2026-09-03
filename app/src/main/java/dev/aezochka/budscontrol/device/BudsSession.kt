@@ -121,7 +121,11 @@ class BudsSession(private val context: Context) {
         val keep = if (s.address == address) s else null
         _state.value = LiveState(
             connecting = true,
-            bluetoothConnected = true,
+            // Флаг Bluetooth здесь НЕ выставляем: его ставит только
+            // BluetoothLinkMonitor по реальному состоянию системы. Иначе
+            // попытка подключения (и кнопка рестарта) зажигали зелёный
+            // индикатор даже с выключенным Bluetooth.
+            bluetoothConnected = s.bluetoothConnected,
             deviceName = name,
             address = address,
             gameMode = keep?.gameMode ?: false,
@@ -173,6 +177,7 @@ class BudsSession(private val context: Context) {
                 return@launch
             }
             timeout.cancel()
+            // SPP открылся — значит гарнитура физически на связи.
             _state.update { it.copy(connecting = false, connected = true, bluetoothConnected = true) }
             c.send(OppoProtocol.subscribe(setOf(SubType.BATTERY, SubType.STATUS, SubType.ANC_SELECTOR, SubType.GAME_MODE)))
             probe(c)
@@ -385,7 +390,18 @@ class BudsSession(private val context: Context) {
         _state.update { it.copy(touch = map, supported = it.supported + "touch") }
     }
 
+    /**
+     * Без живого канала команду не выполняем и состояние НЕ меняем.
+     *
+     * Раньше тап по плитке до подключения записывал значение оптимистично.
+     * После подключения гарнитура эту функцию не подтверждала, но плитка уже
+     * выглядела «рабочей» и оставалась на экране — так у T110 появлялся
+     * несуществующий шумодав, ломавший игровой режим.
+     */
+    private fun hasLiveChannel(): Boolean = conn?.isConnected == true
+
     fun setGameMode(on: Boolean) {
+        if (!hasLiveChannel()) return
         // Меняем состояние сразу: раньше плитка «долго включалась», потому
         // что ждала ответа гарнитуры или следующего цикла опроса.
         _state.update { it.copy(gameMode = on) }
@@ -395,18 +411,23 @@ class BudsSession(private val context: Context) {
 
 
     fun setSpatialAudio(on: Boolean) {
+        if (!hasLiveChannel()) return
         _state.update { it.copy(spatialAudio = on) }
         val c = conn ?: return
         scope.launch { c.send(OppoProtocol.miscConfigSet(MiscType.SPATIAL_AUDIO, on)) }
     }
 
     fun setMultipoint(on: Boolean) {
+        if (!hasLiveChannel()) return
         _state.update { it.copy(multipoint = on) }
         val c = conn ?: return
         scope.launch { c.send(OppoProtocol.miscConfigSet(MiscType.MULTIPOINT, on)) }
     }
 
-    fun setAnc(mode: AncMode) = send(OppoProtocol.ancModeSet(mode)) { _state.update { it.copy(ancMode = mode) } }
+    fun setAnc(mode: AncMode) {
+        if (!hasLiveChannel()) return
+        send(OppoProtocol.ancModeSet(mode)) { _state.update { it.copy(ancMode = mode) } }
+    }
 
     /**
      * Кривая эквалайзера прямо в гарнитуру.

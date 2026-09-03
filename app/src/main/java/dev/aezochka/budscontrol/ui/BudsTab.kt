@@ -1,6 +1,9 @@
 package dev.aezochka.budscontrol.ui
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
@@ -429,7 +432,13 @@ private fun ProductHero(
                 )
             }
 
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+            // Отступ снизу: строка с названием и кнопкой обновления больше
+            // не прилипает к первой плитке.
+            Row(
+                modifier = Modifier.padding(top = 4.dp, bottom = 14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(9.dp),
+            ) {
                 AnimatedContent(
                     targetState = when {
                         connecting -> "connecting"
@@ -557,8 +566,13 @@ private fun BentoGrid(
         // завершён, а гарнитура о ней не сообщила. Пока идёт handshake или
         // связи нет — показываем всё, иначе рабочие плитки (как игровой режим)
         // пропадают на ровном месте.
-        fun show(key: String): Boolean =
-            !live.probeComplete || key in live.supported
+        // Правило одно: после завершённого опроса на связи показываем ТОЛЬКО
+        // подтверждённые гарнитурой функции. Ранее нажатая плитка больше не
+        // может остаться на экране — именно так у T110 висел чужой шумодав.
+        fun show(key: String): Boolean = when {
+            live.probeComplete -> key in live.supported
+            else -> true
+        }
 
         val big = buildList {
             add("eq")
@@ -574,7 +588,28 @@ private fun BentoGrid(
         big.chunked(2).forEach { pair ->
             Row(horizontalArrangement = Arrangement.spacedBy(11.dp)) {
                 pair.forEach { key ->
-                    Box(Modifier.weight(1f)) { TileContent(key, vm, live, editing, onEq, onSleep, onVolume) }
+                    Box(
+                        Modifier
+                            .weight(1f)
+                            // Сетка меняет размер плавно, когда набор плиток
+                            // перестраивается после опроса возможностей.
+                            .animateContentSize(Motion.spatial()),
+                    ) {
+                        // Смена содержимого плитки — с мягким проявлением,
+                        // а не мгновенной подменой.
+                        AnimatedContent(
+                            targetState = key,
+                            transitionSpec = {
+                                (fadeIn(Motion.effects()) +
+                                    scaleIn(Motion.spatial(), initialScale = 0.94f)) togetherWith
+                                    (fadeOut(Motion.effects()) +
+                                        scaleOut(Motion.spatial(), targetScale = 0.94f))
+                            },
+                            label = "tile",
+                        ) { tileKey ->
+                            TileContent(tileKey, vm, live, editing, onEq, onSleep, onVolume)
+                        }
+                    }
                 }
                 // Нечётный остаток не должен растягиваться на всю ширину.
                 if (pair.size == 1) Spacer(Modifier.weight(1f))

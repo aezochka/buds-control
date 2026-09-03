@@ -518,7 +518,30 @@ class BudsViewModel(app: Application) : AndroidViewModel(app) {
     }
 
 
-    fun refresh() = session.refresh()
+    /**
+     * Кнопка обновления.
+     *
+     * Раньше она работала только если в сессии уже был адрес: при первом
+     * запуске или после сброса состояния нажатие не делало ничего. Теперь
+     * при отсутствии живого канала берём выбранную гарнитуру из профилей и
+     * пробуем подключиться, а иначе просто переспрашиваем данные.
+     */
+    fun refresh() = viewModelScope.launch {
+        startAutoConnect()
+        if (session.hasLiveSocket()) {
+            session.refresh()
+            return@launch
+        }
+        val profile = selectedRealProfile() ?: run {
+            session.refresh()
+            return@launch
+        }
+        attachCaseListener(profile.id)
+        profile.caseBattery?.let {
+            session.seedCaseBattery(it.percent, it.charging, it.atMillis)
+        }
+        session.connect(profile.address, profile.displayName, force = true)
+    }
     fun setGameMode(on: Boolean) = session.setGameMode(on)
     fun setSpatialAudio(on: Boolean) = session.setSpatialAudio(on)
     fun setMultipoint(on: Boolean) = session.setMultipoint(on)

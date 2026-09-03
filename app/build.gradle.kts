@@ -13,8 +13,8 @@ android {
         applicationId = "dev.aezochka.budscontrol"
         minSdk = 26
         targetSdk = 36
-        versionCode = 30
-        versionName = "6.6"
+        versionCode = 31
+        versionName = "6.7"
     }
 
     // Постоянный ключ: без него каждая сборка подписывалась новым debug-ключом

@@ -225,22 +225,20 @@ class BudsSession(private val context: Context) {
         c.send(OppoProtocol.ancConfigReq())
         _state.update { it.copy(probed = true) }
 
-        // Переспрашиваем набор функций несколько раз: часть моделей отвечает
-        // не с первого запроса, а окно в 2.5 секунды было слишком коротким —
-        // из-за этого рабочий игровой режим успевал «стать неподдерживаемым».
+        // Переспрашиваем набор функций, но не девять секунд: первый опрос
+        // сразу после probe, затем ещё раз через 1.8с. Если за 4 секунды
+        // гарнитура не ответила — функции нет.
         scope.launch {
-            listOf(900L, 2200L, 4200L).forEach { pause ->
-                delay(pause)
-                if (!_state.value.connected) return@launch
-                c.send(
-                    OppoProtocol.miscConfigReq(
-                        listOf(MiscType.GAME_MODE, MiscType.MULTIPOINT, MiscType.LDAC, MiscType.SPATIAL_AUDIO)
-                    )
+            delay(1_800)
+            if (!_state.value.connected) return@launch
+            c.send(
+                OppoProtocol.miscConfigReq(
+                    listOf(MiscType.GAME_MODE, MiscType.MULTIPOINT, MiscType.LDAC, MiscType.SPATIAL_AUDIO)
                 )
-                c.send(OppoProtocol.ancConfigReq())
-            }
-            // Разрешаем скрывать функции только после полного окна опроса.
-            delay(2500)
+            )
+            c.send(OppoProtocol.ancConfigReq())
+            // Разрешаем скрывать функции через 2 секунды после последнего запроса.
+            delay(2_000)
             if (_state.value.connected) _state.update { it.copy(probeComplete = true) }
         }
     }

@@ -56,6 +56,8 @@ class BluetoothLinkMonitor(private val context: Context) {
             // Bluetooth выключен — никаких подключений быть не может.
             if (bt == null || !bt.isEnabled) return emptySet()
             val devices = buildList {
+                // connectedDevices отдаёт только реально подключённые по профилю,
+                // а не просто сопряжённые. Именно это раньше и не проверялось.
                 addAll(runCatching { a2dp?.connectedDevices.orEmpty() }.getOrDefault(emptyList()))
                 addAll(runCatching { headset?.connectedDevices.orEmpty() }.getOrDefault(emptyList()))
             }

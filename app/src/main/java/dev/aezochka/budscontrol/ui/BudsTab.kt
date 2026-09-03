@@ -247,7 +247,10 @@ fun BudsTab(vm: BudsViewModel, onDragActive: (Boolean) -> Unit = {}) {
                     onPhotoClick = { showPhoto = true },
                     onPhotoLoaded = vm::onPhotoLoaded,
                     connecting = live.connecting,
-                    connected = live.connected,
+                    // Фото и индикаторы ориентируются на системное Bluetooth-
+                    // подключение, а не на служебный SPP. Иначе наушники уже
+                    // играют музыку, но UI рисует их «в кейсе» до открытия SPP.
+                    connected = live.bluetoothConnected,
                     nameBlur = nameBlur,
                     onRefresh = vm::refresh,
                 )
@@ -430,7 +433,7 @@ private fun ProductHero(
                 AnimatedContent(
                     targetState = when {
                         connecting -> "connecting"
-                        connected -> "connected"
+                        live.bluetoothConnected -> "connected"
                         else -> "idle"
                     },
                     transitionSpec = { fadeIn(Motion.effects()) togetherWith fadeOut(Motion.effects()) },

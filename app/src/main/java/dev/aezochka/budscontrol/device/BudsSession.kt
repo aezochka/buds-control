@@ -26,6 +26,12 @@ import kotlinx.coroutines.launch
 data class LiveState(
     val connecting: Boolean = false,
     val connected: Boolean = false,
+    /**
+     * Android уже держит эту гарнитуру как медиа-устройство (A2DP/HEADSET).
+     * Это не SPP: наушники могут играть музыку, а служебный канал ещё не
+     * открыт. UI показывает зелёный кружок именно по этому флагу.
+     */
+    val bluetoothConnected: Boolean = false,
     val deviceName: String = "",
     val address: String = "",
     val firmware: String? = null,
@@ -115,6 +121,7 @@ class BudsSession(private val context: Context) {
         val keep = if (s.address == address) s else null
         _state.value = LiveState(
             connecting = true,
+            bluetoothConnected = true,
             deviceName = name,
             address = address,
             gameMode = keep?.gameMode ?: false,
@@ -166,7 +173,7 @@ class BudsSession(private val context: Context) {
                 return@launch
             }
             timeout.cancel()
-            _state.update { it.copy(connecting = false, connected = true) }
+            _state.update { it.copy(connecting = false, connected = true, bluetoothConnected = true) }
             c.send(OppoProtocol.subscribe(setOf(SubType.BATTERY, SubType.STATUS, SubType.ANC_SELECTOR, SubType.GAME_MODE)))
             probe(c)
             // Часть моделей игнорирует первый запрос — повторяем, как в Gadgetbridge.
@@ -438,7 +445,24 @@ class BudsSession(private val context: Context) {
      * Обновление. Если сокет уже мёртв — переподключаемся, а не молча
      * пишем в закрытый поток: именно поэтому кнопка казалась нерабочей.
      */
-    /** Сбрасывает залипшие флаги, если сокет фактически мёртв. */
+    /** Системный Bluetooth подтвердил медиа-подключение, даже если SPP ещё нет. */
+    fun markBluetoothPresent(address: String, name: String) {
+        _state.update {
+            if (it.address == address) it.copy(bluetoothConnected = true)
+            else it.copy(bluetoothConnected = true, deviceName = name, address = address)
+        }
+    }
+
+    /**
+     * Системный Bluetooth отвалился. SPP не трогаем, если он ещё жив:
+     * канал сам закроется по событию closed. Только снимаем зелёный кружок,
+     * чтобы UI не врал.
+     */
+    fun markBluetoothGone() {
+        if (_state.value.bluetoothConnected) {
+            _state.update { it.copy(bluetoothConnected = false) }
+        }
+    }
     fun syncState() {
         val alive = conn?.isConnected == true
         if (!alive && (_state.value.connected || _state.value.connecting)) {

@@ -20,6 +20,7 @@ import dev.aezochka.budscontrol.data.EarbudProfile
 import dev.aezochka.budscontrol.data.LocalStore
 import dev.aezochka.budscontrol.data.ModelSpec
 import dev.aezochka.budscontrol.data.UserSettings
+import dev.aezochka.budscontrol.device.BluetoothLinkMonitor
 import dev.aezochka.budscontrol.device.BluetoothScanner
 import dev.aezochka.budscontrol.device.BudsSession
 import dev.aezochka.budscontrol.device.ApplePodsScanner
@@ -35,6 +36,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.distinctUntilChangedBy
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -47,6 +50,7 @@ class BudsViewModel(app: Application) : AndroidViewModel(app) {
     private val store = LocalStore(app)
     private val scanner = BluetoothScanner(app)
     private val session = BudsSession(app)
+    private val bluetoothLink = BluetoothLinkMonitor(app)
 
     val live: StateFlow<LiveState> = session.state
     /** null пока DataStore не прочитан — MainActivity на это время держит сплэш. */
@@ -131,8 +135,8 @@ class BudsViewModel(app: Application) : AndroidViewModel(app) {
         )
         val newList = (existing + profile).map { it.copy(isSelected = it.id == profile.id) }
         store.saveProfiles(newList)
-        // User explicitly tapped this device: connect once, not in a loop.
-        session.connect(profile.address, profile.displayName)
+        // SPP откроется сам, когда системный Bluetooth покажет эту гарнитуру
+        // как подключённую. Не дёргаем сокет прямо из UI-действия.
     }
 
     fun selectProfile(id: String) = viewModelScope.launch {
@@ -197,47 +201,68 @@ class BudsViewModel(app: Application) : AndroidViewModel(app) {
      * Вызывается, когда приложение возвращается на экран: сбрасывает
      * залипшее «подключаюсь» и переподключается, если сокет умер в фоне.
      */
-    fun onResume() = viewModelScope.launch {
+    fun onResume() {
+        // Состояние связи теперь ведёт BluetoothLinkMonitor, а не экран.
+        // ON_RESUME больше не пересоздаёт SPP — иначе возврат во вкладку
+        // выглядел как «отключилось».
         session.syncState()
-        val profile = selectedRealProfile() ?: return@launch
-        // Живой сокет не трогаем. Раньше здесь стоял force = true, который
-        // закрывал рабочее соединение и открывал новое на каждом возврате
-        // на экран — отсюда постоянные переподключения.
-        if (live.value.connected || live.value.connecting) return@launch
-        if (session.hasLiveSocket()) return@launch
-        session.connect(profile.address, profile.displayName)
     }
 
     /**
-     * Следит за выбранным профилем и подключается сам.
+     * Один владелец соединения.
      *
-     * Живёт в ViewModel, а не на экране: пейджер уничтожает вкладку при
-     * свайпе, и LaunchedEffect на экране вызывал подключение заново при
-     * каждом возврате. distinctUntilChanged по адресу гарантирует, что на
-     * прочие изменения профилей (например запись заряда кейса) реакции нет.
+     * Источник истины — системный Bluetooth (A2DP/HEADSET), не UI. Свайп
+     * вкладок, бар профилей и виртуальные карточки каталога сюда не входят.
+     * SPP открывается только когда Android уже держит эту гарнитуру, и
+     * закрывается только когда системный канал реально пропал.
      */
     private var autoConnectStarted = false
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     private fun startAutoConnect() {
         if (autoConnectStarted) return
         autoConnectStarted = true
         viewModelScope.launch {
+            // Следим сразу за ВСЕМИ реальными профилями, а не только за тем,
+            // который сейчас показан в верхнем баре. Выбор карточки — это UI:
+            // он может быть виртуальной моделью или выключенными ушами и не
+            // должен разрывать T110, которые реально играют музыку.
             store.profiles
-                // Подключаемся только к реальным устройствам. Виртуальные
-                // карточки каталога адреса не имеют; если такая оказалась
-                // выбранной (осталась от прошлых версий), берём первую
-                // реальную — иначе приложение не подключалось вообще.
-                .map { list ->
-                    val real = list.filter { it.address.isNotBlank() }
-                    real.firstOrNull { it.isSelected } ?: real.firstOrNull()
+                .map { list -> list.filter { it.address.isNotBlank() } }
+                .distinctUntilChangedBy { list -> list.map { it.address }.toSet() }
+                .flatMapLatest { real ->
+                    val addresses = real.map { it.address.uppercase() }.toSet()
+                    bluetoothLink.observeAny(addresses).map { connected -> real to connected }
                 }
-                .distinctUntilChangedBy { it?.address }
-                .collect { profile ->
-                    if (profile == null) return@collect
-                    attachCaseListener(profile.id)
-                    session.connect(profile.address, profile.displayName)
-                    profile.caseBattery?.let {
-                        session.seedCaseBattery(it.percent, it.charging, it.atMillis)
+                .collect { (real, connectedAddresses) ->
+                    // Если служебный канал уже жив и его физическая гарнитура
+                    // всё ещё подключена — НЕ меняем его при свайпе UI.
+                    val currentAddress = session.state.value.address.uppercase()
+                    val currentStillConnected = currentAddress.isNotBlank() &&
+                        currentAddress in connectedAddresses
+                    if (currentStillConnected) {
+                        session.markBluetoothPresent(
+                            session.state.value.address,
+                            session.state.value.deviceName,
+                        )
+                        return@collect
+                    }
+
+                    // Иначе выбираем реально подключённую гарнитуру: сначала
+                    // отмеченную пользователем, потом любую из подключённых.
+                    val target = real.firstOrNull {
+                        it.isSelected && it.address.uppercase() in connectedAddresses
+                    } ?: real.firstOrNull { it.address.uppercase() in connectedAddresses }
+
+                    if (target != null) {
+                        attachCaseListener(target.id)
+                        target.caseBattery?.let {
+                            session.seedCaseBattery(it.percent, it.charging, it.atMillis)
+                        }
+                        session.markBluetoothPresent(target.address, target.displayName)
+                        session.connect(target.address, target.displayName)
+                    } else {
+                        session.markBluetoothGone()
                     }
                 }
         }
@@ -268,12 +293,18 @@ class BudsViewModel(app: Application) : AndroidViewModel(app) {
         return real.firstOrNull { it.isSelected } ?: real.firstOrNull()
     }
 
-    fun connectSelected() = viewModelScope.launch {
+    fun connectSelected() {
+        // Явная кнопка обновления: только если Bluetooth уже держит
+        // устройство, а SPP почему-то не открыт.
         startAutoConnect()
-        val profile = selectedRealProfile() ?: return@launch
-        attachCaseListener(profile.id)
-        session.connect(profile.address, profile.displayName)
-        profile.caseBattery?.let { session.seedCaseBattery(it.percent, it.charging, it.atMillis) }
+        viewModelScope.launch {
+            val profile = selectedRealProfile() ?: return@launch
+            attachCaseListener(profile.id)
+            profile.caseBattery?.let {
+                session.seedCaseBattery(it.percent, it.charging, it.atMillis)
+            }
+            session.connect(profile.address, profile.displayName)
+        }
     }
 
     fun finishOnboarding(language: String) = viewModelScope.launch {

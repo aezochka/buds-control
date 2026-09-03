@@ -55,13 +55,15 @@ class Feedback(private val context: Context) {
     fun play(kind: Kind, soundOn: Boolean, hapticOn: Boolean, soundPack: String = "click_a") {
         if (hapticOn) vibrate(kind)
         if (!soundOn) return
-        when (soundPack) {
-            "off" -> Unit
-            "system" -> sound(kind)
-            // Тревожный сигнал оставляем системным: сэмпл клика для него
-            // слишком короткий и не читается как предупреждение.
-            else -> if (kind == Kind.Alarm) sound(kind) else clicks.play(soundPack)
+        // Старые сохранённые значения system/off тоже сводим к первому
+        // пользовательскому клику: этих пунктов больше нет в настройках.
+        val selected = when (soundPack) {
+            "click_b", "click_c" -> soundPack
+            else -> "click_a"
         }
+        // Тревожный сигнал оставляем системным: сэмпл клика для него
+        // слишком короткий и не читается как предупреждение.
+        if (kind == Kind.Alarm) sound(kind) else clicks.play(selected)
     }
 
     private fun sound(kind: Kind) {

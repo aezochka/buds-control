@@ -35,8 +35,6 @@ fun ClickSoundSheet(
         "click_a" to tr("clickSoundA"),
         "click_b" to tr("clickSoundB"),
         "click_c" to tr("clickSoundC"),
-        "system" to tr("clickSoundSystem"),
-        "off" to tr("clickSoundOff"),
     )
 
     ModalBottomSheet(onDismissRequest = onDismiss) {
@@ -58,7 +56,7 @@ fun ClickSoundSheet(
                         .background(if (selected) scheme.primary.copy(alpha = 0.18f) else scheme.surfaceContainer)
                         .pressBounce {
                             vm.setClickSound(key)
-                            if (key != "off") onDismiss()
+                            onDismiss()
                         }
                         .padding(16.dp),
                     verticalAlignment = Alignment.CenterVertically,

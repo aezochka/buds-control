@@ -68,6 +68,8 @@ fun GesturesTab(vm: BudsViewModel) {
         }
         item { BottomSpacer() }
     }
+}
+
 @Composable
 private fun SideGestures(
     title: String,

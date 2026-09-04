@@ -9,13 +9,11 @@ import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -43,27 +41,21 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Popup
 import androidx.compose.ui.zIndex
 import dev.aezochka.budscontrol.data.EarbudProfile
 import dev.aezochka.budscontrol.i18n.tr
+import kotlin.math.hypot
 import kotlin.math.roundToInt
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-/**
- * Список профилей сверху главного экрана.
- * Одно касание = выбрать устройство. Зажал = меню (вибрация, scale 1.05) -> отпустил без сдвига = меню остаётся.
- * Сдвинул после меню > touchSlop = меню скрывается и начинается drag. Сдвиг до longPress = скролл.
- * Реализовано одним обработчиком жестов, а не двумя конкурирующими детекторами.
- */
 @Composable
 fun ProfileRow(
     profiles: List<EarbudProfile>,
@@ -98,11 +90,6 @@ fun ProfileRow(
     val ordered = order.mapNotNull { id -> profiles.firstOrNull { it.id == id } }
     val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
     val longPressTimeout = ViewConfiguration.getLongPressTimeout().toLong()
-
-    // Тап вне меню закрывает его
-    if (menuId != null) {
-        Box(Modifier.fillMaxWidth().clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) { menuId = null })
-    }
 
     Row(verticalAlignment = Alignment.CenterVertically) {
         Row(
@@ -155,39 +142,30 @@ fun ProfileRow(
                             }
                             .clip(CircleShape)
                             .background(bg)
-                            .pointerInput(order, menuId) {
+                            .pointerInput(order, menuId, dragId) {
                                 awaitPointerEventScope {
                                     while (true) {
                                         val down = try { awaitFirstDown(requireUnconsumed = false) } catch (_: Exception) { break }
-                                        var longPressJob: Job? = null
-                                        var isLongPressed = false
+                                        var longPressed = false
                                         var dragStarted = false
-                                        var downPos = down.position
-                                        // состояния: Idle -> LongPressed -> Dragging
-                                        longPressJob = extScope.launch {
+                                        val downPos = down.position
+                                        val job = extScope.launch {
                                             delay(longPressTimeout)
-                                            if (!isLongPressed && dragId == null) {
-                                                isLongPressed = true
-                                                view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
-                                                menuId = profile.id
-                                            }
+                                            longPressed = true
+                                            view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                                            menuId = profile.id
                                         }
                                         var finished = false
                                         while (!finished) {
-                                            val event = awaitPointerEvent(PointerEventPass.Main)
+                                            val event = awaitPointerEvent()
                                             val change = event.changes.firstOrNull { it.id == down.id } ?: break
-                                            val dist = kotlin.math.hypot((change.position.x - downPos.x).toDouble(), (change.position.y - downPos.y).toDouble()).toFloat()
-                                            // 4. сдвиг до longPress -> скролл, ни меню ни drag
-                                            if (!isLongPressed && dist > touchSlop) {
-                                                longPressJob.cancel()
+                                            val dist = hypot((change.position.x - downPos.x).toDouble(), (change.position.y - downPos.y).toDouble()).toFloat()
+                                            if (!longPressed && dist > touchSlop) {
+                                                job.cancel()
                                                 finished = true
                                                 break
                                             }
-                                            // проверяем что job успел сработать (т.к. флаг ставится в launch)
-                                            if (menuId == profile.id) isLongPressed = true
-                                            // 3. сдвиг после меню -> скрыть меню и начать drag
-                                            if (isLongPressed && menuId == profile.id && dist > touchSlop && !dragStarted) {
-                                                // мгновенно без анимации
+                                            if (longPressed && menuId == profile.id && dist > touchSlop && !dragStarted) {
                                                 menuId = null
                                                 dragStarted = true
                                                 dragId = profile.id
@@ -206,7 +184,6 @@ fun ProfileRow(
                                                     if (limited != slots) slots = limited
                                                     change.consume()
                                                 } else {
-                                                    // onDragEnd
                                                     val from = order.indexOf(profile.id)
                                                     val to = (startIndex + slots).coerceIn(0, order.lastIndex)
                                                     if (from >= 0 && to != from) {
@@ -224,12 +201,10 @@ fun ProfileRow(
                                                 }
                                             } else {
                                                 if (!change.pressed) {
-                                                    longPressJob.cancel()
-                                                    // 2. отпустил без сдвига после меню -> меню остаётся
-                                                    if (isLongPressed && menuId == profile.id) {
+                                                    job.cancel()
+                                                    if (longPressed && menuId == profile.id) {
                                                         change.consume()
-                                                    } else if (!isLongPressed) {
-                                                        // обычный тап
+                                                    } else if (!longPressed) {
                                                         onSelect(profile.id)
                                                     }
                                                     finished = true
@@ -237,7 +212,14 @@ fun ProfileRow(
                                             }
                                             if (finished) break
                                         }
-                                        longPressJob.cancel()
+                                        job.cancel()
+                                        if (dragStarted && dragId != null) {
+                                            // ensure cleanup if loop broke early
+                                            dragOffset = 0f
+                                            slots = 0
+                                            dragId = null
+                                            onDragActive(false)
+                                        }
                                     }
                                 }
                             }
@@ -250,15 +232,14 @@ fun ProfileRow(
                         Text(modifier = Modifier.blur(nameBlur), text = profile.displayName.removePrefix("realme ").removePrefix("OnePlus "), style = MaterialTheme.typography.bodyMedium, color = if (active) scheme.onPrimary else scheme.onSurfaceVariant)
                         if (isConnected) Box(Modifier.size(8.dp).clip(CircleShape).background(if (active) scheme.onPrimary else scheme.primary))
                     }
-                    // Всплывающее меню над чипом
                     if (menuOpen) {
-                        Box(
-                            Modifier.padding(top = 6.dp).clip(RoundedCornerShape(16.dp)).background(scheme.surfaceContainerHigh).zIndex(2f)
-                        ) {
-                            Row(Modifier.padding(4.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                ChipMenuItem(Icons.Outlined.Edit, "Переименовать") { menuId = null; onRename(profile.id) }
-                                ChipMenuItem(Icons.Outlined.RestartAlt, "Сбросить") { menuId = null; onReset(profile.id) }
-                                ChipMenuItem(Icons.Outlined.Delete, "Забыть") { menuId = null; onForget(profile.id) }
+                        Popup(onDismissRequest = { menuId = null }) {
+                            Box(Modifier.padding(top = 6.dp).clip(RoundedCornerShape(16.dp)).background(scheme.surfaceContainerHigh)) {
+                                Row(Modifier.padding(4.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    ChipMenuItem(Icons.Outlined.Edit, "Переименовать") { menuId = null; onRename(profile.id) }
+                                    ChipMenuItem(Icons.Outlined.RestartAlt, "Сбросить") { menuId = null; onReset(profile.id) }
+                                    ChipMenuItem(Icons.Outlined.Delete, "Забыть") { menuId = null; onForget(profile.id) }
+                                }
                             }
                         }
                     }
@@ -266,7 +247,10 @@ fun ProfileRow(
             }
         }
         Spacer(Modifier.width(8.dp))
-        Box(Modifier.size(42.dp).clip(CircleShape).background(scheme.surfaceContainerHigh).clickable { onAdd() }, contentAlignment = Alignment.Center) {
+        Box(
+            Modifier.size(42.dp).clip(CircleShape).background(scheme.surfaceContainerHigh).clickable { onAdd() },
+            contentAlignment = Alignment.Center,
+        ) {
             Icon(Icons.Outlined.Add, tr("addBuds"), tint = scheme.primary, modifier = Modifier.size(21.dp))
         }
     }

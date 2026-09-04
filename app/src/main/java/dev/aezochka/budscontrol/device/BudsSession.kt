@@ -501,8 +501,9 @@ class BudsSession(private val context: Context) {
     private fun hasLiveChannel(): Boolean = conn?.isConnected == true
 
     fun setGameMode(on: Boolean) {
+        _state.update { it.copy(gameMode = on) }
         if (!hasLiveChannel()) return
-        // Меняем состояние сразу: раньше плитка «долго включалась», потому
+        // отправка: раньше плитка «долго включалась», потому
         // что ждала ответа гарнитуры или следующего цикла опроса.
         _state.update { it.copy(gameMode = on) }
         val c = conn ?: return
@@ -511,15 +512,15 @@ class BudsSession(private val context: Context) {
 
 
     fun setSpatialAudio(on: Boolean) {
-        if (!hasLiveChannel()) return
         _state.update { it.copy(spatialAudio = on) }
+        if (!hasLiveChannel()) return
         val c = conn ?: return
         scope.launch { c.send(OppoProtocol.miscConfigSet(MiscType.SPATIAL_AUDIO, on)) }
     }
 
     fun setMultipoint(on: Boolean) {
-        if (!hasLiveChannel()) return
         _state.update { it.copy(multipoint = on) }
+        if (!hasLiveChannel()) return
         val c = conn ?: return
         scope.launch { c.send(OppoProtocol.miscConfigSet(MiscType.MULTIPOINT, on)) }
     }

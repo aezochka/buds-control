@@ -586,6 +586,7 @@ private fun BentoGrid(
         fun show(key: String): Boolean = when {
             key in live.supported -> true
             key in confirmed.value -> true
+            live.capabilities.isEmpty() -> true
             live.probeComplete -> false
             else -> true
         }

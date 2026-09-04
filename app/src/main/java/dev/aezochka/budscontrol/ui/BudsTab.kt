@@ -203,10 +203,10 @@ fun BudsTab(vm: BudsViewModel, onDragActive: (Boolean) -> Unit = {}) {
     Column(Modifier.fillMaxWidth().nestedScroll(scrollConnection)) {
         AnimatedVisibility(
             visible = barVisible,
-            enter = expandVertically(Motion.jelly()) +
-                fadeIn(tween(180, easing = FastOutSlowInEasing)),
-            exit = shrinkVertically(Motion.jelly()) +
-                fadeOut(tween(140, easing = FastOutSlowInEasing)),
+            enter = expandVertically(tween(280, easing = FastOutSlowInEasing)) +
+                fadeIn(tween(220, easing = FastOutSlowInEasing)),
+            exit = shrinkVertically(tween(240, easing = FastOutSlowInEasing)) +
+                fadeOut(tween(160, easing = FastOutSlowInEasing)),
         ) {
             Column(
                 Modifier
@@ -588,18 +588,16 @@ private fun BentoGrid(
             if (applePods != null) add("inear")
         }
 
+        // Автобаланс: когда часть плиток скрылась (не поддерживается) — не оставляем дыры.
+        // Чётные ряды по 2, последний нечётный растягивается на всю ширину чтобы не было пустого места.
         big.chunked(2).forEach { pair ->
             Row(horizontalArrangement = Arrangement.spacedBy(11.dp)) {
                 pair.forEach { key ->
                     Box(
                         Modifier
                             .weight(1f)
-                            // Сетка меняет размер плавно, когда набор плиток
-                            // перестраивается после опроса возможностей.
                             .animateContentSize(Motion.spatial()),
                     ) {
-                        // Смена содержимого плитки — с мягким проявлением,
-                        // а не мгновенной подменой.
                         AnimatedContent(
                             targetState = key,
                             transitionSpec = {
@@ -614,10 +612,10 @@ private fun BentoGrid(
                         }
                     }
                 }
-                // Нечётный остаток не должен растягиваться на всю ширину.
-                if (pair.size == 1) Spacer(Modifier.weight(1f))
+                // пустых дыр не оставляем: нечётный хвост не дополняем Spacer'ом
             }
         }
+        // Если всего 1 большая плитка осталась — она уже на всю ширину ряда; если 0 — сетка схлопнется без дыры
 
         // Кейс — отдельной широкой плиткой: заряд кейса на фото не показан,
         // и без неё пропадала единственная индикация зарядки футляра.
@@ -632,14 +630,13 @@ private fun BentoGrid(
             if (show("firmware")) add("firmware")
         }
         if (small.isNotEmpty()) {
+            // компактный ряд схлопывается без дыр: 2-4 плитки равномерно, без пустых Spacer'ов
             Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
                 small.forEach { key ->
                     Box(Modifier.weight(1f)) {
                         TileContent(key, vm, live, editing, onEq, onSleep, onVolume, compact = true)
                     }
                 }
-                // если скрыли часть — добиваем веса чтобы не разъезжалось
-                repeat((4 - small.size).coerceAtLeast(0)) { Spacer(Modifier.weight(1f)) }
             }
         }
     }

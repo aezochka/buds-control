@@ -141,6 +141,22 @@ fun SoundTab(vm: BudsViewModel) {
                 topPadding = 2.dp,
             ) { showVolume = true }
         }
+        item {
+            GroupLabel("Баланс и моно")
+            val settings by vm.settings.collectAsState()
+            Column(Modifier.padding(horizontal=20.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(22.dp)).background(scheme.surfaceContainer).padding(16.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                    Text("Баланс L/R", style = MaterialTheme.typography.bodyLarge, color = scheme.onSurface)
+                    Text(if (settings.balance < -0.05f) "L" else if (settings.balance > 0.05f) "R" else "Центр", style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant)
+                }
+                androidx.compose.material3.Slider(value = settings.balance, onValueChange = { vm.setBalance(it) }, valueRange = -1f..1f, modifier = Modifier.fillMaxWidth())
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                    Text("Моно-режим", style = MaterialTheme.typography.bodyLarge, color = scheme.onSurface)
+                    androidx.compose.material3.Switch(checked = settings.monoMode, onCheckedChange = { vm.setMono(it) })
+                }
+                Text("Уведомление с управлением: громкость/пауза доступны когда уши подключены", style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant)
+            }
+        }
         item { BottomSpacer() }
     }
 }

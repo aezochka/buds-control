@@ -199,6 +199,17 @@ class BudsViewModel(app: Application) : AndroidViewModel(app) {
     fun removeProfile(id: String) = viewModelScope.launch {
         store.saveProfiles(store.profiles.first().filterNot { it.id == id })
     }
+    fun renameProfile(id: String, newName: String) = viewModelScope.launch {
+        val list = store.profiles.first().map { if (it.id == id) it.copy(displayName = newName) else it }
+        store.saveProfiles(list)
+    }
+    fun resetDeviceSettings(id: String) = viewModelScope.launch {
+        // сброс: скрытые плитки, порядок, кастом цвет — но оставляем профиль
+        val cur = store.settings.first()
+        store.saveSettings(cur.copy(hiddenTiles = emptySet()))
+        // также можно сбросить стартовые настройки гарнитуры если нужно
+    }
+    fun forgetDevice(id: String) = removeProfile(id)
 
     /**
      * Вызывается, когда приложение возвращается на экран: сбрасывает
@@ -513,6 +524,12 @@ class BudsViewModel(app: Application) : AndroidViewModel(app) {
     fun setDynamicColor(on: Boolean) = viewModelScope.launch {
         store.saveSettings(settings.value.copy(dynamicColor = on))
     }
+    fun setAmoled(on: Boolean) = viewModelScope.launch { store.saveSettings(settings.value.copy(amoledBlack = on)) }
+    fun setBalance(v: Float) = viewModelScope.launch { store.saveSettings(settings.value.copy(balance = v.coerceIn(-1f,1f))) }
+    fun setMono(on: Boolean) = viewModelScope.launch { store.saveSettings(settings.value.copy(monoMode = on)) }
+    fun setAutoPause(on: Boolean) = viewModelScope.launch { store.saveSettings(settings.value.copy(autoPauseOnRemoval = on)) }
+    fun setAssistant(v: String) = viewModelScope.launch { store.saveSettings(settings.value.copy(assistant = v)) }
+    fun setLastDisconnect(lat: Double, lon: Double) = viewModelScope.launch { store.saveSettings(settings.value.copy(lastDisconnectLat = lat, lastDisconnectLon = lon)) }
 
     fun toggleTile(key: String) = viewModelScope.launch {
         val hidden = settings.value.hiddenTiles

@@ -319,7 +319,7 @@ enum class TouchSide(val code: Int) {
 }
 
 enum class TouchType(val code: Int) {
-    UNK_1(0x0101), TAP_2(0x0201), TAP_3(0x0301), HOLD(0x0401);
+    TAP_1(0x0101), TAP_2(0x0201), TAP_3(0x0301), HOLD(0x0401), CALL_ANSWER(0x0501), CALL_REJECT(0x0601), CALL_MUTE(0x0701);
 
     companion object {
         fun from(code: Int) = entries.firstOrNull { it.code == code }

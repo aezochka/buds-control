@@ -95,6 +95,7 @@ private fun SideGestures(
         }
         Spacer(Modifier.height(10.dp))
         listOf(
+            TouchType.TAP_1 to "Одинарное касание (если прошивка позволяет)",
             TouchType.TAP_2 to strings["tap2"],
             TouchType.TAP_3 to strings["tap3"],
             TouchType.HOLD to strings["hold"],
@@ -102,12 +103,13 @@ private fun SideGestures(
             GestureRow(
                 label = label,
                 // Три жеста одного наушника — один блок.
-                shape = groupShape(index, 3),
+                shape = groupShape(index, 4),
                 current = touch[side to type] ?: touch[TouchSide.BOTH to type],
                 enabled = enabled,
                 // Заводское значение, пока гарнитура не прислала своё.
                 strings = strings,
                 fallbackLabel = when (type) {
+                    TouchType.TAP_1 -> "—"
                     TouchType.TAP_2 -> strings["defaultPlay"]
                     TouchType.TAP_3 -> strings["defaultNext"]
                     TouchType.HOLD -> strings["defaultAssistant"]
@@ -116,6 +118,26 @@ private fun SideGestures(
                 onPick = { onPick(type, it) },
             )
         }
+    }
+        Spacer(Modifier.height(14.dp))
+        Text("Звонок — отдельный набор", style = MaterialTheme.typography.labelMedium, color = scheme.onSurfaceVariant)
+        Spacer(Modifier.height(6.dp))
+        listOf(TouchType.CALL_ANSWER to "Ответить", TouchType.CALL_REJECT to "Сбросить", TouchType.CALL_MUTE to "Мьют микрофона").forEachIndexed { i,(type,label) ->
+            GestureRow(label=label, shape=groupShape(i,3), current=touch[side to type], enabled=enabled, strings=strings, fallbackLabel="—", onPick={ onPick(type,it) })
+        }
+        Spacer(Modifier.height(14.dp))
+        Text("Громкость жестом", style = MaterialTheme.typography.labelMedium, color = scheme.onSurfaceVariant)
+        Spacer(Modifier.height(6.dp))
+        Text("Назначь VOLUME_UP/DOWN на любой жест выше", style = MaterialTheme.typography.bodySmall, color = scheme.outline)
+        Spacer(Modifier.height(14.dp))
+        Text("Кастомные действия", style = MaterialTheme.typography.labelMedium, color = scheme.onSurfaceVariant)
+        Spacer(Modifier.height(6.dp))
+        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(scheme.surfaceContainer).padding(12.dp)) {
+            Text("Открыть приложение / фонарик / ярлык/Tasker / следующий EQ / ANC по кругу", style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant)
+            Text("Через Tasker-интент: настроишь в системе, выбери действие OFF и обработай событие в Tasker", style = MaterialTheme.typography.bodySmall, color = scheme.outline)
+        }
+        Spacer(Modifier.height(10.dp))
+        Text("Ассистент: Google / Алиса / другой", style = MaterialTheme.typography.labelMedium, color = scheme.onSurfaceVariant)
     }
 }
 
@@ -202,6 +224,7 @@ private val pickableActions = listOf(
     TouchAction.VOLUME_UP,
     TouchAction.VOLUME_DOWN,
     TouchAction.VOICE_ASSISTANT_REALME,
+    TouchAction.NOISE_CONTROL,
     TouchAction.GAME_MODE,
     TouchAction.OFF,
 )

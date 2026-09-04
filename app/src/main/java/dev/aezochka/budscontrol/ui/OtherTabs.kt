@@ -73,6 +73,7 @@ fun SettingsTab(vm: BudsViewModel) {
     val profiles by vm.profiles.collectAsState()
     val live by vm.live.collectAsState()
     var showTheme by remember { mutableStateOf(false) }
+    var showChangelog by remember { mutableStateOf(false) }
     var showEq by remember { mutableStateOf(false) }
     var showLang by remember { mutableStateOf(false) }
     var showSleep by remember { mutableStateOf(false) }
@@ -102,6 +103,23 @@ fun SettingsTab(vm: BudsViewModel) {
             current = settings.clickSound,
             vm = vm,
             onDismiss = { showClickSounds = false },
+        )
+    }
+    if (showChangelog) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { showChangelog = false },
+            title = { Text("Чейнджлог") },
+            text = {
+                androidx.compose.foundation.layout.Column {
+                    dev.aezochka.budscontrol.data.changelog.forEach { c ->
+                        Text(c.version, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
+                        c.adds.forEach { Text("+"+it, style = MaterialTheme.typography.bodySmall) }
+                        c.removes.forEach { Text("-"+it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error) }
+                        androidx.compose.foundation.layout.Spacer(Modifier.height(6.dp))
+                    }
+                }
+            },
+            confirmButton = { androidx.compose.material3.TextButton(onClick={showChangelog=false}){ Text("OK") } }
         )
     }
     if (showTheme) {
@@ -195,6 +213,8 @@ fun SettingsTab(vm: BudsViewModel) {
                         shape = groupShape(5, 6),
                         onToggle = { vm.setHideNameOnScroll(it) },
                     )
+                    SettingsToggle(icon = Icons.Outlined.DarkMode, title = "AMOLED чёрная тема", subtitle = if (settings.amoledBlack) "Глубокий чёрный" else "Тёмная", checked = settings.amoledBlack, shape = groupShape(6, 6), onToggle = { vm.setAmoled(it) })
+                    SettingsToggle(icon = Icons.Outlined.PauseCircle, title = "Автопауза при снятии", subtitle = "Пауза когда снял наушник", checked = settings.autoPauseOnRemoval, shape = groupShape(6, 6), onToggle = { vm.setAutoPause(it) })
 
                 }
 
@@ -205,7 +225,8 @@ fun SettingsTab(vm: BudsViewModel) {
                     expanded = openSection == "app",
                     onToggle = { vm.tick(); openSection = if (openSection == "app") null else "app" },
                 ) {
-                    UpdateRow(vm, shape = groupShape(1, 5))
+                    SettingsRow(Icons.Outlined.Tune, "Чейнджлог", "Что нового", shape = groupShape(1, 6), onClick = { showChangelog = true })
+                    UpdateRow(vm, shape = groupShape(2, 6))
                     CrashLogRow()
                     SettingsRow(
                         Icons.Outlined.Language, tr("language"),

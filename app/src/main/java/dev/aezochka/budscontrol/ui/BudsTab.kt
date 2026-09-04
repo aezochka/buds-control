@@ -215,6 +215,8 @@ fun BudsTab(vm: BudsViewModel, onDragActive: (Boolean) -> Unit = {}) {
                     .statusBarsPadding()
                     .padding(horizontal = 20.dp, vertical = 6.dp)
             ) {
+                var renameId by remember { mutableStateOf<String?>(null) }
+                var renameText by remember { mutableStateOf("") }
                 ProfileRow(
                     profiles = profiles,
                     onSelect = { vm.selectProfile(it) },
@@ -222,10 +224,20 @@ fun BudsTab(vm: BudsViewModel, onDragActive: (Boolean) -> Unit = {}) {
                     onAdd = { showAddDevice = true },
                     onDragActive = onDragActive,
                     connectedAddresses = connectedAddresses,
-                    // Название скрывается и здесь: иначе блюр под фото есть,
-                    // а в баре сверху модель по-прежнему читается.
                     nameBlur = nameBlur,
+                    onRename = { id -> renameText = profiles.firstOrNull{it.id==id}?.displayName ?: ""; renameId = id },
+                    onReset = { vm.resetDeviceSettings(it) },
+                    onForget = { vm.forgetDevice(it) },
                 )
+                if (renameId != null) {
+                    androidx.compose.material3.AlertDialog(
+                        onDismissRequest = { renameId = null },
+                        title = { Text("Переименовать") },
+                        text = { androidx.compose.material3.OutlinedTextField(value=renameText, onValueChange={renameText=it}, label={ Text("Имя") }) },
+                        confirmButton = { androidx.compose.material3.TextButton(onClick={ vm.renameProfile(renameId!!, renameText); renameId=null }) { Text("OK") } },
+                        dismissButton = { androidx.compose.material3.TextButton(onClick={ renameId=null }) { Text("Отмена") } }
+                    )
+                }
             }
         }
 

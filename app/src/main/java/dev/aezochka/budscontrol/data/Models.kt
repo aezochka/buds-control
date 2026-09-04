@@ -45,6 +45,13 @@ data class UserSettings(
     val hiddenTiles: Set<String> = emptySet(),
     /** Системные динамические цвета (Material You, Android 12+). */
     val dynamicColor: Boolean = false,
+    val amoledBlack: Boolean = false,
+    val balance: Float = 0f,
+    val monoMode: Boolean = false,
+    val autoPauseOnRemoval: Boolean = false,
+    val assistant: String = "google",
+    val lastDisconnectLat: Double? = null,
+    val lastDisconnectLon: Double? = null,
 )
 
 val defaultTileOrder = listOf(

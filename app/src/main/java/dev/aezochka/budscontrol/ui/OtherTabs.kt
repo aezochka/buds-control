@@ -225,7 +225,7 @@ fun SettingsTab(vm: BudsViewModel) {
                     expanded = openSection == "app",
                     onToggle = { vm.tick(); openSection = if (openSection == "app") null else "app" },
                 ) {
-                    SettingsRow(Icons.Outlined.History, "Чейнджлог", "Что нового", shape = groupShape(1, 6), onClick = { showChangelog = true })
+                    SettingsRow(Icons.Outlined.GraphicEq, "Чейнджлог", "Что нового", shape = groupShape(1, 6), onClick = { showChangelog = true })
                     UpdateRow(vm, shape = groupShape(2, 6))
                     CrashLogRow()
                     SettingsRow(

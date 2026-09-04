@@ -524,9 +524,8 @@ class BudsViewModel(app: Application) : AndroidViewModel(app) {
     fun setDynamicColor(on: Boolean) = viewModelScope.launch {
         store.saveSettings(settings.value.copy(dynamicColor = on))
     }
-    fun setAmoled(on: Boolean) = viewModelScope.launch { store.saveSettings(settings.value.copy(amoledBlack = on)) }
-    fun setBalance(v: Float) = viewModelScope.launch { store.saveSettings(settings.value.copy(balance = v.coerceIn(-1f,1f))) }
-    fun setMono(on: Boolean) = viewModelScope.launch { store.saveSettings(settings.value.copy(monoMode = on)) }
+    fun setBalance(v: Float) = viewModelScope.launch { store.saveSettings(settings.value.copy(balance = v.coerceIn(-1f,1f))); dev.aezochka.budscontrol.audio.AudioTools(getApplication()).setBalance(v) }
+    fun setMono(on: Boolean) = viewModelScope.launch { store.saveSettings(settings.value.copy(monoMode = on)); dev.aezochka.budscontrol.audio.AudioTools(getApplication()).setMono(on) }
     fun setAutoPause(on: Boolean) = viewModelScope.launch { store.saveSettings(settings.value.copy(autoPauseOnRemoval = on)) }
     fun setAssistant(v: String) = viewModelScope.launch { store.saveSettings(settings.value.copy(assistant = v)) }
     fun setLastDisconnect(lat: Double, lon: Double) = viewModelScope.launch { store.saveSettings(settings.value.copy(lastDisconnectLat = lat, lastDisconnectLon = lon)) }

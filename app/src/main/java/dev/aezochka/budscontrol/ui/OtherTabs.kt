@@ -202,19 +202,25 @@ fun SettingsTab(vm: BudsViewModel) {
                         title = tr("autoConnect"),
                         subtitle = tr("autoConnectHint"),
                         checked = settings.autoConnect,
-                        shape = groupShape(4, 6),
+                        shape = groupShape(4, 7),
                         onToggle = { vm.setAutoConnect(it) },
+                    )
+                    SettingsToggle(
+                        icon = Icons.Outlined.Bedtime,
+                        title = "Автопауза при снятии",
+                        subtitle = "Пауза когда снял наушник",
+                        checked = settings.autoPauseOnRemoval,
+                        shape = groupShape(5, 7),
+                        onToggle = { vm.setAutoPause(it) },
                     )
                     SettingsToggle(
                         icon = Icons.Outlined.UnfoldLess,
                         title = tr("hideName"),
                         subtitle = tr("hideNameHint"),
                         checked = settings.hideNameOnScroll,
-                        shape = groupShape(5, 6),
+                        shape = groupShape(6, 7),
                         onToggle = { vm.setHideNameOnScroll(it) },
                     )
-                    SettingsToggle(icon = Icons.Outlined.GraphicEq, title = "AMOLED чёрная тема", subtitle = if (settings.amoledBlack) "Глубокий чёрный" else "Тёмная", checked = settings.amoledBlack, shape = groupShape(6, 6), onToggle = { vm.setAmoled(it) })
-                    SettingsToggle(icon = Icons.Outlined.Bedtime, title = "Автопауза при снятии", subtitle = "Пауза когда снял наушник", checked = settings.autoPauseOnRemoval, shape = groupShape(6, 6), onToggle = { vm.setAutoPause(it) })
 
                 }
 

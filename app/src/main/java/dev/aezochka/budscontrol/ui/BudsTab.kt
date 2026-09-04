@@ -201,25 +201,19 @@ fun BudsTab(vm: BudsViewModel, onDragActive: (Boolean) -> Unit = {}) {
     val nameBlur = nameBlurValue.dp
 
     Column(Modifier.fillMaxWidth().nestedScroll(scrollConnection)) {
-        // Верхний бар анимируется тем же движением, что и нижний: раньше он
-        // использовал пружину с перелётом и дёргался на скрытии.
         AnimatedVisibility(
             visible = barVisible,
-            enter = expandVertically(tween(280, easing = FastOutSlowInEasing)) +
-                fadeIn(tween(220, easing = FastOutSlowInEasing)),
-            exit = shrinkVertically(tween(240, easing = FastOutSlowInEasing)) +
-                fadeOut(tween(160, easing = FastOutSlowInEasing)),
+            enter = expandVertically(Motion.jelly()) +
+                fadeIn(tween(180, easing = FastOutSlowInEasing)),
+            exit = shrinkVertically(Motion.jelly()) +
+                fadeOut(tween(140, easing = FastOutSlowInEasing)),
         ) {
-            // Непрозрачный фон и слой выше фото. Без этого шторка во время
-            // анимации выхода оставалась полупрозрачной поверх картинки —
-            // получалась чёрная полоса, залезающая на наушники.
             Column(
                 Modifier
                     .fillMaxWidth()
-                    .zIndex(1f)
                     .background(MaterialTheme.colorScheme.background)
                     .statusBarsPadding()
-                    .padding(horizontal = 20.dp, vertical = 8.dp)
+                    .padding(horizontal = 20.dp, vertical = 6.dp)
             ) {
                 ProfileRow(
                     profiles = profiles,
@@ -234,10 +228,6 @@ fun BudsTab(vm: BudsViewModel, onDragActive: (Boolean) -> Unit = {}) {
                 )
             }
         }
-
-        // Отступ под статус-бар держим ВСЕГДА: раньше он появлялся только
-        // когда шторка скрыта, и фото прыгало под системную панель.
-        Spacer(Modifier.statusBarsPadding())
 
         LazyColumn(Modifier.fillMaxWidth(), state = listState) {
             item {
@@ -635,12 +625,21 @@ private fun BentoGrid(
             TileContent("case", vm, live, editing, onEq, onSleep, onVolume)
         }
 
-        // Дополнительные — компактный ряд.
-        Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-            listOf("sleep", "volume", "find", "firmware").forEach { key ->
-                Box(Modifier.weight(1f)) {
-                    TileContent(key, vm, live, editing, onEq, onSleep, onVolume, compact = true)
+        // Дополнительные — показываем только поддерживаемое (find/firmware пропадают если нет)
+        val small = buildList {
+            add("sleep"); add("volume")
+            if (show("find")) add("find")
+            if (show("firmware")) add("firmware")
+        }
+        if (small.isNotEmpty()) {
+            Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+                small.forEach { key ->
+                    Box(Modifier.weight(1f)) {
+                        TileContent(key, vm, live, editing, onEq, onSleep, onVolume, compact = true)
+                    }
                 }
+                // если скрыли часть — добиваем веса чтобы не разъезжалось
+                repeat((4 - small.size).coerceAtLeast(0)) { Spacer(Modifier.weight(1f)) }
             }
         }
     }

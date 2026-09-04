@@ -145,13 +145,13 @@ private fun FloatingTabBar(current: Int, onSelect: (Int) -> Unit, modifier: Modi
         Tab.entries.forEachIndexed { index, tab ->
             val selected = index == current
             val bg by animateColorAsState(
-                if (selected) scheme.primary else scheme.surfaceContainer, Motion.effects(), label = "tabBg",
+                if (selected) scheme.primary else scheme.surfaceContainer, Motion.jelly(), label = "tabBg",
             )
             val tint by animateColorAsState(
-                if (selected) scheme.onPrimary else scheme.onSurfaceVariant, Motion.effects(), label = "tabTint",
+                if (selected) scheme.onPrimary else scheme.onSurfaceVariant, Motion.jelly(), label = "tabTint",
             )
-            val corner by animateDpAsState(if (selected) 19.dp else 28.dp, Motion.spatialFast(), label = "tabCorner")
-            val iconScale by animateFloatAsState(if (selected) 1.12f else 1f, Motion.spatial(), label = "tabIcon")
+            val corner by animateDpAsState(if (selected) 19.dp else 28.dp, Motion.jelly(), label = "tabCorner")
+            val iconScale by animateFloatAsState(if (selected) 1.12f else 1f, Motion.jelly(), label = "tabIcon")
 
             Column(
                 Modifier

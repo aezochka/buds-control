@@ -30,6 +30,8 @@ object Motion {
     fun <T> effects(): FiniteAnimationSpec<T> =
         tween(durationMillis = 190, easing = CubicBezierEasing(0.2f, 0f, 0f, 1f))
 
+    fun <T> jelly(): FiniteAnimationSpec<T> =
+        spring(dampingRatio = 0.42f, stiffness = 900f)
     fun <T> slow(): FiniteAnimationSpec<T> =
         spring(dampingRatio = 0.75f, stiffness = Spring.StiffnessVeryLow)
 }

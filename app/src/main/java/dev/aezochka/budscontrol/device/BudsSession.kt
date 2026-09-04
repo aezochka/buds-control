@@ -451,9 +451,19 @@ class BudsSession(private val context: Context) {
     }
 
     private fun applyAnc(p: ByteArray) {
-        if (p.size < 4 || p[0].toInt() != 0) return
-        AncMode.from(p[3].toInt() and 0xFF)?.let { m ->
-            _state.update { it.copy(ancMode = m, supported = it.supported + "anc") }
+        if (p.isEmpty()) return
+        // Формат бывает [00 01 01 mode] или [status type val] или просто [mode]
+        // Ищем известный AncMode в последних байтах — как в applyMisc.
+        var found: AncMode? = null
+        for (b in p) {
+            AncMode.from(b.toInt() and 0xFF)?.let { found = it }
+        }
+        // Если payload хотя бы пришёл — считаем что ANC есть, даже если mode не распарсили
+        _state.update { it.copy(supported = it.supported + "anc") }
+        found?.let { m -> _state.update { it.copy(ancMode = m) } }
+        // Если mode не нашли, но p[3] есть — пробуем его
+        if (found == null && p.size >= 4) {
+            AncMode.from(p[3].toInt() and 0xFF)?.let { m -> _state.update { it.copy(ancMode = m) } }
         }
     }
 

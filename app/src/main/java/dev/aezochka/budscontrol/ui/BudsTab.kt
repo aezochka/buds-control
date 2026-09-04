@@ -584,8 +584,9 @@ private fun BentoGrid(
         fun show(key: String): Boolean = when {
             key in live.supported -> true
             key in confirmed.value -> true
-            live.probeComplete -> false
-            else -> true
+            !live.probeComplete -> true
+            live.capabilities.isEmpty() -> true // гарнитура не ответила 0x0100 — не прячем, а то ANC пропадёт зря
+            else -> false
         }
 
         val big = buildList {

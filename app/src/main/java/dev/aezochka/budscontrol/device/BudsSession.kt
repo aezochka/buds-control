@@ -341,19 +341,37 @@ class BudsSession(private val context: Context) {
 
 
     private fun applyMisc(p: ByteArray) {
-        if (p.size < 3 || p[0].toInt() != 0) return
-        var i = 2
-        while (i + 1 < p.size) {
-            val on = (p[i + 1].toInt() and 0xFF) == 1
-            when (MiscType.from(p[i].toInt() and 0xFF)) {
-                MiscType.GAME_MODE -> _state.update { it.copy(gameMode = on, supported = it.supported + "game") }
-                MiscType.MULTIPOINT -> _state.update { it.copy(multipoint = on, supported = it.supported + "multipoint") }
-                MiscType.SPATIAL_AUDIO -> _state.update { it.copy(spatialAudio = on, supported = it.supported + "spatial") }
-                MiscType.LDAC -> _state.update { it.copy(supported = it.supported + "ldac") }
-                else -> Unit
-            }
-            i += 2
+        if (p.size < 2) return
+        // Формат разный по прошивкам: [0x00, count, type, val...] или [count, type, val...] или [type,val...]
+        // Поэтому не требуем p[0]==0, а просто ищем известные типы в полезной нагрузке.
+        // Также игнорируем статус 0x00 в начале, если он есть.
+        var start = 0
+        if (p[0].toInt() == 0 && p.size >= 3) {
+            // первый байт — статус, второй — количество. Сдвигаем на 2
+            start = 2
+        } else if (p.size >= 2 && p[0].toInt() in 1..8 && MiscType.from(p[1].toInt() and 0xFF) != null) {
+            // первый байт — count
+            start = 1
         }
+        var i = start
+        while (i + 1 < p.size) {
+            val type = MiscType.from(p[i].toInt() and 0xFF)
+            if (type != null) {
+                val on = (p[i + 1].toInt() and 0xFF) == 1
+                when (type) {
+                    MiscType.GAME_MODE -> _state.update { it.copy(gameMode = on, supported = it.supported + "game") }
+                    MiscType.MULTIPOINT -> _state.update { it.copy(multipoint = on, supported = it.supported + "multipoint") }
+                    MiscType.SPATIAL_AUDIO -> _state.update { it.copy(spatialAudio = on, supported = it.supported + "spatial") }
+                    MiscType.LDAC -> _state.update { it.copy(supported = it.supported + "ldac") }
+                    else -> Unit
+                }
+                i += 2
+            } else {
+                i++
+            }
+        }
+        // Если хоть одно поле распарсили, считаем что гарнитура поддерживает misc
+        if (i > start) _state.update { it.copy(supported = it.supported + "misc") }
     }
 
     /**
@@ -370,7 +388,15 @@ class BudsSession(private val context: Context) {
         val names = buildSet {
             if (0x0418 in codes) add("eq")
             if (0x0404 in codes) add("anc")
-            if (0x0403 in codes) add("misc")
+            // 0x0403 — семейство misc: если оно есть, плитка game уже не должна пропадать.
+            // Конкретные под-функции (game/multipoint/spatial) уточнятся по MISC_CONFIG_RET,
+            // но авария «все спряталось» больше не случится.
+            if (0x0403 in codes) {
+                add("misc")
+                add("game")
+                add("multipoint")
+                add("spatial")
+            }
             if (0x0401 in codes) add("touch")
             if (0x0400 in codes) add("find")
             if (0x0105 in codes) add("firmware")
@@ -379,6 +405,8 @@ class BudsSession(private val context: Context) {
         _state.update {
             it.copy(capabilities = codes, supported = it.supported + names)
         }
+        // Попросим гарнитру сразу отдать значения misc, чтобы тумблеры не висели в off
+        conn?.let { c -> scope.launch { c.send(OppoProtocol.miscConfigReq(listOf(MiscType.GAME_MODE, MiscType.MULTIPOINT, MiscType.SPATIAL_AUDIO))) } }
     }
 
     private fun applyAnc(p: ByteArray) {

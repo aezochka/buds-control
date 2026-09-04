@@ -43,6 +43,8 @@ data class UserSettings(
     /** Прятать панель с названием наушников при прокрутке вниз. */
     val hideNameOnScroll: Boolean = true,
     val hiddenTiles: Set<String> = emptySet(),
+    /** Системные динамические цвета (Material You, Android 12+). */
+    val dynamicColor: Boolean = false,
 )
 
 val defaultTileOrder = listOf(

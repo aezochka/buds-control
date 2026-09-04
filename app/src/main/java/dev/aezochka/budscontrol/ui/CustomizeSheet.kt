@@ -185,6 +185,7 @@ private fun CustomColorPicker(start: Long, onChange: (Long) -> Unit) {
     fun emit() {
         onChange(0xFF000000L or (r.toLong() shl 16) or (g.toLong() shl 8) or b.toLong())
     }
+    androidx.compose.runtime.LaunchedEffect(r, g, b) { emit() }
 
     Column(Modifier.padding(top = 6.dp, bottom = 6.dp)) {
         listOf<Triple<String, Int, (Int) -> Unit>>(

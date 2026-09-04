@@ -56,6 +56,7 @@ class MainActivity : ComponentActivity() {
             BudsControlTheme(
                 accentKey = loaded?.accent ?: "lime",
                 customAccent = loaded?.customAccent ?: 0L,
+                dynamicColor = loaded?.dynamicColor == true,
             ) {
                 AnimatedContent(
                     targetState = loaded?.onboardingFinished,

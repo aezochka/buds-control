@@ -508,7 +508,10 @@ class BudsViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun setCustomAccent(argb: Long) = viewModelScope.launch {
-        store.saveSettings(settings.value.copy(customAccent = argb))
+        store.saveSettings(settings.value.copy(customAccent = argb, dynamicColor = false))
+    }
+    fun setDynamicColor(on: Boolean) = viewModelScope.launch {
+        store.saveSettings(settings.value.copy(dynamicColor = on))
     }
 
     fun toggleTile(key: String) = viewModelScope.launch {

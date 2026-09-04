@@ -1,10 +1,13 @@
 package dev.aezochka.budscontrol.ui.theme
 
+import android.os.Build
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
@@ -74,10 +77,16 @@ private fun Color.compositeOverDark(): Color {
 fun BudsControlTheme(
     accentKey: String = "lime",
     customAccent: Long = 0L,
+    dynamicColor: Boolean = false,
     content: @Composable () -> Unit,
 ) {
+    val ctx = LocalContext.current
+    val scheme = when {
+        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> dynamicDarkColorScheme(ctx)
+        else -> schemeFor(Accent.from(accentKey), customAccent)
+    }
     MaterialTheme(
-        colorScheme = schemeFor(Accent.from(accentKey), customAccent),
+        colorScheme = scheme,
         typography = BudsType,
         content = content,
     )

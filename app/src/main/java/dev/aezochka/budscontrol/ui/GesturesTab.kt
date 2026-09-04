@@ -68,8 +68,6 @@ fun GesturesTab(vm: BudsViewModel) {
         }
         item { BottomSpacer() }
     }
-}
-
 @Composable
 private fun SideGestures(
     title: String,
@@ -140,6 +138,7 @@ private fun SideGestures(
         Text("Ассистент: Google / Алиса / другой", style = MaterialTheme.typography.labelMedium, color = scheme.onSurfaceVariant)
     }
 }
+
 @Composable
 private fun GestureRow(
     label: String,

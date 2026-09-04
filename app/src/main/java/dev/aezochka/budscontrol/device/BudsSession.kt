@@ -191,13 +191,19 @@ class BudsSession(private val context: Context) {
                     delay(3_000)
                     if (!_state.value.connected) break
                     c.send(OppoProtocol.miscConfigReq(listOf(MiscType.GAME_MODE)))
-                            }
+                }
             }
             launch {
+                // Живой опрос заряда/кейса: раньше 15с — поэтому «заряжается» и
+                // «в кейсе» обновлялись только по кнопке обновить.
+                // Теперь каждые 8с, плюс подписка толкает изменения сразу.
                 while (_state.value.connected) {
-                    delay(15_000)
+                    delay(8_000)
                     if (!_state.value.connected) break
                     c.send(OppoProtocol.batteryReq())
+                    delay(400)
+                    if (!_state.value.connected) break
+                    c.send(OppoProtocol.statusReq())
                 }
             }
             repeat(3) { attempt ->
@@ -269,9 +275,22 @@ class BudsSession(private val context: Context) {
     private fun observe(c: SppConnection) = scope.launch {
         c.frames.collect { frame ->
             when (frame.cmd) {
-                Cmd.BATTERY_RET, Cmd.SUBSCRIPTION_RET -> {
+                Cmd.BATTERY_RET -> {
                     _state.update { it.copy(supported = it.supported + "battery") }
-                    applyBattery(frame.payload, frame.cmd == Cmd.SUBSCRIPTION_RET)
+                    applyBattery(frame.payload, false)
+                }
+                Cmd.SUBSCRIPTION_RET -> {
+                    _state.update { it.copy(supported = it.supported + "battery") }
+                    // 0x0204: [subType, ...payload]. Снимаем заголовок подписки.
+                    val p = frame.payload
+                    val inner = when {
+                        p.isEmpty() -> p
+                        p[0].toInt() and 0xFF == SubType.BATTERY.code && p.size > 1 -> p.copyOfRange(1, p.size)
+                        p[0].toInt() and 0xFF == SubType.STATUS.code && p.size > 1 -> p.copyOfRange(1, p.size)
+                        else -> p
+                    }
+                    // STATUS тоже может нести заряд — пробуем как battery
+                    applyBattery(inner, true)
                 }
                 Cmd.FIRMWARE_RET -> {
                     _state.update { it.copy(supported = it.supported + "firmware") }

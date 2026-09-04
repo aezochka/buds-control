@@ -140,7 +140,6 @@ private fun SideGestures(
         Text("Ассистент: Google / Алиса / другой", style = MaterialTheme.typography.labelMedium, color = scheme.onSurfaceVariant)
     }
 }
-
 @Composable
 private fun GestureRow(
     label: String,

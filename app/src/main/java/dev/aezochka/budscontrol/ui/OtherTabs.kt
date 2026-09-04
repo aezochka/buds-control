@@ -213,8 +213,8 @@ fun SettingsTab(vm: BudsViewModel) {
                         shape = groupShape(5, 6),
                         onToggle = { vm.setHideNameOnScroll(it) },
                     )
-                    SettingsToggle(icon = Icons.Outlined.DarkMode, title = "AMOLED чёрная тема", subtitle = if (settings.amoledBlack) "Глубокий чёрный" else "Тёмная", checked = settings.amoledBlack, shape = groupShape(6, 6), onToggle = { vm.setAmoled(it) })
-                    SettingsToggle(icon = Icons.Outlined.PauseCircle, title = "Автопауза при снятии", subtitle = "Пауза когда снял наушник", checked = settings.autoPauseOnRemoval, shape = groupShape(6, 6), onToggle = { vm.setAutoPause(it) })
+                    SettingsToggle(icon = Icons.Outlined.Contrast, title = "AMOLED чёрная тема", subtitle = if (settings.amoledBlack) "Глубокий чёрный" else "Тёмная", checked = settings.amoledBlack, shape = groupShape(6, 6), onToggle = { vm.setAmoled(it) })
+                    SettingsToggle(icon = Icons.Outlined.Pause, title = "Автопауза при снятии", subtitle = "Пауза когда снял наушник", checked = settings.autoPauseOnRemoval, shape = groupShape(6, 6), onToggle = { vm.setAutoPause(it) })
 
                 }
 
@@ -225,7 +225,7 @@ fun SettingsTab(vm: BudsViewModel) {
                     expanded = openSection == "app",
                     onToggle = { vm.tick(); openSection = if (openSection == "app") null else "app" },
                 ) {
-                    SettingsRow(Icons.Outlined.Tune, "Чейнджлог", "Что нового", shape = groupShape(1, 6), onClick = { showChangelog = true })
+                    SettingsRow(Icons.Outlined.Settings, "Чейнджлог", "Что нового", shape = groupShape(1, 6), onClick = { showChangelog = true })
                     UpdateRow(vm, shape = groupShape(2, 6))
                     CrashLogRow()
                     SettingsRow(

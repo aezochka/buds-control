@@ -205,7 +205,7 @@ class BudsViewModel(app: Application) : AndroidViewModel(app) {
     }
     fun resetDeviceSettings(id: String) = viewModelScope.launch {
         // сброс: скрытые плитки, порядок, кастом цвет — но оставляем профиль
-        val cur = store.settings.first()
+        val cur = store.settings.first() ?: UserSettings()
         store.saveSettings(cur.copy(hiddenTiles = emptySet()))
         // также можно сбросить стартовые настройки гарнитуры если нужно
     }

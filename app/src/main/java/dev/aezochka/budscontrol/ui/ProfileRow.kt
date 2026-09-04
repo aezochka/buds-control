@@ -44,8 +44,8 @@ import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.input.pointer.awaitFirstDown
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
@@ -141,7 +141,7 @@ fun ProfileRow(
                     },
                     Motion.effects(), label = "chipBg",
                 )
-                val scope = rememberCoroutineScope()
+                val extScope = rememberCoroutineScope()
 
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Row(
@@ -164,7 +164,7 @@ fun ProfileRow(
                                         var dragStarted = false
                                         var downPos = down.position
                                         // состояния: Idle -> LongPressed -> Dragging
-                                        longPressJob = scope.launch {
+                                        longPressJob = extScope.launch {
                                             delay(longPressTimeout)
                                             if (!isLongPressed && dragId == null) {
                                                 isLongPressed = true
@@ -176,7 +176,7 @@ fun ProfileRow(
                                         while (!finished) {
                                             val event = awaitPointerEvent(PointerEventPass.Main)
                                             val change = event.changes.firstOrNull { it.id == down.id } ?: break
-                                            val dist = (change.position - downPos).getDistance()
+                                            val dist = kotlin.math.hypot((change.position.x - downPos.x).toDouble(), (change.position.y - downPos.y).toDouble()).toFloat()
                                             // 4. сдвиг до longPress -> скролл, ни меню ни drag
                                             if (!isLongPressed && dist > touchSlop) {
                                                 longPressJob.cancel()

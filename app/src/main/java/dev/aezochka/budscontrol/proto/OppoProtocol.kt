@@ -118,7 +118,9 @@ object OppoProtocol {
      * младшими битами вперёд.
      */
     fun parseCapabilities(payload: ByteArray): Set<Int> {
-        if (payload.isEmpty() || payload[0].toInt() != 0 || payload.size <= 1) return emptySet()
+        if (payload.isEmpty() || payload.size <= 1) return emptySet()
+        // статус 0x00 oppo / 0x04 realme — не требуем строго 0, просто пропускаем первый байт
+        val offset = 1
         val out = mutableSetOf<Int>()
         val bits = minOf((payload.size - 1) * 8, CAPABILITY_BITS.size)
         for (bit in 0 until bits) {

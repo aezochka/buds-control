@@ -418,15 +418,7 @@ class BudsSession(private val context: Context) {
         val names = buildSet {
             if (0x0418 in codes) add("eq")
             if (0x0404 in codes) add("anc")
-            // 0x0403 — семейство misc: если оно есть, плитка game уже не должна пропадать.
-            // Конкретные под-функции (game/multipoint/spatial) уточнятся по MISC_CONFIG_RET,
-            // но авария «все спряталось» больше не случится.
-            if (0x0403 in codes) {
-                add("misc")
-                add("game")
-                add("multipoint")
-                add("spatial")
-            }
+            if (0x0403 in codes) add("misc")
             if (0x0401 in codes) add("touch")
             if (0x0400 in codes) add("find")
             if (0x0105 in codes) add("firmware")

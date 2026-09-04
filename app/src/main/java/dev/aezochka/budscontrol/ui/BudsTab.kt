@@ -589,13 +589,8 @@ private fun BentoGrid(
         }
 
         val big = buildList {
-            add("eq")
             if (show("anc")) add("anc")
-            // Игровой режим — не скрываем по probe: у дешёвых моделей (T110)
-            // ответ на MISC_CONFIG_REQ приходит позже 4с из-за загруженного SPP,
-            // а пользователь уже видит «пропажу» и думает что функция сломана.
-            // Лучше показать нерабочий тумблер, чем прятать рабочий.
-            add("game")
+            if (show("game")) add("game")
             if (show("spatial")) add("spatial")
             if (show("multipoint")) add("multipoint")
             // Из плиток AirPods оставлено только ношение: заряд дублировал

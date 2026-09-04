@@ -102,7 +102,6 @@ private fun SideGestures(
         ).forEachIndexed { index, (type, label) ->
             GestureRow(
                 label = label,
-                // Три жеста одного наушника — один блок.
                 shape = groupShape(index, 4),
                 current = touch[side to type] ?: touch[TouchSide.BOTH to type],
                 enabled = enabled,
@@ -118,7 +117,6 @@ private fun SideGestures(
                 onPick = { onPick(type, it) },
             )
         }
-    }
         Spacer(Modifier.height(14.dp))
         Text("Звонок — отдельный набор", style = MaterialTheme.typography.labelMedium, color = scheme.onSurfaceVariant)
         Spacer(Modifier.height(6.dp))

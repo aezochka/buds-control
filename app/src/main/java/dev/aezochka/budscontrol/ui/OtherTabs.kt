@@ -213,19 +213,19 @@ fun SettingsTab(vm: BudsViewModel) {
                         shape = groupShape(5, 6),
                         onToggle = { vm.setHideNameOnScroll(it) },
                     )
-                    SettingsToggle(icon = Icons.Outlined.Palette, title = "AMOLED чёрная тема", subtitle = if (settings.amoledBlack) "Глубокий чёрный" else "Тёмная", checked = settings.amoledBlack, shape = groupShape(6, 6), onToggle = { vm.setAmoled(it) })
-                    SettingsToggle(icon = Icons.Outlined.Schedule, title = "Автопауза при снятии", subtitle = "Пауза когда снял наушник", checked = settings.autoPauseOnRemoval, shape = groupShape(6, 6), onToggle = { vm.setAutoPause(it) })
+                    SettingsToggle(icon = Icons.Outlined.GraphicEq, title = "AMOLED чёрная тема", subtitle = if (settings.amoledBlack) "Глубокий чёрный" else "Тёмная", checked = settings.amoledBlack, shape = groupShape(6, 6), onToggle = { vm.setAmoled(it) })
+                    SettingsToggle(icon = Icons.Outlined.Bedtime, title = "Автопауза при снятии", subtitle = "Пауза когда снял наушник", checked = settings.autoPauseOnRemoval, shape = groupShape(6, 6), onToggle = { vm.setAutoPause(it) })
 
                 }
 
                 SettingsCategory(
-                    icon = Icons.Outlined.Palette,
+                    icon = Icons.Outlined.GraphicEq,
                     title = tr("sectionApp"),
                     subtitle = tr("sectionAppHint"),
                     expanded = openSection == "app",
                     onToggle = { vm.tick(); openSection = if (openSection == "app") null else "app" },
                 ) {
-                    SettingsRow(Icons.Outlined.Info, "Чейнджлог", "Что нового", shape = groupShape(1, 6), onClick = { showChangelog = true })
+                    SettingsRow(Icons.Outlined.History, "Чейнджлог", "Что нового", shape = groupShape(1, 6), onClick = { showChangelog = true })
                     UpdateRow(vm, shape = groupShape(2, 6))
                     CrashLogRow()
                     SettingsRow(
@@ -235,7 +235,7 @@ fun SettingsTab(vm: BudsViewModel) {
                         onClick = { showLang = true },
                     )
                     SettingsRow(
-                        Icons.Outlined.Palette, "Тема",
+                        Icons.Outlined.GraphicEq, "Тема",
                         "Акцент: ${dev.aezochka.budscontrol.data.Accent.from(settings.accent).title}",
                         shape = groupShape(2, 4),
                         onClick = { showTheme = true },

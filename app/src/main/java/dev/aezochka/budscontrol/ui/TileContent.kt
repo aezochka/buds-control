@@ -5,6 +5,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -32,6 +33,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -74,10 +76,31 @@ fun TileContent(
             StatTile(
                 icon = null,
                 label = tr("equalizerTitle"),
-                value = if (!fxOn) "—" else presetLabel,
-                active = tuned,
+                value = if (!fxOn) "выкл" else if (!tuned) "ровно" else presetLabel,
+                active = tuned && fxOn,
                 onClick = { vm.tick(); onEq() },
-                topContent = null,
+                topContent = { primary ->
+                    val gains = eqGains.ifEmpty { List(5) { 0 } }
+                    val scheme = MaterialTheme.colorScheme
+                    Row(
+                        Modifier.fillMaxWidth().height(28.dp),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalAlignment = Alignment.Bottom,
+                    ) {
+                        val (minDb, maxDb) = vm.gainRangeDb()
+                        val span = (maxDb - minDb).coerceAtLeast(1)
+                        gains.take(5).forEach { db ->
+                            val fill = ((db - minDb).toFloat() / span).coerceIn(0.12f, 1f)
+                            Box(
+                                Modifier
+                                    .weight(1f)
+                                    .height((28 * fill).dp)
+                                    .clip(androidx.compose.foundation.shape.RoundedCornerShape(4.dp))
+                                    .background(if (tuned && fxOn) primary else scheme.outline.copy(alpha = 0.35f)),
+                            )
+                        }
+                    }
+                },
             )
         }
 
@@ -195,11 +218,17 @@ fun TileContent(
             },
         )
 
-        "case" -> StatTile(
-            icon = null,
-            label = if (live.caseFromMemory) tr("caseLast") else tr("caseTitle"),
-            value = live.batteryCase?.let { "$it%" } ?: tr("noData"),
-            active = live.chargingCase,
+        "case" -> {
+            val profiles by vm.profiles.collectAsState()
+            val memo = profiles.firstOrNull { it.isSelected }?.caseBattery
+            val casePct = live.batteryCase ?: memo?.percent
+            val isCharging = if (live.batteryCase != null) live.chargingCase else memo?.charging == true
+            val fromMemory = if (live.batteryCase != null) live.caseFromMemory else memo != null
+            StatTile(
+                icon = null,
+                label = if (fromMemory) tr("caseLast") else tr("caseTitle"),
+                value = casePct?.let { "$it%" } ?: tr("noData"),
+            active = isCharging,
             onClick = null,
             topContent = { primary ->
                 // Иконка кейса — крупнее обычного 24dp, соответствует фото наушников.
@@ -209,7 +238,7 @@ fun TileContent(
                     horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
                     Icon(Icons.Outlined.Inventory2, null, tint = primary, modifier = Modifier.size(42.dp))
-                    if (live.chargingCase) {
+                    if (isCharging) {
                         Text(
                             tr("charging"),
                             style = MaterialTheme.typography.labelMedium,
@@ -220,12 +249,13 @@ fun TileContent(
             },
             bottomContent = { primary, secondary ->
                 SmoothBar(
-                    progress = (live.batteryCase ?: 0) / 100f,
+                    progress = (casePct ?: 0) / 100f,
                     track = secondary.copy(alpha = 0.22f),
                     fill = primary,
                 )
             },
         )
+        }
 
         "sleep" -> {
             val minutes by vm.sleepMinutes.collectAsState()

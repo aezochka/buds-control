@@ -295,36 +295,66 @@ class BudsSession(private val context: Context) {
     }
 
     private fun applyBattery(p: ByteArray, subscription: Boolean) {
-        // Раскладка одинаковая для BATTERY_RET и SUBSCRIPTION_RET(BATTERY):
-        // [0]=статус/тип, [1]=кол-во ячеек, далее пары (индекс, уровень) с i=2.
-        if (p.size < 4) return
-        var i = 2
+        if (p.size < 2) return
+        // Находим начало пар — оно разное: [0x00, count, idx,val...] или [count, idx,val...] или сразу [idx,val...]
+        // Просто ищем первую пару где idx 1..4 и следующий байт похож на уровень 0..100 (+ бит зарядки 0x80)
+        var i = 0
+        // пропустим возможный статус 0x00 и count
+        if (p.size >= 3 && p[0].toInt() == 0) i = 2
+        else if (p.size >= 3 && (p[0].toInt() and 0xFF) in 1..8 && (p[1].toInt() and 0xFF) in 1..4) i = 1
+        // если первый байт уже idx, стартуем с 0
         var l = _state.value.batteryLeft; var r = _state.value.batteryRight
         var cs = _state.value.batteryCase; var chg = _state.value.chargingCase
         var caseFresh = false
         var lMissing = false
         var rMissing = false
+        var found = 0
         while (i + 1 < p.size) {
             val idx = p[i].toInt() and 0xFF
-            if (idx != 0xFF) {
-                val level = p[i + 1].toInt() and 0x7F
-                val charging = (p[i + 1].toInt() and 0x80) != 0
-                // level == 0 у наушника означает «не на связи» (лежит в кейсе),
-                // а не разряжен в ноль. Раньше это показывалось как 0%.
-                when (idx - 1) {
-                    0 -> if (level > 0) l = level else lMissing = true
-                    1 -> if (level > 0) r = level else rMissing = true
-                    2 -> { cs = level; chg = charging; caseFresh = true }
+            val raw = p[i + 1].toInt() and 0xFF
+            val level = raw and 0x7F
+            val charging = (raw and 0x80) != 0
+            if (idx in 1..4 && idx != 0xFF) {
+                // level 0..100 валидный, иногда 0xFF — пропуск
+                if (raw != 0xFF) {
+                    when (idx) {
+                        1 -> if (level in 1..100) { l = level; lMissing = false; found++ } else if (level == 0) lMissing = true
+                        2 -> if (level in 1..100) { r = level; rMissing = false; found++ } else if (level == 0) rMissing = true
+                        3 -> { if (level in 0..100) { cs = level; chg = charging; caseFresh = true; found++ } }
+                        4 -> { /* иногда кейс на idx 4 */ if (level in 0..100) { cs = level; chg = charging; caseFresh = true; found++ } }
+                    }
+                }
+                i += 2
+            } else {
+                i++
+                // защита от зацикливания: если нашли 3 ячейки, хватит
+                if (found >= 3) break
+            }
+        }
+        // Если ничего не нашли стандартным проходом, пробуем просто искать пары по всему payload
+        if (found == 0 && p.size >= 4) {
+            for (j in 0 until p.size - 1) {
+                val idx2 = p[j].toInt() and 0xFF
+                val raw2 = p[j + 1].toInt() and 0xFF
+                if (idx2 in 1..3 && raw2 != 0xFF) {
+                    val lvl = raw2 and 0x7F
+                    if (lvl in 1..100) {
+                        when (idx2) {
+                            1 -> l = lvl
+                            2 -> r = lvl
+                            3 -> { cs = lvl; chg = (raw2 and 0x80)!=0; caseFresh = true }
+                        }
+                    }
                 }
             }
-            i += 2
         }
         _state.update {
             it.copy(
-                batteryLeft = if (lMissing) null else l,
-                batteryRight = if (rMissing) null else r,
+                batteryLeft = if (lMissing && l == _state.value.batteryLeft) null else l,
+                batteryRight = if (rMissing && r == _state.value.batteryRight) null else r,
                 budInCaseLeft = lMissing, budInCaseRight = rMissing,
-                batteryCase = cs, chargingCase = chg,
+                batteryCase = cs ?: it.batteryCase,
+                chargingCase = if (caseFresh) chg else it.chargingCase,
                 caseReportedAt = if (caseFresh) System.currentTimeMillis() else it.caseReportedAt,
                 caseFromMemory = if (caseFresh) false else it.caseFromMemory,
             )

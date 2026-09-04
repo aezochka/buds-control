@@ -226,8 +226,8 @@ class BudsSession(private val context: Context) {
         _state.update { it.copy(probed = true) }
 
         // Переспрашиваем набор функций, но не девять секунд: первый опрос
-        // сразу после probe, затем ещё раз через 1.8с. Если за 4 секунды
-        // гарнитура не ответила — функции нет.
+        // сразу после probe, затем ещё раз через 1.8с и 4с. T110 часто отвечает
+        // только на второй-третий запрос из-за занятости SPP.
         scope.launch {
             delay(1_800)
             if (!_state.value.connected) return@launch
@@ -237,8 +237,13 @@ class BudsSession(private val context: Context) {
                 )
             )
             c.send(OppoProtocol.ancConfigReq())
-            // Разрешаем скрывать функции через 2 секунды после последнего запроса.
-            delay(2_000)
+            delay(2_200)
+            if (_state.value.connected) {
+                c.send(OppoProtocol.miscConfigReq(listOf(MiscType.GAME_MODE, MiscType.MULTIPOINT)))
+                c.send(OppoProtocol.ancConfigReq())
+            }
+            // Разрешаем скрывать функции только после последней попытки.
+            delay(2_500)
             if (_state.value.connected) _state.update { it.copy(probeComplete = true) }
         }
     }
@@ -446,9 +451,19 @@ class BudsSession(private val context: Context) {
      * и до подтверждения UI не выдаёт это за работающее.
      */
     fun setEqGains(gains: List<Int>) {
-        val freqs = OppoProtocol.EQ_FREQUENCIES.take(gains.size)
-        if (freqs.size != gains.size) return
-        send(OppoProtocol.eqInfoSet(gains = gains, frequencies = freqs)) {}
+        // Гарнитура понимает ровно 5 полос с фиксированными частотами.
+        // Системный EQ может отдавать другое число полос — обрезаем/дополняем.
+        val target = 5
+        val aligned = when {
+            gains.size == target -> gains
+            gains.size < target -> gains + List(target - gains.size) { 0 }
+            else -> gains.take(target)
+        }
+        val freqs = OppoProtocol.EQ_FREQUENCIES
+        send(OppoProtocol.eqInfoSet(gains = aligned, frequencies = freqs)) {}
+        // Также шлём включение эквалайзера: на некоторых прошивках без 0x0406
+        // кривая игнорируется, хотя ACK 0x0418 приходит.
+        send(OppoProtocol.eqSwitchSet(aligned.any { it != 0 })) {}
     }
 
     fun requestEq() = send(OppoProtocol.eqInfoReq()) {}

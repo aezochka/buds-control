@@ -132,8 +132,16 @@ class SystemAudioFx(private val context: android.content.Context) {
     }
 
     fun applyPreset(gains: List<Int>) {
-        manualGains = gains
-        EqService.apply(context, gains)
+        // Подгоняем под реальное число полос: если гарнитура сообщает 5, а
+        // пресет прислал 5 — 1:1. Если вдруг число полос другое, обрезаем/дополняем нулями.
+        val count = bandCount.coerceAtLeast(5)
+        val aligned = when {
+            gains.size == count -> gains
+            gains.size < count -> gains + List(count - gains.size) { 0 }
+            else -> gains.take(count)
+        }
+        manualGains = aligned.map { it.coerceIn(minGainMb / 100, maxGainMb / 100) }
+        pushToService()
     }
 
     fun release() {

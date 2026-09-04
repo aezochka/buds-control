@@ -53,6 +53,9 @@ class BudsViewModel(app: Application) : AndroidViewModel(app) {
     private val bluetoothLink = BluetoothLinkMonitor(app)
 
     val live: StateFlow<LiveState> = session.state
+    /** Реально подключённые по A2DP/HEADSET адреса — для индикаторов в чипах. */
+    private val _connectedAddresses = MutableStateFlow<Set<String>>(emptySet())
+    val connectedAddresses: StateFlow<Set<String>> = _connectedAddresses.asStateFlow()
     /** null пока DataStore не прочитан — MainActivity на это время держит сплэш. */
     val settingsOrNull: StateFlow<UserSettings?> =
         store.settings.stateIn(viewModelScope, SharingStarted.Eagerly, null)
@@ -242,6 +245,8 @@ class BudsViewModel(app: Application) : AndroidViewModel(app) {
                     bluetoothLink.observeAny(addresses).map { connected -> real to connected }
                 }
                 .collect { (real, connectedAddresses) ->
+                    // Публикуем актуальный набор для индикаторов в чипах и hero.
+                    _connectedAddresses.value = connectedAddresses
                     // Если служебный канал уже жив и его физическая гарнитура
                     // всё ещё подключена — НЕ меняем его при свайпе UI.
                     val currentAddress = session.state.value.address.uppercase()
@@ -728,11 +733,16 @@ class BudsViewModel(app: Application) : AndroidViewModel(app) {
 
     fun applyEqPreset(gains: List<Int>) {
         audioFx.applyPreset(gains)
-        _eqGains.value = audioFx.currentGainsDb()
+        val actual = audioFx.currentGainsDb()
+        _eqGains.value = actual
+        // Пресеты тоже должны улетать в гарнитуру — раньше забывали.
+        session.setEqGains(actual)
     }
 
     fun resetEq() {
-        repeat(audioFx.bandCount) { audioFx.setBandDb(it, 0) }
+        // Сбрасываем и сервис, и гарнитуру. audioFx.applyPreset([0,0,0,0,0])
+        // через pushToService остановит EqService.
+        audioFx.applyPreset(List(audioFx.bandCount.coerceAtLeast(5)) { 0 })
         val gains = audioFx.currentGainsDb()
         _eqGains.value = gains
         session.setEqGains(gains)

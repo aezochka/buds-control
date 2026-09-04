@@ -56,6 +56,8 @@ fun ProfileRow(
     onReorder: (List<String>) -> Unit,
     onAdd: () -> Unit,
     onDragActive: (Boolean) -> Unit = {},
+    /** Реально подключённые адреса — зелёная точка только у них. */
+    connectedAddresses: Set<String> = emptySet(),
     /** Размытие названия — то же, что под фото. */
     nameBlur: androidx.compose.ui.unit.Dp = 0.dp,
 ) {
@@ -191,6 +193,7 @@ fun ProfileRow(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
+                    val isConnected = profile.address.isNotBlank() && profile.address.uppercase() in connectedAddresses
                     Icon(
                         Icons.Outlined.Headphones, null,
                         tint = if (active) scheme.onPrimary else scheme.onSurfaceVariant,
@@ -202,6 +205,14 @@ fun ProfileRow(
                         style = MaterialTheme.typography.bodyMedium,
                         color = if (active) scheme.onPrimary else scheme.onSurfaceVariant,
                     )
+                    if (isConnected) {
+                        Box(
+                            Modifier
+                                .size(8.dp)
+                                .clip(CircleShape)
+                                .background(if (active) scheme.onPrimary else scheme.primary)
+                        )
+                    }
                 }
             }
         }

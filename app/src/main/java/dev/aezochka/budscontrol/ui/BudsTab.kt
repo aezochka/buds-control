@@ -100,6 +100,11 @@ fun BudsTab(vm: BudsViewModel, onDragActive: (Boolean) -> Unit = {}) {
     val live by vm.live.collectAsState()
     val profiles by vm.profiles.collectAsState()
     val selected = profiles.firstOrNull { it.isSelected }
+    val connectedAddresses by vm.connectedAddresses.collectAsState()
+    // Выбранные уши реально подключены по A2DP/HEADSET — только тогда зелёный.
+    // Раньше брали live.bluetoothConnected (SPP-сессия любого устройства), поэтому
+    // все чипы казались подключёнными.
+    val selectedConnected = selected?.address?.uppercase()?.let { it in connectedAddresses } == true
 
     // Подключением управляет ViewModel, а не экран. HorizontalPager держит
     // beyondViewportPageCount = 0, поэтому при свайпе на другую вкладку эта
@@ -222,6 +227,7 @@ fun BudsTab(vm: BudsViewModel, onDragActive: (Boolean) -> Unit = {}) {
                     onReorder = { vm.reorderProfiles(it) },
                     onAdd = { showAddDevice = true },
                     onDragActive = onDragActive,
+                    connectedAddresses = connectedAddresses,
                     // Название скрывается и здесь: иначе блюр под фото есть,
                     // а в баре сверху модель по-прежнему читается.
                     nameBlur = nameBlur,
@@ -249,11 +255,11 @@ fun BudsTab(vm: BudsViewModel, onDragActive: (Boolean) -> Unit = {}) {
                     chipTweak = chipTweak,
                     onPhotoClick = { showPhoto = true },
                     onPhotoLoaded = vm::onPhotoLoaded,
-                    connecting = live.connecting,
+                    connecting = live.connecting && selectedConnected,
                     // Фото и индикаторы ориентируются на системное Bluetooth-
-                    // подключение, а не на служебный SPP. Иначе наушники уже
-                    // играют музыку, но UI рисует их «в кейсе» до открытия SPP.
-                    connected = live.bluetoothConnected,
+                    // подключение ВЫБРАННОЙ гарнитуры, а не любого SPP-устройства.
+                    // Иначе T110 играет музыку, но выбранные Enco показывают «в кейсе».
+                    connected = selectedConnected,
                     nameBlur = nameBlur,
                     onRefresh = vm::refresh,
                 )
@@ -566,13 +572,8 @@ private fun BentoGrid(
         // завершён, а гарнитура о ней не сообщила. Пока идёт handshake или
         // связи нет — показываем всё, иначе рабочие плитки (как игровой режим)
         // пропадают на ровном месте.
-        // Правило: скрываем функцию только когда опрос ЗАВЕРШЁН и гарнитура о
-        // ней не сообщила. Пока связи нет или опрос идёт — показываем всё,
-        // иначе рабочий игровой режим пропадает на ровном месте.
-        //
-        // Дополнительно: если функция уже подтверждалась в этой сессии, она
-        // остаётся видимой. Ответ может прийти позже окна опроса, и плитка не
-        // должна исчезать у того, у кого она реально работает.
+        // Дополнительно: если функция уже подтверждалась, она остаётся видимой
+        // даже если ответ пришёл позже окна опроса.
         val confirmed = remember(live.address) { mutableStateOf(setOf<String>()) }
         LaunchedEffect(live.supported, live.address) {
             if (live.supported.isNotEmpty()) {
@@ -590,7 +591,11 @@ private fun BentoGrid(
         val big = buildList {
             add("eq")
             if (show("anc")) add("anc")
-            if (show("game")) add("game")
+            // Игровой режим — не скрываем по probe: у дешёвых моделей (T110)
+            // ответ на MISC_CONFIG_REQ приходит позже 4с из-за загруженного SPP,
+            // а пользователь уже видит «пропажу» и думает что функция сломана.
+            // Лучше показать нерабочий тумблер, чем прятать рабочий.
+            add("game")
             if (show("spatial")) add("spatial")
             if (show("multipoint")) add("multipoint")
             // Из плиток AirPods оставлено только ношение: заряд дублировал

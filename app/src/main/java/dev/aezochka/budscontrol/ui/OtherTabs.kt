@@ -108,8 +108,10 @@ fun SettingsTab(vm: BudsViewModel) {
         ThemeSheet(
             current = settings.accent,
             customAccent = settings.customAccent,
+            dynamicEnabled = settings.dynamicColor,
             onPick = { vm.setAccent(it) },
             onCustom = { vm.setCustomAccent(it) },
+            onDynamic = { vm.setDynamicColor(it) },
             onDismiss = { showTheme = false },
         )
     }
@@ -193,16 +195,7 @@ fun SettingsTab(vm: BudsViewModel) {
                         shape = groupShape(5, 6),
                         onToggle = { vm.setHideNameOnScroll(it) },
                     )
-                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
-                        SettingsToggle(
-                            icon = Icons.Outlined.Palette,
-                            title = "Динамические цвета",
-                            subtitle = if (settings.dynamicColor) "Системные Material You" else "Свои акценты",
-                            checked = settings.dynamicColor,
-                            shape = groupShape(6, 6),
-                            onToggle = { vm.setDynamicColor(it) },
-                        )
-                    }
+
                 }
 
                 SettingsCategory(

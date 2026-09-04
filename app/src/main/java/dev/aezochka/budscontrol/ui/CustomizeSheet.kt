@@ -65,8 +65,10 @@ import kotlin.math.roundToInt
 fun ThemeSheet(
     current: String,
     customAccent: Long,
+    dynamicEnabled: Boolean = false,
     onPick: (String) -> Unit,
     onCustom: (Long) -> Unit,
+    onDynamic: (Boolean) -> Unit = {},
     onDismiss: () -> Unit,
 ) {
     val scheme = MaterialTheme.colorScheme
@@ -85,6 +87,19 @@ fun ThemeSheet(
                 tr("themeHint"),
                 style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant,
             )
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                Spacer(Modifier.height(12.dp))
+                Row(
+                    Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(scheme.surfaceContainer).pressBounce { onDynamic(!dynamicEnabled) }.padding(horizontal = 14.dp, vertical = 12.dp),
+                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Динамические цвета", style = MaterialTheme.typography.titleSmall, color = scheme.onSurface)
+                        Text("Material You из обоев", style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant)
+                    }
+                    androidx.compose.material3.Switch(checked = dynamicEnabled, onCheckedChange = onDynamic)
+                }
+            }
             Spacer(Modifier.height(16.dp))
 
             // Пресеты по 4 в ряд + последняя ячейка «плюсик».

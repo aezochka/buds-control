@@ -315,38 +315,45 @@ class BudsSession(private val context: Context) {
 
     private fun applyBattery(p: ByteArray, subscription: Boolean) {
         if (p.size < 2) return
-        // Находим начало пар — оно разное: [0x00, count, idx,val...] или [count, idx,val...] или сразу [idx,val...]
-        // Просто ищем первую пару где idx 1..4 и следующий байт похож на уровень 0..100 (+ бит зарядки 0x80)
+        // Лог для отладки Air6 Pro: смотрим hex
+        android.util.Log.d("BudsSession", "BAT " + p.joinToString(" ") { "%02X".format(it) } + " sub=" + subscription)
         var i = 0
-        // пропустим возможный статус 0x00 и count
-        if (p.size >= 3 && p[0].toInt() == 0) i = 2
-        else if (p.size >= 3 && (p[0].toInt() and 0xFF) in 1..8 && (p[1].toInt() and 0xFF) in 1..4) i = 1
-        // если первый байт уже idx, стартуем с 0
+        if (p.size >= 2 && p[0].toInt() == 0) {
+            // [00 count idx val ...] — стандартный
+            i = 2
+        } else if (p.size >= 3 && (p[0].toInt() and 0xFF) in 1..8 && (p[1].toInt() and 0xFF) in 0..4) {
+            i = 1 // [count idx val ...]
+        }
         var l = _state.value.batteryLeft; var r = _state.value.batteryRight
         var cs = _state.value.batteryCase; var chg = _state.value.chargingCase
         var caseFresh = false
         var lMissing = false
         var rMissing = false
         var found = 0
+        // пробуем оба маппинга: 0->L,1->R,2->case и 1->L,2->R,3->case
         while (i + 1 < p.size) {
             val idx = p[i].toInt() and 0xFF
             val raw = p[i + 1].toInt() and 0xFF
+            if (raw == 0xFF) { i += 2; continue }
             val level = raw and 0x7F
             val charging = (raw and 0x80) != 0
-            if (idx in 1..4 && idx != 0xFF) {
-                // level 0..100 валидный, иногда 0xFF — пропуск
-                if (raw != 0xFF) {
-                    when (idx) {
-                        1 -> if (level in 1..100) { l = level; lMissing = false; found++ } else if (level == 0) lMissing = true
-                        2 -> if (level in 1..100) { r = level; rMissing = false; found++ } else if (level == 0) rMissing = true
-                        3 -> { if (level in 0..100) { cs = level; chg = charging; caseFresh = true; found++ } }
-                        4 -> { /* иногда кейс на idx 4 */ if (level in 0..100) { cs = level; chg = charging; caseFresh = true; found++ } }
-                    }
+            // принимаем 0..4 включительно
+            if (idx in 0..4) {
+                when (idx) {
+                    0 -> if (level in 1..100) { l = level; lMissing = false; found++ } else if (level == 0) lMissing = true
+                    1 -> if (level in 1..100) { 
+                        // если уже есть L от idx0, то idx1 — это R, иначе L (совместимость)
+                        if (l != null && lMissing==false && found>0 && l != _state.value.batteryLeft) { /* already have L */ r = level; rMissing=false } 
+                        else { l = level; lMissing = false }
+                        found++ 
+                    } else if (level == 0) { if (found==0) lMissing = true else rMissing = true }
+                    2 -> if (level in 1..100) { r = level; rMissing = false; found++ } else if (level == 0) rMissing = true
+                    3 -> { if (level in 0..100) { cs = level; chg = charging; caseFresh = true; found++ } }
+                    4 -> { if (level in 0..100) { cs = level; chg = charging; caseFresh = true; found++ } }
                 }
                 i += 2
             } else {
                 i++
-                // защита от зацикливания: если нашли 3 ячейки, хватит
                 if (found >= 3) break
             }
         }
@@ -355,7 +362,7 @@ class BudsSession(private val context: Context) {
             for (j in 0 until p.size - 1) {
                 val idx2 = p[j].toInt() and 0xFF
                 val raw2 = p[j + 1].toInt() and 0xFF
-                if (idx2 in 1..3 && raw2 != 0xFF) {
+                if (idx2 in 0..3 && raw2 != 0xFF) {
                     val lvl = raw2 and 0x7F
                     if (lvl in 1..100) {
                         when (idx2) {
@@ -519,7 +526,10 @@ class BudsSession(private val context: Context) {
 
     fun setAnc(mode: AncMode) {
         if (!hasLiveChannel()) return
-        send(OppoProtocol.ancModeSet(mode)) { _state.update { it.copy(ancMode = mode) } }
+        android.util.Log.d("BudsSession", "setAnc " + mode)
+        _state.update { it.copy(ancMode = mode) }
+        val c = conn ?: return
+        scope.launch { c.send(OppoProtocol.ancModeSet(mode)); delay(300); c.send(OppoProtocol.ancConfigReq()) }
     }
 
     /**

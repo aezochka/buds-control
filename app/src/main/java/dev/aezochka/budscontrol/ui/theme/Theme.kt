@@ -81,8 +81,12 @@ fun BudsControlTheme(
     content: @Composable () -> Unit,
 ) {
     val ctx = LocalContext.current
+    // динамические цвета берём из системы; при смене обоев система шлёт новый wallpaperColors — recompose
     val scheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> dynamicDarkColorScheme(ctx)
+        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
+            // пробуем dynamic, если вернул null (Monet выключен на прошивке) — fallback на свой акцент
+            try { dynamicDarkColorScheme(ctx) } catch (_: Exception) { schemeFor(Accent.from(accentKey), customAccent) }
+        }
         else -> schemeFor(Accent.from(accentKey), customAccent)
     }
     MaterialTheme(

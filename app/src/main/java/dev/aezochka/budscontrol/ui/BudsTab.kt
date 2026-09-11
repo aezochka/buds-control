@@ -2,8 +2,6 @@ package dev.aezochka.budscontrol.ui
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
@@ -20,7 +18,6 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.background
-import androidx.compose.ui.zIndex
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -63,6 +60,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -123,32 +121,36 @@ fun BudsTab(vm: BudsViewModel, onDragActive: (Boolean) -> Unit = {}) {
     val photoLayout by vm.photoLayout.collectAsState()
     val chipTweak by vm.chipTweak.collectAsState()
 
-    var showEq by remember { mutableStateOf(false) }
-    var showAddDevice by remember { mutableStateOf(false) }
-    var showPhoto by remember { mutableStateOf(false) }
-    var showSleep by remember { mutableStateOf(false) }
-    var showVolume by remember { mutableStateOf(false) }
+    // ОДНА переменная на все шторки вместо пяти независимых флагов.
+    //
+    // Пять булевых флагов могли стать true одновременно (тап по плитке во
+    // время подключения, пока сетка перестраивается). Тогда на экране
+    // оказывались две ModalBottomSheet: верхняя закрывалась, а невидимый
+    // scrim нижней оставался и глотал ВСЕ нажатия — плитки «переставали
+    // кликаться» до перезапуска. Теперь состояние одно, две шторки
+    // физически невозможны.
+    var sheet by remember { mutableStateOf<String?>(null) }
+    val closeSheet = { sheet = null }
 
-    // Шторки взаимоисключающие: две сразу роняли приложение.
-    if (showAddDevice) {
-        AddDeviceSheet(vm = vm) { showAddDevice = false }
+    // Фото-шторке нужен выбранный профиль. Если он исчез, флаг надо снять,
+    // иначе шторка «висит» и всплывает потом сама.
+    LaunchedEffect(selected?.address) {
+        if (sheet == "photo" && selected == null) sheet = null
     }
 
-    if (showPhoto && selected != null) {
-        PhotoSheet(
-            vm = vm,
-            address = selected.address,
-            deviceName = selected.displayName,
-        ) { showPhoto = false }
-    }
-    if (showEq) {
-        EqualizerSheet(vm) { showEq = false }
-    }
-    if (showSleep) {
-        SleepSheet(vm) { showSleep = false }
-    }
-    if (showVolume) {
-        VolumeLimitSheet(vm) { showVolume = false }
+    when (sheet) {
+        "add" -> AddDeviceSheet(vm = vm, onDismiss = closeSheet)
+        "photo" -> selected?.let {
+            PhotoSheet(
+                vm = vm,
+                address = it.address,
+                deviceName = it.displayName,
+                onDismiss = closeSheet,
+            )
+        }
+        "eq" -> EqualizerSheet(vm, closeSheet)
+        "sleep" -> SleepSheet(vm, closeSheet)
+        "volume" -> VolumeLimitSheet(vm, closeSheet)
     }
 
     // Скрытие панели по НАПРАВЛЕНИЮ жеста, как строка поиска в Telegram.
@@ -195,7 +197,10 @@ fun BudsTab(vm: BudsViewModel, onDragActive: (Boolean) -> Unit = {}) {
     )
     val nameBlur = nameBlurValue.dp
 
-    Column(Modifier.fillMaxWidth().nestedScroll(scrollConnection)) {
+    // Отступ под статус-бар — ОДИН, на корне экрана. Раньше он был и на
+    // шторке, и отдельным Spacer'ом: при скрытии бара высота менялась дважды
+    // и фото прыгало.
+    Column(Modifier.fillMaxWidth().statusBarsPadding().nestedScroll(scrollConnection)) {
         // Верхний бар анимируется тем же движением, что и нижний: раньше он
         // использовал пружину с перелётом и дёргался на скрытии.
         AnimatedVisibility(
@@ -205,22 +210,21 @@ fun BudsTab(vm: BudsViewModel, onDragActive: (Boolean) -> Unit = {}) {
             exit = shrinkVertically(tween(240, easing = FastOutSlowInEasing)) +
                 fadeOut(tween(160, easing = FastOutSlowInEasing)),
         ) {
-            // Непрозрачный фон и слой выше фото. Без этого шторка во время
-            // анимации выхода оставалась полупрозрачной поверх картинки —
-            // получалась чёрная полоса, залезающая на наушники.
+            // Никакого zIndex: шторка живёт в потоке Column, а не поверх
+            // содержимого. С zIndex её фон во время выхода закрашивал фото —
+            // отсюда «тёмная шторка сверху» и необходимость листать вниз,
+            // чтобы она наконец пропала.
             Column(
                 Modifier
                     .fillMaxWidth()
-                    .zIndex(1f)
                     .background(MaterialTheme.colorScheme.background)
-                    .statusBarsPadding()
-                    .padding(horizontal = 20.dp, vertical = 8.dp)
+                    .padding(horizontal = 20.dp, vertical = 6.dp)
             ) {
                 ProfileRow(
                     profiles = profiles,
                     onSelect = { vm.selectProfile(it) },
                     onReorder = { vm.reorderProfiles(it) },
-                    onAdd = { showAddDevice = true },
+                    onAdd = { sheet = "add" },
                     onDragActive = onDragActive,
                     // Название скрывается и здесь: иначе блюр под фото есть,
                     // а в баре сверху модель по-прежнему читается.
@@ -228,10 +232,6 @@ fun BudsTab(vm: BudsViewModel, onDragActive: (Boolean) -> Unit = {}) {
                 )
             }
         }
-
-        // Отступ под статус-бар держим ВСЕГДА: раньше он появлялся только
-        // когда шторка скрыта, и фото прыгало под системную панель.
-        Spacer(Modifier.statusBarsPadding())
 
         LazyColumn(Modifier.fillMaxWidth(), state = listState) {
             item {
@@ -247,7 +247,7 @@ fun BudsTab(vm: BudsViewModel, onDragActive: (Boolean) -> Unit = {}) {
                     foundPhoto = foundPhoto,
                     photoLayout = photoLayout,
                     chipTweak = chipTweak,
-                    onPhotoClick = { showPhoto = true },
+                    onPhotoClick = { sheet = "photo" },
                     onPhotoLoaded = vm::onPhotoLoaded,
                     connecting = live.connecting,
                     // Фото и индикаторы ориентируются на системное Bluetooth-
@@ -262,9 +262,9 @@ fun BudsTab(vm: BudsViewModel, onDragActive: (Boolean) -> Unit = {}) {
                 BentoGrid(
                     vm = vm,
                     editing = false,
-                    onEq = { showEq = true },
-                    onSleep = { showSleep = true },
-                    onVolume = { showVolume = true },
+                    onEq = { sheet = "eq" },
+                    onSleep = { sheet = "sleep" },
+                    onVolume = { sheet = "volume" },
                 )
             }
             item { BottomSpacer() }
@@ -580,19 +580,31 @@ private fun BentoGrid(
             }
         }
 
+        // Скрываем функцию ТОЛЬКО когда гарнитура прислала таблицу возможностей
+        // и этой функции в ней нет. Прежний вариант опирался на probeComplete —
+        // таймаут в 4 секунды. Успел ответ или нет, зависело от того, как быстро
+        // открылся SPP, поэтому набор плиток менялся от запуска к запуску.
+        // Теперь решение детерминированное: либо железо сказало, что умеет,
+        // либо оно вообще не отвечало на 0x8100 и тогда показываем всё.
         fun show(key: String): Boolean = when {
             key in live.supported -> true
             key in confirmed.value -> true
-            live.probeComplete -> false
+            live.capabilityKnown -> false
             else -> true
         }
 
         val big = buildList {
+            // EQ работает через системный аудиоэффект, к железу не привязан.
             add("eq")
+            // Дальше — только то, что гарнитура подтвердила сама. Флаги
+            // misc/anc идут одним кадром 0x0403, поэтому game/spatial/
+            // multipoint проверяем и по нему: иначе они пропадали у моделей,
+            // которые перечисляют группу, а не каждую функцию отдельно.
+            val misc = show("misc")
             if (show("anc")) add("anc")
-            if (show("game")) add("game")
-            if (show("spatial")) add("spatial")
-            if (show("multipoint")) add("multipoint")
+            if (misc || show("game")) add("game")
+            if (misc || show("spatial")) add("spatial")
+            if (misc || show("multipoint")) add("multipoint")
             // Из плиток AirPods оставлено только ношение: заряд дублировал
             // чипы на фото, а состояние крышки кейса ничего не решало.
             if (applePods != null) add("inear")
@@ -600,26 +612,22 @@ private fun BentoGrid(
 
         big.chunked(2).forEach { pair ->
             Row(horizontalArrangement = Arrangement.spacedBy(11.dp)) {
-                pair.forEach { key ->
-                    Box(
-                        Modifier
-                            .weight(1f)
-                            // Сетка меняет размер плавно, когда набор плиток
-                            // перестраивается после опроса возможностей.
-                            .animateContentSize(Motion.spatial()),
-                    ) {
-                        // Смена содержимого плитки — с мягким проявлением,
-                        // а не мгновенной подменой.
-                        AnimatedContent(
-                            targetState = key,
-                            transitionSpec = {
-                                (fadeIn(Motion.effects()) +
-                                    scaleIn(Motion.spatial(), initialScale = 0.94f)) togetherWith
-                                    (fadeOut(Motion.effects()) +
-                                        scaleOut(Motion.spatial(), targetScale = 0.94f))
-                            },
-                            label = "tile",
-                        ) { tileKey ->
+                pair.forEach { tileKey ->
+                    // key() привязывает состояние плитки к её ключу, а не к
+                    // позиции в ряду. Без него при перестроении набора Compose
+                    // переиспользовал слот: внутреннее remember (например,
+                    // «звонит» у поиска) доставалось ДРУГОЙ плитке, и она
+                    // выглядела нажатой/сломанной.
+                    //
+                    // AnimatedContent тут убран специально: он держал старую
+                    // плитку живой во время перехода, и пока шла анимация оба
+                    // экземпляра ловили клики — тап уходил в исчезающую копию.
+                    key(tileKey) {
+                        Box(
+                            Modifier
+                                .weight(1f)
+                                .animateContentSize(Motion.spatial()),
+                        ) {
                             TileContent(tileKey, vm, live, editing, onEq, onSleep, onVolume)
                         }
                     }
@@ -635,13 +643,24 @@ private fun BentoGrid(
             TileContent("case", vm, live, editing, onEq, onSleep, onVolume)
         }
 
-        // Дополнительные — компактный ряд.
+        // Дополнительные — компактный ряд. sleep и volume делает сам телефон,
+        // поэтому они всегда на месте. find и firmware — команды к гарнитуре,
+        // их фильтруем тем же правилом, что и большие плитки.
+        val small = buildList {
+            add("sleep"); add("volume")
+            if (show("find")) add("find")
+            if (show("firmware")) add("firmware")
+        }
         Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-            listOf("sleep", "volume", "find", "firmware").forEach { key ->
-                Box(Modifier.weight(1f)) {
-                    TileContent(key, vm, live, editing, onEq, onSleep, onVolume, compact = true)
+            small.forEach { tileKey ->
+                key(tileKey) {
+                    Box(Modifier.weight(1f)) {
+                        TileContent(tileKey, vm, live, editing, onEq, onSleep, onVolume, compact = true)
+                    }
                 }
             }
+            // Ряд из трёх не должен растягивать плитки: держим место.
+            repeat(4 - small.size) { Spacer(Modifier.weight(1f)) }
         }
     }
 }

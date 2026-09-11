@@ -64,6 +64,13 @@ data class LiveState(
      * пропадают, пока идёт handshake.
      */
     val probeComplete: Boolean = false,
+    /**
+     * Гарнитура прислала таблицу возможностей (0x8100). ТОЛЬКО этот флаг даёт
+     * право что-то скрывать: он детерминированный, в отличие от таймаута
+     * опроса. Раньше набор плиток решался гонкой «успел ли ответ прийти за 4
+     * секунды» — отсюда «иногда плитки есть, иногда нет, каждый раз разное».
+     */
+    val capabilityKnown: Boolean = false,
     val probed: Boolean = false,
     val error: String? = null,
 )
@@ -136,6 +143,10 @@ class BudsSession(private val context: Context) {
             touch = keep?.touch ?: emptyMap(),
             supported = keep?.supported ?: emptySet(),
             capabilities = keep?.capabilities ?: emptySet(),
+            // Таблица возможностей — свойство ЖЕЛЕЗА, а не сокета. Переподключение
+            // к тому же устройству её не отменяет, иначе плитки мигают при
+            // каждом реконнекте.
+            capabilityKnown = keep?.capabilityKnown ?: false,
             batteryLeft = keep?.batteryLeft,
             batteryRight = keep?.batteryRight,
             batteryCase = keep?.batteryCase,
@@ -372,7 +383,7 @@ class BudsSession(private val context: Context) {
             if (0x0106 in codes) add("battery")
         }
         _state.update {
-            it.copy(capabilities = codes, supported = it.supported + names)
+            it.copy(capabilities = codes, supported = it.supported + names, capabilityKnown = true)
         }
     }
 

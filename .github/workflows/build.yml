@@ -5,6 +5,9 @@ on:
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -12,7 +15,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
@@ -33,9 +36,29 @@ jobs:
           cp app/build/outputs/apk/release/app-release.apk out/BudsControl-release.apk
           ls -la out/
 
-      - name: Upload APKs
+      # Артефакты — не единственный канал: их хранилище имеет квоту и при её
+      # исчерпании падал ЗЕЛЁНЫЙ билд. Основной канал доставки теперь Release,
+      # который к тому же читает встроенный апдейтер приложения.
+      - name: Upload APKs (artifact, best effort)
+        continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
           name: BudsControl-apk
           path: out/*.apk
           if-no-files-found: error
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          VERSION=$(grep -m1 'versionName' app/build.gradle.kts | sed 's/.*"\(.*\)".*/\1/')
+          TAG="v$VERSION"
+          echo "release tag: $TAG"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" out/*.apk --clobber
+          else
+            gh release create "$TAG" out/*.apk \
+              --title "EBuds $VERSION" \
+              --notes "Автосборка из main ($GITHUB_SHA)."
+          fi

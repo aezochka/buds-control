@@ -12,20 +12,20 @@ class OppoProtocolTest {
 
     @Test
     fun `encode decode roundtrip`() {
-        val frame = OppoProtocol.encode(OppoProtocol.Cmd.BATTERY_REQ)
+        val frame = OppoProtocol.encode(Cmd.BATTERY_REQ)
         val result = OppoProtocol.decode(frame)
         assertEquals(1, result.frames.size)
-        assertEquals(OppoProtocol.Cmd.BATTERY_REQ, result.frames[0].cmd)
+        assertEquals(Cmd.BATTERY_REQ, result.frames[0].cmd)
         assertEquals(frame.size, result.consumed)
     }
 
     @Test
     fun `two frames glued in one buffer`() {
-        val a = OppoProtocol.encode(OppoProtocol.Cmd.STATUS_REQ)
-        val b = OppoProtocol.encode(OppoProtocol.Cmd.FIRMWARE_GET)
+        val a = OppoProtocol.encode(Cmd.STATUS_REQ)
+        val b = OppoProtocol.encode(Cmd.FIRMWARE_GET)
         val result = OppoProtocol.decode(a + b)
         assertEquals(
-            listOf(OppoProtocol.Cmd.STATUS_REQ, OppoProtocol.Cmd.FIRMWARE_GET),
+            listOf(Cmd.STATUS_REQ, Cmd.FIRMWARE_GET),
             result.frames.map { it.cmd },
         )
         assertEquals(a.size + b.size, result.consumed)
@@ -37,7 +37,7 @@ class OppoProtocolTest {
      */
     @Test
     fun `full frame plus partial tail keeps remainder`() {
-        val a = OppoProtocol.encode(OppoProtocol.Cmd.BATTERY_REQ)
+        val a = OppoProtocol.encode(Cmd.BATTERY_REQ)
         val tail = a.copyOfRange(0, 4)
         val result = OppoProtocol.decode(a + tail)
         assertEquals(1, result.frames.size)
@@ -47,7 +47,7 @@ class OppoProtocolTest {
     /** Хвост из прошлого теста + следующая порция байт = целый кадр. */
     @Test
     fun `split frame assembles across chunks`() {
-        val a = OppoProtocol.encode(OppoProtocol.Cmd.BATTERY_REQ)
+        val a = OppoProtocol.encode(Cmd.BATTERY_REQ)
         val firstChunk = a.copyOfRange(0, 5)
 
         val first = OppoProtocol.decode(firstChunk)
@@ -63,7 +63,7 @@ class OppoProtocolTest {
 
     @Test
     fun `garbage bytes before frame are skipped`() {
-        val a = OppoProtocol.encode(OppoProtocol.Cmd.BATTERY_REQ)
+        val a = OppoProtocol.encode(Cmd.BATTERY_REQ)
         val result = OppoProtocol.decode(byteArrayOf(0x00, 0x11, 0x22) + a)
         assertEquals(1, result.frames.size)
         assertEquals(3 + a.size, result.consumed)
@@ -71,8 +71,8 @@ class OppoProtocolTest {
 
     @Test
     fun `sequence numbers increment`() {
-        val a = OppoProtocol.encode(OppoProtocol.Cmd.BATTERY_REQ)
-        val b = OppoProtocol.encode(OppoProtocol.Cmd.BATTERY_REQ)
+        val a = OppoProtocol.encode(Cmd.BATTERY_REQ)
+        val b = OppoProtocol.encode(Cmd.BATTERY_REQ)
         assertEquals(a[6].toInt() + 1, b[6].toInt())
     }
 

@@ -193,9 +193,10 @@ fun ProfileRow(
                             scaleX = lift
                             scaleY = lift
                             translationX = when {
-                                // Перетаскиваемый и оседающий после отпускания чип
-                                // ведёт собственная анимация.
-                                dragging || profile.id == settlingId -> chipShift.value
+                                // Палец ведёт чип напрямую (без сглаживания);
+                                // оседающий после отпускания — анимацией доезда.
+                                dragging -> dragOffset
+                                profile.id == settlingId -> chipShift.value
                                 else -> neighbourShift
                             }
                             shadowElevation = if (dragging) 20f else 0f
@@ -212,7 +213,10 @@ fun ProfileRow(
                                     var longPressed = false
                                     var cancelled = false
 
-                                    // Долгое удержание = начало переноса.
+                                    // Старт доезда после отпускания: от остатка смещения
+                                // (перестановка) или от текущей позиции пальца (отмена).
+                                var settleFrom: Float? = null
+                                // Долгое удержание = начало переноса.
                                     val hold = gestureScope.launch {
                                         delay(longPressTimeout)
                                         longPressed = true
@@ -250,7 +254,6 @@ fun ProfileRow(
                                         if (longPressed) {
                                             if (change.pressed) {
                                                 dragOffset += change.position.x - change.previousPosition.x
-                                                chipShift.snapTo(dragOffset)
                                                 val moved = (dragOffset / chipStep).roundToInt()
                                                 val limited = moved.coerceIn(
                                                     -startIndex,
@@ -274,8 +277,9 @@ fun ProfileRow(
                                                     // Чип уже лежит в новом слоте. Остаток
                                                     // смещения считаем ОТ НОВОГО места —
                                                     // тогда пружина доезжает от пальца, а не
-                                                    // прыгает с нуля.
-                                                    chipShift.snapTo(dragOffset - (to - from) * chipStep)
+                                                    // прыгает с нуля. Сам snapTo — вне
+                                                    // restricted-скоупа, в gestureScope.
+                                                    settleFrom = dragOffset - (to - from) * chipStep
                                                 }
                                                 finished = true
                                             }
@@ -295,13 +299,17 @@ fun ProfileRow(
                                         dragId = null
                                         slots = 0
                                         onDragActive(false)
-                                        // Доезд до слота: пружина от текущего смещения.
+                                        // Доезд до слота: пружина от позиции пальца
+                                        // (или остатка от нового слота).
+                                        val start = settleFrom ?: dragOffset
                                         gestureScope.launch {
+                                            chipShift.snapTo(start)
                                             chipShift.animateTo(
                                                 0f,
                                                 spring(dampingRatio = 0.75f, stiffness = Spring.StiffnessMediumLow),
                                             )
                                         }
+                                        dragOffset = 0f
                                     }
                                 }
                             }

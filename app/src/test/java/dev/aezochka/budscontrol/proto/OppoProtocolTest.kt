@@ -54,8 +54,11 @@ class OppoProtocolTest {
         assertTrue(first.frames.isEmpty())
         assertEquals(0, first.consumed)
 
-        // Так накопитель живёт в SppConnection: хвост + новая порция.
-        val combined = firstChunk.copyOf(first.consumed) + a.copyOfRange(5, a.size)
+        // Так накопитель живёт в SppConnection: байты после consumed
+        // (хвост недополученного кадра) + новая порция от сокета.
+        // NB: у ByteArray.copyOf(n) — это resize, поэтому copyOfRange.
+        val combined = firstChunk.copyOfRange(first.consumed, firstChunk.size) +
+                a.copyOfRange(5, a.size)
         val second = OppoProtocol.decode(combined)
         assertEquals(1, second.frames.size)
         assertEquals(a.size, second.consumed)

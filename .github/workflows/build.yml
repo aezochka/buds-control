@@ -60,7 +60,7 @@ jobs:
       # читает встроенный апдейтер приложения.
       - name: Upload APKs (artifact, best effort)
         continue-on-error: true
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: BudsControl-apk
           path: out/*.apk

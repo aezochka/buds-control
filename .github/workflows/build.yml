@@ -23,7 +23,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up JDK 17
         uses: actions/setup-java@v5
@@ -91,7 +91,7 @@ jobs:
     steps:
       # Полный клон: пуш тега из shallow-клона GitHub отклоняет
       # (missing necessary objects). Репозиторий маленький, это дёшево.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 

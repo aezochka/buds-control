@@ -79,7 +79,19 @@
 ./gradlew :app:assembleRelease
 ```
 
-Ключ подписи лежит рядом (`buds-release.jks`) — это личный проект, не для Play.
+Ключ подписи в репозитории не хранится. Для локальной сборки задайте
+параметры в `local.properties`:
+
+```properties
+keystore.file=/путь/к/ключу.jks
+keystore.password=...
+keystore.alias=buds
+keystore.keyPassword=...
+```
+
+CI подписывает релизы ключом из Secrets (`KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`,
+`KEY_ALIAS`, `KEY_PASSWORD`). Без ключа релиз собирается debug-подписью.
+Релизы публикуются по тегу `v*`, а не на каждый пуш в main.
 
 ## Что просит у телефона
 
@@ -145,3 +157,7 @@ realme Buds T110. Другие наушники на этом протоколе
 ## Автор
 
 Telegram: [@rz3nx](https://t.me/rz3nx)
+
+## Лицензия
+
+GPL-3.0 — код открыт, форки обязаны оставаться открытыми. Текст: [LICENSE](LICENSE).

@@ -101,11 +101,17 @@ class SppConnection(
                     if (read <= 0) break
                     for (i in 0 until read) acc.add(chunk[i])
                     // Кадры могут склеиваться и рваться на границе чтения.
-                    val decoded = OppoProtocol.decode(acc.toByteArray())
-                    if (decoded.isNotEmpty()) {
+                    // Разбираем только целые, а недополученный хвост оставляем
+                    // в накопителе — он дополнится следующим read().
+                    val bytes = acc.toByteArray()
+                    val result = OppoProtocol.decode(bytes)
+                    if (result.consumed > 0) {
                         acc.clear()
-                        decoded.forEach { _frames.emit(it) }
-                    } else if (acc.size > 8192) acc.clear()
+                        for (i in result.consumed until bytes.size) acc.add(bytes[i])
+                        result.frames.forEach { _frames.emit(it) }
+                    }
+                    // Защита от мусорного потока без преамбулы.
+                    if (acc.size > 8192) acc.clear()
                 }
             } catch (e: IOException) {
                 Log.d(TAG, "Чтение прервано: ${e.message}")

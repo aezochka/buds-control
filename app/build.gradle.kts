@@ -1,9 +1,30 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
 }
+
+// Подпись релиза. Keystore в репозитории больше НЕ хранится: параметры
+// приходят из окружения (CI передаёт Secrets) или из local.properties
+// (локальная сборка; файл в .gitignore, в нём ключи keystore.file,
+// keystore.password, keystore.alias, keystore.keyPassword).
+val localProps = Properties().apply {
+    rootProject.file("local.properties").takeIf(File::isFile)?.inputStream()?.use { load(it) }
+}
+
+fun signParam(envName: String, localName: String): String? =
+    System.getenv(envName)?.takeIf { it.isNotBlank() }
+        ?: localProps.getProperty(localName)?.takeIf { it.isNotBlank() }
+
+val keystoreFile = signParam("KEYSTORE_FILE", "keystore.file")
+    ?.let(::File)?.takeIf(File::isFile)
+val canSignRelease = keystoreFile != null &&
+    !signParam("KEYSTORE_PASSWORD", "keystore.password").isNullOrBlank() &&
+    !signParam("KEY_ALIAS", "keystore.alias").isNullOrBlank() &&
+    !signParam("KEY_PASSWORD", "keystore.keyPassword").isNullOrBlank()
 
 android {
     namespace = "dev.aezochka.budscontrol"
@@ -13,29 +34,33 @@ android {
         applicationId = "dev.aezochka.budscontrol"
         minSdk = 26
         targetSdk = 36
-        versionCode = 35
-        versionName = "7.1"
+        // CI передаёт номер через -PversionCode (1000 + run_number),
+        // локальная сборка берёт значение отсюда.
+        versionCode = (project.findProperty("versionCode") as String?)?.toInt() ?: 36
+        versionName = (project.findProperty("versionName") as String?) ?: "8.0"
     }
 
-    // Постоянный ключ: без него каждая сборка подписывалась новым debug-ключом
-    // и Android отказывался обновлять приложение поверх старого.
     signingConfigs {
-        create("release") {
-            storeFile = rootProject.file("buds-release.jks")
-            storePassword = "budscontrol"
-            keyAlias = "buds"
-            keyPassword = "budscontrol"
+        if (canSignRelease) {
+            create("release") {
+                storeFile = keystoreFile
+                storePassword = signParam("KEYSTORE_PASSWORD", "keystore.password")
+                keyAlias = signParam("KEY_ALIAS", "keystore.alias")
+                keyPassword = signParam("KEY_PASSWORD", "keystore.keyPassword")
+            }
         }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
-            signingConfig = signingConfigs.getByName("release")
+            // Если ключ не настроен (локальная сборка без local.properties),
+            // релиз подписывается debug-ключом, чтобы сборка не падала.
+            // CI ключ передаёт всегда.
+            signingConfig = if (canSignRelease) signingConfigs.getByName("release")
+            else signingConfigs.getByName("debug")
         }
-        debug {
-            signingConfig = signingConfigs.getByName("release")
-        }
+        // debug остаётся на стандартном debug-ключе Android.
     }
 
     compileOptions {
@@ -76,4 +101,6 @@ dependencies {
     implementation(libs.compose.material3)
     implementation(libs.compose.material.icons.extended)
     debugImplementation(libs.compose.ui.tooling)
+
+    testImplementation(libs.junit)
 }

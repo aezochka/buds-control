@@ -2,6 +2,7 @@ package dev.aezochka.budscontrol.proto
 
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * Кодек проприетарного протокола OPPO/realme/OnePlus (BBK), который ходит
@@ -27,7 +28,8 @@ object OppoProtocol {
     /** Частоты полос, как их показывает realme Link. */
     val EQ_FREQUENCIES = listOf(60, 230, 910, 3600, 14000)
 
-    private var seq = 0
+    // encode() может зваться из разных корутин — счётчик атомарный.
+    private val seq = AtomicInteger(0)
 
     fun encode(cmd: Cmd, payload: ByteArray = ByteArray(0)): ByteArray {
         val buf = ByteBuffer.allocate(9 + payload.size).order(ByteOrder.LITTLE_ENDIAN)
@@ -36,14 +38,24 @@ object OppoProtocol {
         buf.put(0)
         buf.put(0)
         buf.putShort(cmd.code)
-        buf.put((seq++ and 0xFF).toByte())
+        buf.put((seq.getAndIncrement() and 0xFF).toByte())
         buf.putShort(payload.size.toShort())
         buf.put(payload)
         return buf.array()
     }
 
-    /** Разбирает буфер, в котором может лежать несколько склеенных кадров. */
-    fun decode(data: ByteArray): List<Frame> {
+    /** Результат разбора: кадры и сколько байт буфера они заняли. */
+    data class Decoded(val frames: List<Frame>, val consumed: Int)
+
+    /**
+     * Разбирает буфер, в котором может лежать несколько склеенных кадров.
+     *
+     * [Decoded.consumed] — сколько байт с начала буфера однозначно разобрано
+     * (или отброшено как мусор до преамбулы). Хвост с этого смещения —
+     * начало недополученного кадра: его надо сохранить и дополнить
+     * следующим чтением, иначе кадр теряется на границе read().
+     */
+    fun decode(data: ByteArray): Decoded {
         val out = mutableListOf<Frame>()
         val buf = ByteBuffer.wrap(data)
         while (buf.remaining() >= 2) {
@@ -59,7 +71,7 @@ object OppoProtocol {
             buf.get(single)
             parseSingle(single)?.let(out::add)
         }
-        return out
+        return Decoded(out, buf.position())
     }
 
     private fun parseSingle(data: ByteArray): Frame? {

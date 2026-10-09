@@ -43,6 +43,14 @@ data class UserSettings(
     /** Прятать панель с названием наушников при прокрутке вниз. */
     val hideNameOnScroll: Boolean = true,
     val hiddenTiles: Set<String> = emptySet(),
+    /** Ручная правка индикаторов заряда — переживает перезапуск. */
+    val chipLeftDx: Float = 0f,
+    val chipLeftDy: Float = 0f,
+    val chipRightDx: Float = 0f,
+    val chipRightDy: Float = 0f,
+    val chipScale: Float = 1f,
+    /** Индикаторы L/R поменяны местами (фото с развёрнутой стороны). */
+    val chipSwapped: Boolean = false,
 )
 
 val defaultTileOrder = listOf(

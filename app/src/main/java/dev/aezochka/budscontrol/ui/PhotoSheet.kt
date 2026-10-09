@@ -220,6 +220,7 @@ fun PhotoSheet(
                     if (editing) {
                         Text(
                             when {
+                                tweak.swapped -> tr("movingSwapped")
                                 pickLeft && pickRight -> tr("movingBoth")
                                 pickLeft -> tr("movingLeft")
                                 pickRight -> tr("movingRight")

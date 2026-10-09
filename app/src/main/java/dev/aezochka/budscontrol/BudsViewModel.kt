@@ -611,7 +611,9 @@ class BudsViewModel(app: Application) : AndroidViewModel(app) {
 
     /**
      * Ручная правка индикаторов: у левого и правого СВОИ смещения,
-     * плюс общий масштаб. Раньше двигались только оба сразу.
+     * плюс общий масштаб. [swapped] меняет индикаторы L/R местами — для фото,
+     * где наушники развёрнуты к зрителю другой стороной.
+     * Настройки живут в UserSettings и переживают перезапуск.
      */
     data class ChipTweak(
         val leftDx: Float = 0f,
@@ -619,10 +621,37 @@ class BudsViewModel(app: Application) : AndroidViewModel(app) {
         val rightDx: Float = 0f,
         val rightDy: Float = 0f,
         val scale: Float = 1f,
+        val swapped: Boolean = false,
     )
 
     private val _chipTweak = MutableStateFlow(ChipTweak())
     val chipTweak: StateFlow<ChipTweak> = _chipTweak.asStateFlow()
+
+    // Засеваем сохранённую правку индикаторов, как только настройки прочитаны.
+    init {
+        viewModelScope.launch {
+            val saved = store.settings.filterNotNull().first()
+            _chipTweak.value = ChipTweak(
+                leftDx = saved.chipLeftDx,
+                leftDy = saved.chipLeftDy,
+                rightDx = saved.chipRightDx,
+                rightDy = saved.chipRightDy,
+                scale = saved.chipScale,
+                swapped = saved.chipSwapped,
+            )
+        }
+    }
+
+    private fun persistChips() = viewModelScope.launch {
+        val t = _chipTweak.value
+        store.saveSettings(
+            settings.value.copy(
+                chipLeftDx = t.leftDx, chipLeftDy = t.leftDy,
+                chipRightDx = t.rightDx, chipRightDy = t.rightDy,
+                chipScale = t.scale, chipSwapped = t.swapped,
+            )
+        )
+    }
 
     /** Двигает выбранные чипы: left, right или оба. */
     fun nudgeChips(dx: Float, dy: Float, moveLeft: Boolean, moveRight: Boolean) {
@@ -633,14 +662,32 @@ class BudsViewModel(app: Application) : AndroidViewModel(app) {
             rightDx = if (moveRight) (t.rightDx + dx).coerceIn(-0.35f, 0.35f) else t.rightDx,
             rightDy = if (moveRight) (t.rightDy + dy).coerceIn(-0.35f, 0.35f) else t.rightDy,
         )
+        persistChips()
     }
 
     fun setChipScale(scale: Float) {
         _chipTweak.value = _chipTweak.value.copy(scale = scale.coerceIn(0.7f, 1.6f))
+        persistChips()
+    }
+
+    /** Меняет индикаторы L и R местами. */
+    fun swapChips() {
+        _chipTweak.value = _chipTweak.value.copy(swapped = !_chipTweak.value.swapped)
+        persistChips()
     }
 
     fun resetChips() {
         _chipTweak.value = ChipTweak()
+        persistChips()
+    }
+
+    /** Своя картинка из галереи: надёжнее любого поиска. */
+    fun importPhoto(address: String, uri: android.net.Uri) = viewModelScope.launch {
+        val path = PhotoFinder.importPicked(getApplication(), uri, address)
+        if (path != null) {
+            _foundPhoto.value = path
+            _photoLayout.value = ImageProbe.Layout.Default
+        }
     }
 
 

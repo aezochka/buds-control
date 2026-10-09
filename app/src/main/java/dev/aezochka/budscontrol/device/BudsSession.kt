@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothManager
 import android.content.Context
+import android.util.Log
 import dev.aezochka.budscontrol.proto.AncMode
 import dev.aezochka.budscontrol.proto.Cmd
 import dev.aezochka.budscontrol.proto.MiscType
@@ -218,6 +219,9 @@ class BudsSession(private val context: Context) {
                 if (st.batteryLeft == null && st.batteryRight == null) c.send(OppoProtocol.batteryReq())
                 if (st.firmware == null) c.send(OppoProtocol.firmwareReq())
                 if (st.touch.isEmpty()) c.send(OppoProtocol.touchConfigReq())
+                // Таблица возможностей — та же история: первый запрос мог
+                // потеряться, а ответа ждёт весь набор плиток.
+                if (st.capabilities.isEmpty()) c.send(OppoProtocol.capabilityReq())
             }
         }
     }
@@ -242,6 +246,9 @@ class BudsSession(private val context: Context) {
         scope.launch {
             delay(1_800)
             if (!_state.value.connected) return@launch
+            // Таблица возможностей могла потеряться вместе с первым ответом —
+            // именно из-за этого набор плиток был недетерминированным.
+            if (_state.value.capabilities.isEmpty()) c.send(OppoProtocol.capabilityReq())
             c.send(
                 OppoProtocol.miscConfigReq(
                     listOf(MiscType.GAME_MODE, MiscType.MULTIPOINT, MiscType.LDAC, MiscType.SPATIAL_AUDIO)
@@ -371,6 +378,13 @@ class BudsSession(private val context: Context) {
      * а у модели с ANC/LDAC — появится без правок кода.
      */
     private fun applyCapabilities(p: ByteArray) {
+        if (p.isNotEmpty()) {
+            val hex = p.joinToString(" ") { "%02x".format(it) }
+            Log.i(TAG, "0x8100: $hex")
+        }
+        if (p.size > 1 && p[0].toInt() != 0) {
+            Log.w(TAG, "Таблица возможностей пришла со статусом ${p[0]} — не верим ей")
+        }
         val codes = OppoProtocol.parseCapabilities(p)
         if (codes.isEmpty()) return
         val names = buildSet {
@@ -528,6 +542,7 @@ class BudsSession(private val context: Context) {
             c.send(OppoProtocol.batteryReq())
             c.send(OppoProtocol.statusReq())
             c.send(OppoProtocol.miscConfigReq(listOf(MiscType.GAME_MODE)))
+            if (_state.value.capabilities.isEmpty()) c.send(OppoProtocol.capabilityReq())
         }
     }
 
@@ -545,4 +560,6 @@ class BudsSession(private val context: Context) {
         conn?.close(); conn = null
         _state.value = LiveState()
     }
+
+    private companion object { const val TAG = "BudsSession" }
 }

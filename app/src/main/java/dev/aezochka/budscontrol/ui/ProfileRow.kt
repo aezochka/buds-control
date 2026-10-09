@@ -3,8 +3,10 @@ package dev.aezochka.budscontrol.ui
 import android.view.HapticFeedbackConstants
 import android.view.ViewConfiguration
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -31,6 +33,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -39,6 +42,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
@@ -96,6 +100,18 @@ fun ProfileRow(
     // На сколько позиций уехал палец от исходного места.
     var slots by remember { mutableStateOf(0) }
     var startIndex by remember { mutableStateOf(0) }
+    // Чип, который ПЕРЕТАСКИВАЛИ и после отпускания доезжает до слота
+    // пружиной. Без него чип телепортировался в новое место рывком.
+    var settlingId by remember { mutableStateOf<String?>(null) }
+    // Успешная перестановка: слоты соседей уже переехали в новом порядке,
+    // поэтому их смещение снимается мгновенно, а не откатывается пружиной
+    // (двойной рывок — тот самый «кривой» скачок при отпускании).
+    var justReordered by remember { mutableStateOf(false) }
+
+    // Реальная ширина чипов замеряется по месту: жёсткие 132dp не совпадали
+    // с фактической шириной (имена разной длины), и шаг перестановки
+    // «не дотягивал» — соседи наезжали или отставали.
+    val chipWidths = remember { mutableStateMapOf<String, Float>() }
 
     // Страховка от залипания: если строка ушла из композиции прямо во время
     // жеста (свайп вкладки, сворачивание шторки), блокировку пейджера надо
@@ -104,10 +120,15 @@ fun ProfileRow(
         onDispose { onDragActive(false) }
     }
 
-    val chipWidthPx = with(density) { 132.dp.toPx() }
+    val fallbackStepPx = with(density) { 132.dp.toPx() }
     // Тот же зазор, что в Arrangement.spacedBy ниже: сосед должен уехать
     // ровно на своё место, иначе чипы визуально наезжают друг на друга.
     val gapPx = with(density) { 8.dp.toPx() }
+
+    /** Шаг перестановки для конкретного чипа: его собственная ширина + зазор. */
+    fun stepFor(id: String): Float =
+        (chipWidths[id]?.takeIf { it > 0f }?.plus(gapPx)) ?: (fallbackStepPx + gapPx)
+
     val ordered = order.mapNotNull { id -> profiles.firstOrNull { it.id == id } }
 
     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -122,6 +143,7 @@ fun ProfileRow(
             ordered.forEachIndexed { index, profile ->
                 val active = profile.isSelected
                 val dragging = dragId == profile.id
+                val chipStep = stepFor(profile.id)
 
                 // Смещение соседей: они уступают место перетаскиваемому чипу.
                 val targetShift = when {
@@ -141,11 +163,17 @@ fun ProfileRow(
                     Motion.spatialFast(), label = "lift",
                 )
                 // Палец ведём БЕЗ анимации: сглаживание давало лаг и чип
-                // «догонял» палец. Плавность нужна соседям, а не тому чипу,
-                // который держат в руке.
+                // «догонял» палец. На отпускании тот же чип доезжает до слота
+                // пружиной — от того места, где его оставил палец.
+                // Ручной Animatable вместо animateFloatAsState: его значение
+                // меняется сразу (snapTo из жеста), а не на следующем кадре —
+                // иначе старт доезда брался от устаревшего смещения.
+                val chipShift = remember(profile.id) { Animatable(0f) }
                 val neighbourShift by animateFloatAsState(
-                    targetShift * (chipWidthPx + gapPx),
-                    spring(dampingRatio = 0.75f, stiffness = Spring.StiffnessMediumLow),
+                    targetShift * chipStep,
+                    if (justReordered) snap() else spring(
+                        dampingRatio = 0.75f, stiffness = Spring.StiffnessMediumLow,
+                    ),
                     label = "neighbourShift",
                 )
                 val bg by animateColorAsState(
@@ -160,10 +188,16 @@ fun ProfileRow(
                 Row(
                     Modifier
                         .zIndex(if (dragging) 1f else 0f)
+                        .onSizeChanged { size -> chipWidths[profile.id] = size.width.toFloat() }
                         .graphicsLayer {
                             scaleX = lift
                             scaleY = lift
-                            translationX = if (dragging) dragOffset else neighbourShift
+                            translationX = when {
+                                // Перетаскиваемый и оседающий после отпускания чип
+                                // ведёт собственная анимация.
+                                dragging || profile.id == settlingId -> chipShift.value
+                                else -> neighbourShift
+                            }
                             shadowElevation = if (dragging) 20f else 0f
                         }
                         .clip(CircleShape)
@@ -186,6 +220,8 @@ fun ProfileRow(
                                         startIndex = order.indexOf(profile.id).coerceAtLeast(0)
                                         slots = 0
                                         dragOffset = 0f
+                                        settlingId = null
+                                        justReordered = false
                                         dragId = profile.id
                                         onDragActive(true)
                                         view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
@@ -214,8 +250,8 @@ fun ProfileRow(
                                         if (longPressed) {
                                             if (change.pressed) {
                                                 dragOffset += change.position.x - change.previousPosition.x
-                                                val step = chipWidthPx + gapPx
-                                                val moved = (dragOffset / step).roundToInt()
+                                                chipShift.snapTo(dragOffset)
+                                                val moved = (dragOffset / chipStep).roundToInt()
                                                 val limited = moved.coerceIn(
                                                     -startIndex,
                                                     (order.lastIndex - startIndex).coerceAtLeast(0),
@@ -234,6 +270,12 @@ fun ProfileRow(
                                                     list.add(to, profile.id)
                                                     order = list
                                                     onReorder(list)
+                                                    justReordered = true
+                                                    // Чип уже лежит в новом слоте. Остаток
+                                                    // смещения считаем ОТ НОВОГО места —
+                                                    // тогда пружина доезжает от пальца, а не
+                                                    // прыгает с нуля.
+                                                    chipShift.snapTo(dragOffset - (to - from) * chipStep)
                                                 }
                                                 finished = true
                                             }
@@ -248,12 +290,17 @@ fun ProfileRow(
                                     pressedId = null
                                     // Чистим состояние на ЛЮБОМ выходе, включая отмену:
                                     // пропущенная отмена и была причиной мёртвого экрана.
-                                    if (dragId == profile.id || cancelled) {
-                                        dragOffset = 0f
+                                    if (dragId == profile.id) {
+                                        settlingId = profile.id
+                                        dragId = null
                                         slots = 0
-                                        if (dragId == profile.id) {
-                                            dragId = null
-                                            onDragActive(false)
+                                        onDragActive(false)
+                                        // Доезд до слота: пружина от текущего смещения.
+                                        gestureScope.launch {
+                                            chipShift.animateTo(
+                                                0f,
+                                                spring(dampingRatio = 0.75f, stiffness = Spring.StiffnessMediumLow),
+                                            )
                                         }
                                     }
                                 }

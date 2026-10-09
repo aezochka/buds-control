@@ -18,6 +18,7 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -70,6 +71,7 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
@@ -249,6 +251,9 @@ fun BudsTab(vm: BudsViewModel, onDragActive: (Boolean) -> Unit = {}) {
                     chipTweak = chipTweak,
                     onPhotoClick = { sheet = "photo" },
                     onPhotoLoaded = vm::onPhotoLoaded,
+                    // Тап/зажатие по индикатору уха — быстрый вход в меню
+                    // фото и настроек индикаторов.
+                    onChipOpen = { sheet = "photo" },
                     connecting = live.connecting,
                     // Фото и индикаторы ориентируются на системное Bluetooth-
                     // подключение, а не на служебный SPP. Иначе наушники уже
@@ -285,6 +290,7 @@ private fun ProductHero(
     chipTweak: BudsViewModel.ChipTweak,
     onPhotoClick: () -> Unit,
     onPhotoLoaded: (androidx.compose.ui.graphics.ImageBitmap) -> Unit,
+    onChipOpen: () -> Unit,
     connecting: Boolean,
     connected: Boolean,
     /** Радиус размытия названия — растёт, когда телефон кладут экраном вниз. */
@@ -409,15 +415,19 @@ private fun ProductHero(
                     )
                 }
                 // Позиции считаются по самому фото: чип стоит рядом со своим
-                // наушником, а не в фиксированном углу картинки.
+                // наушником, а не в фиксированном углу картинки. swapped меняет
+                // уши местами — для фото с зеркальной стороны.
+                val leftSpot = if (chipTweak.swapped) photoLayout.right else photoLayout.left
+                val rightSpot = if (chipTweak.swapped) photoLayout.left else photoLayout.right
                 BatteryChip(
                     percent = if (connected) left else null,
                     side = "L",
                     inCase = inCaseLeft || !connected,
                     scale = chipTweak.scale,
+                    onOpen = onChipOpen,
                     modifier = Modifier.align(BiasAlignment(
-                        horizontalBias = (photoLayout.left.x + chipTweak.leftDx) * 2f - 1f,
-                        verticalBias = (photoLayout.left.y + chipTweak.leftDy) * 2f - 1f,
+                        horizontalBias = (leftSpot.x + chipTweak.leftDx) * 2f - 1f,
+                        verticalBias = (leftSpot.y + chipTweak.leftDy) * 2f - 1f,
                     )),
                 )
                 BatteryChip(
@@ -425,9 +435,10 @@ private fun ProductHero(
                     side = "R",
                     inCase = inCaseRight || !connected,
                     scale = chipTweak.scale,
+                    onOpen = onChipOpen,
                     modifier = Modifier.align(BiasAlignment(
-                        horizontalBias = (photoLayout.right.x + chipTweak.rightDx) * 2f - 1f,
-                        verticalBias = (photoLayout.right.y + chipTweak.rightDy) * 2f - 1f,
+                        horizontalBias = (rightSpot.x + chipTweak.rightDx) * 2f - 1f,
+                        verticalBias = (rightSpot.y + chipTweak.rightDy) * 2f - 1f,
                     )),
                 )
             }
@@ -495,6 +506,7 @@ private fun BatteryChip(
     side: String,
     inCase: Boolean,
     scale: Float = 1f,
+    onOpen: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val scheme = MaterialTheme.colorScheme
@@ -513,6 +525,16 @@ private fun BatteryChip(
             .graphicsLayer { scaleX = scale; scaleY = scale }
             .clip(CircleShape)
             .background(container)
+            // Тап и ДОЛГОЕ нажатие открывают меню фото: раньше чип вообще
+            // не реагировал, и «зажать по уху» ничего не делало.
+            .then(
+                if (onOpen != null) Modifier.pointerInput(Unit) {
+                    detectTapGestures(
+                        onTap = { onOpen() },
+                        onLongPress = { onOpen() },
+                    )
+                } else Modifier
+            )
             .padding(horizontal = 14.dp, vertical = 9.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),

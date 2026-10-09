@@ -3,6 +3,7 @@ package dev.aezochka.budscontrol.data
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.net.Uri
 import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -17,9 +18,9 @@ import java.util.Locale
  * Ищет фото наушников по имени Bluetooth-устройства и готовит его к показу
  * на тёмном фоне: белый фон вырезается.
  *
- * Порядок: сначала запрос с «png transparent background» — вендорские PNG
- * уже идут с альфой и их не нужно обрабатывать. Если такого нет, берём фото
- * с однородным фоном и вырезаем его заливкой от краёв.
+ * Два движка: DuckDuckGo (JSON, но агрессивно ловит ботов — отвечает
+ * challenge-страницей) и Bing (HTML, зато стабильнее). Если один молчит,
+ * работает второй. Совсем без сети спасает выбор своей картинки из галереи.
  *
  * Результат — готовый PNG на диске, поэтому обработка делается один раз.
  */
@@ -33,6 +34,9 @@ object PhotoFinder {
     private const val UA =
         "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/122 Mobile Safari/537.36"
     private const val TAG = "PhotoFinder"
+
+    /** Картинка-кандидат из поиска: URL и метаданные, если движок их дал. */
+    private data class Candidate(val url: String, val width: Int = 0, val height: Int = 0)
 
     /**
      * Фото для устройства. Ключ — АДРЕС, а не имя: у двух профилей может быть
@@ -53,6 +57,33 @@ object PhotoFinder {
      * Несколько вариантов картинки для выбора в шторке.
      * Каждый сохраняется отдельным файлом, фон уже вырезан.
      */
+    suspend fun variants(
+        context: Context,
+        address: String,
+        deviceName: String,
+        limit: Int = 6,
+    ): List<String> = withContext(Dispatchers.IO) {
+        val clean = cleanName(deviceName)
+        if (clean.isBlank()) return@withContext emptyList()
+        val key = address.replace(":", "").lowercase(Locale.ROOT)
+
+        val cached = (0 until limit).mapNotNull { i ->
+            File(context.cacheDir, "photo_${key}_$i.png").takeIf { it.exists() && it.length() > 0 }
+        }
+        if (cached.size >= limit) return@withContext cached.map { it.absolutePath }
+
+        val bitmaps = searchBitmaps(clean, limit)
+        val saved = mutableListOf<String>()
+        bitmaps.forEachIndexed { index, bitmap ->
+            val file = File(context.cacheDir, "photo_${key}_$index.png")
+            runCatching {
+                file.outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
+                saved += file.absolutePath
+            }
+        }
+        saved
+    }
+
     /**
      * Потоковый вариант: каждая готовая картинка отдаётся сразу через [onFound].
      * Раньше список появлялся только после загрузки всех — ждать приходилось долго.
@@ -78,46 +109,22 @@ object PhotoFinder {
         }
         if (index >= limit) return@withContext
 
-        // Дальше ищем и сохраняем по одной.
-        for (query in listOf("$clean earbuds png transparent background", "$clean earbuds product")) {
-            if (index >= limit) break
-            collectStreaming(query, limit - index) { bitmap ->
-                val file = File(context.cacheDir, "photo_${key}_$index.png")
-                runCatching {
-                    file.outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
-                    onFound(file.absolutePath)
-                    index++
-                }
-            }
-        }
-    }
-
-    suspend fun variants(
-        context: Context,
-        address: String,
-        deviceName: String,
-        limit: Int = 6,
-    ): List<String> = withContext(Dispatchers.IO) {
-        val clean = cleanName(deviceName)
-        if (clean.isBlank()) return@withContext emptyList()
-        val key = address.replace(":", "").lowercase(Locale.ROOT)
-
-        val cached = (0 until limit).mapNotNull { i ->
-            File(context.cacheDir, "photo_${key}_$i.png").takeIf { it.exists() && it.length() > 0 }
-        }
-        if (cached.size >= limit) return@withContext cached.map { it.absolutePath }
-
-        val bitmaps = collect("$clean earbuds png transparent background", limit) +
-            collect("$clean earbuds product", limit)
-        val saved = mutableListOf<String>()
-        bitmaps.take(limit).forEachIndexed { index, bitmap ->
-            val file = File(context.cacheDir, "photo_${key}_$index.png")
+        // Поисковики отдают по одному запросу список URL — все сразу.
+        // Готовим картинки последовательно и отдаём по мере готовности.
+        val queries = listOf("$clean earbuds png transparent background", "$clean earbuds product")
+        val candidates = queries.flatMap { searchCandidates(it) }
+        var saved = index
+        for (c in candidates) {
+            if (saved >= limit) break
+            val bitmap = decode(c) ?: continue
+            val prepared = prepare(bitmap) ?: continue
+            val file = File(context.cacheDir, "photo_${key}_$saved.png")
             runCatching {
-                file.outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
-                saved += file.absolutePath
+                file.outputStream().use { prepared.compress(Bitmap.CompressFormat.PNG, 100, it) }
+                onFound(file.absolutePath)
+                saved++
             }
         }
-        saved
     }
 
     /** Запоминает выбор пользователя. */
@@ -127,110 +134,137 @@ object PhotoFinder {
         }
     }
 
+    /**
+     * Своя картинка из галереи: путь выбора пользователя авторитетнее
+     * любых эвристик, поэтому фон не трогаем — только уменьшаем.
+     */
+    suspend fun importPicked(context: Context, uri: Uri, address: String): String? =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                if (bytes == null || bytes.isEmpty()) return@runCatching null
+                val decoded = BitmapFactory.decodeByteArray(bytes, 0, bytes.size) ?: return@runCatching null
+                val target = File(context.cacheDir, "picked_import.png")
+                target.outputStream().use {
+                    scaleDown(decoded, 720).compress(Bitmap.CompressFormat.PNG, 100, it)
+                }
+                target
+            }.getOrNull()?.let { tmp ->
+                runCatching { tmp.copyTo(pickedFile(context, address), overwrite = true) }
+                    .onFailure { Log.w(TAG, "Импорт фото не сохранён: ${it.message}") }
+                tmp.delete()
+                pickedFile(context, address).absolutePath
+            }
+        }
+
     private fun pickedFile(context: Context, address: String) =
         File(context.cacheDir, "picked_${address.replace(":", "").lowercase(Locale.ROOT)}.png")
 
-    /** Как collect, но отдаёт картинки по мере готовности. */
-    private suspend fun collectStreaming(query: String, limit: Int, onEach: suspend (Bitmap) -> Unit) {
-        val encoded = URLEncoder.encode(query, "UTF-8")
-        val page = fetchText("https://duckduckgo.com/?q=$encoded&iax=images&ia=images") ?: return
-        val token = Regex("""vqd=["']?([\d-]+)""").find(page)?.groupValues?.get(1) ?: return
-        val json = fetchText(
-            "https://duckduckgo.com/i.js?l=us-en&o=json&q=$encoded&vqd=$token",
-            referer = "https://duckduckgo.com/",
-        ) ?: return
-        val items = JSONObject(json).optJSONArray("results") ?: return
+    // ===== Поиск =====
 
-        var done = 0
-        for (i in 0 until minOf(items.length(), 24)) {
-            if (done >= limit) break
-            val item = items.optJSONObject(i) ?: continue
-            val raw = item.optString("image")
-            val url = when {
-                raw.startsWith("https://") -> raw
-                raw.startsWith("http://") -> "https://" + raw.removePrefix("http://")
-                else -> continue
-            }
-            val w = item.optInt("width")
-            val h = item.optInt("height")
-            if (w < 600) continue
-            val ratio = if (h == 0) 0f else w.toFloat() / h
-            if (ratio !in 0.8f..1.25f) continue
-            val bytes = fetchBytes(url) ?: continue
-            val decoded = runCatching { BitmapFactory.decodeByteArray(bytes, 0, bytes.size) }.getOrNull() ?: continue
-            val prepared = prepare(decoded) ?: continue
-            onEach(prepared)
-            done++
-        }
+    /** Спрашивает оба движка и оставляет уникальные URL. */
+    private fun searchCandidates(query: String): List<Candidate> {
+        val fromDdg = ddgImages(query)
+        val fromBing = bingImages(query)
+        val seen = mutableSetOf<String>()
+        return (fromDdg + fromBing).filter { it.url.isNotBlank() && seen.add(it.url) }
     }
 
-    /** Собирает до [limit] подходящих картинок по запросу. */
-    private fun collect(query: String, limit: Int): List<Bitmap> {
-        val encoded = URLEncoder.encode(query, "UTF-8")
-        val page = fetchText("https://duckduckgo.com/?q=$encoded&iax=images&ia=images") ?: return emptyList()
-        val token = Regex("""vqd=["']?([\d-]+)""").find(page)?.groupValues?.get(1) ?: return emptyList()
-        val json = fetchText(
-            "https://duckduckgo.com/i.js?l=us-en&o=json&q=$encoded&vqd=$token",
-            referer = "https://duckduckgo.com/",
-        ) ?: return emptyList()
-        val items = JSONObject(json).optJSONArray("results") ?: return emptyList()
-
+    private fun searchBitmaps(cleanName: String, limit: Int): List<Bitmap> {
+        val queries = listOf("$cleanName earbuds png transparent background", "$cleanName earbuds product")
         val result = mutableListOf<Bitmap>()
-        for (i in 0 until minOf(items.length(), 20)) {
+        for (query in queries) {
             if (result.size >= limit) break
-            val item = items.optJSONObject(i) ?: continue
-            val raw = item.optString("image")
-            val url = when {
-                raw.startsWith("https://") -> raw
-                raw.startsWith("http://") -> "https://" + raw.removePrefix("http://")
-                else -> continue
+            for (c in searchCandidates(query)) {
+                if (result.size >= limit) break
+                val bitmap = decode(c) ?: continue
+                val prepared = prepare(bitmap) ?: continue
+                result += prepared
             }
-            val w = item.optInt("width")
-            val h = item.optInt("height")
-            if (w < 600) continue
-            val ratio = if (h == 0) 0f else w.toFloat() / h
-            if (ratio !in 0.8f..1.25f) continue
-            val bytes = fetchBytes(url) ?: continue
-            val decoded = runCatching { BitmapFactory.decodeByteArray(bytes, 0, bytes.size) }.getOrNull() ?: continue
-            val prepared = prepare(decoded) ?: continue
-            result += prepared
         }
-        Log.i(TAG, "По запросу «$query» подошло ${result.size}")
+        Log.i(TAG, "По имени «$cleanName» подошло ${result.size} картинок")
         return result
     }
 
-    private fun tryQuery(query: String): Bitmap? {
+    /**
+     * DuckDuckGo Images (i.js). Токен vqd живёт в HTML страницы поиска;
+     * для «подозрительных» IP вместо результатов приходит JSON с полем
+     * challenge — это и была причина «картинка не грузит».
+     */
+    private fun ddgImages(query: String): List<Candidate> {
         val encoded = URLEncoder.encode(query, "UTF-8")
-        val page = fetchText("https://duckduckgo.com/?q=$encoded&iax=images&ia=images") ?: return null
-        val token = Regex("""vqd=["']?([\d-]+)""").find(page)?.groupValues?.get(1) ?: return null
-        val json = fetchText(
-            "https://duckduckgo.com/i.js?l=us-en&o=json&q=$encoded&vqd=$token",
-            referer = "https://duckduckgo.com/",
-        ) ?: return null
-        val items = JSONObject(json).optJSONArray("results") ?: return null
+        // Токен берётся не с первого раза: пробуем трижды с паузой.
+        var json: String? = null
+        repeat(3) { attempt ->
+            if (json != null) return@repeat
+            val page = fetchText("https://duckduckgo.com/?q=$encoded&iax=images&ia=images") ?: return@repeat
+            val token = Regex("""vqd=["']?([\d-]+)""").find(page)?.groupValues?.get(1) ?: return@repeat
+            val body = fetchText(
+                "https://duckduckgo.com/i.js?l=us-en&o=json&q=$encoded&vqd=$token",
+                referer = "https://duckduckgo.com/",
+            )
+            if (body != null && !body.contains("\"challenge\"")) json = body
+            else {
+                Log.w(TAG, "DDG: попытка ${attempt + 1} отклонена (challenge или пусто)")
+                Thread.sleep(400L * (attempt + 1))
+            }
+        }
+        val body = json ?: return emptyList()
+        val items = runCatching { JSONObject(body).optJSONArray("results") }.getOrNull() ?: return emptyList()
 
-        for (i in 0 until minOf(items.length(), 10)) {
+        val out = mutableListOf<Candidate>()
+        for (i in 0 until items.length()) {
             val item = items.optJSONObject(i) ?: continue
             val raw = item.optString("image")
-            // http блокируется политикой cleartext — апгрейдим до https.
-            val url = when {
-                raw.startsWith("https://") -> raw
-                raw.startsWith("http://") -> "https://" + raw.removePrefix("http://")
-                else -> continue
-            }
-            val w = item.optInt("width")
-            val h = item.optInt("height")
-            if (w < 600) continue
-            val ratio = if (h == 0) 0f else w.toFloat() / h
-            if (ratio !in 0.8f..1.25f) continue
-
-            val bytes = fetchBytes(url) ?: continue
-            val decoded = runCatching { BitmapFactory.decodeByteArray(bytes, 0, bytes.size) }.getOrNull() ?: continue
-            val prepared = prepare(decoded) ?: continue
-            Log.i(TAG, "Фото принято: $url")
-            return prepared
+            val url = upgradeHttps(raw) ?: continue
+            out += Candidate(url, item.optInt("width"), item.optInt("height"))
         }
-        return null
+        return out
+    }
+
+    /**
+     * Bing Images (HTML). В разметке карточек лежит JSON в атрибуте m,
+     * где murl — адрес оригинала картинки. Отсюда же приходят ссылки на
+     * официальный CDN realme (image01.realme.net).
+     */
+    private fun bingImages(query: String): List<Candidate> {
+        val encoded = URLEncoder.encode(query, "UTF-8")
+        val html = fetchText(
+            "https://www.bing.com/images/search?q=$encoded&form=HDRSC2&count=35",
+            referer = "https://www.bing.com/",
+        ) ?: return emptyList()
+        val urls = Regex("murl&quot;:&quot;([^&\"]+)").findAll(html).map { it.groupValues[1] }.toList()
+        if (urls.isEmpty()) {
+            Log.w(TAG, "Bing: разметка без murl — вероятно, тоже отлуп")
+            return emptyList()
+        }
+        return urls.mapNotNull { raw -> upgradeHttps(raw)?.let { Candidate(it) } }
+    }
+
+    /** http блокируется политикой cleartext — апгрейдим до https. */
+    private fun upgradeHttps(raw: String): String? = when {
+        raw.startsWith("https://") -> raw
+        raw.startsWith("http://") -> "https://" + raw.removePrefix("http://")
+        else -> null
+    }
+
+    private fun decode(c: Candidate): Bitmap? {
+        // Размер знаем заранее — режем заведомо мелочь и не-квадраты.
+        if (c.width > 0) {
+            if (c.width < 400) return null
+            val ratio = if (c.height == 0) 0f else c.width.toFloat() / c.height
+            if (ratio !in 0.7f..1.4f) return null
+        }
+        val bytes = fetchBytes(c.url) ?: return null
+        val decoded = runCatching { BitmapFactory.decodeByteArray(bytes, 0, bytes.size) }.getOrNull() ?: return null
+        // Для Bing размеры неизвестны — проверяем после декодирования.
+        if (c.width == 0) {
+            val side = minOf(decoded.width, decoded.height)
+            if (side < 400) return null
+            val ratio = decoded.width.toFloat() / decoded.height
+            if (ratio !in 0.7f..1.4f) return null
+        }
+        return decoded
     }
 
     /**
@@ -283,7 +317,7 @@ object PhotoFinder {
             if (x > 0) push(idx - 1)
             if (x < w - 1) push(idx + 1)
             if (y > 0) push(idx - w)
-            if (y < h - 1) push(idx + w)
+            if (y < w - 1) push(idx + w)
         }
 
         val cleared = out.count { (it ushr 24) < 16 }
@@ -372,6 +406,8 @@ object PhotoFinder {
     private fun open(url: String, referer: String?): HttpURLConnection =
         (URL(url).openConnection() as HttpURLConnection).apply {
             setRequestProperty("User-Agent", UA)
+            setRequestProperty("Accept", "text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8")
+            setRequestProperty("Accept-Language", "en-US,en;q=0.9")
             referer?.let { setRequestProperty("Referer", it) }
             connectTimeout = 10_000
             readTimeout = 12_000

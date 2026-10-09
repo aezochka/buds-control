@@ -119,21 +119,17 @@ jobs:
           fi
           VERSION="${TAG#v}"
           echo "release tag: $TAG (version $VERSION)"
-          cat > notes.md <<'NOTES'
-          Начиная с этой версии APK подписан новым ключом (старый был
-          скомпрометирован публикацией в репозитории). Android не даст
-          обновиться поверх прежней установки: удалите старую версию и
-          поставьте APK из этого релиза. Все настройки и профили задаются
-          заново.
+          NOTES_FILE=".github/release-notes/$TAG.md"
+          if [[ -f "$NOTES_FILE" ]]; then
+            cp "$NOTES_FILE" notes.md
+          else
+            cat > notes.md <<NOTES
+          EBuds $VERSION.
 
-          Что ещё изменилось:
-
-          - из истории репозитория удалены ключ подписи и собранные APK;
-          - фикс потери кадра протокола на границе чтения Bluetooth-сокета
-            («кнопка иногда не реагирует»);
-          - unit-тесты кодека протокола запускаются в CI перед сборкой;
-          - лицензия проекта — GPL-3.0.
+          Изменения — в списке коммитов:
+          https://github.com/aezochka/buds-control/commits/$TAG
           NOTES
+          fi
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release upload "$TAG" out/*.apk --clobber
           else

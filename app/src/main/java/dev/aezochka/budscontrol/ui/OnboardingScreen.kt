@@ -299,7 +299,7 @@ private fun GuideCard(icon: androidx.compose.ui.graphics.vector.ImageVector, tit
 }
 
 @Composable
-private fun DevicesStep(vm: BudsViewModel, onRequestBluetooth: () -> Unit) {'''
+private fun DevicesStep(vm: BudsViewModel, onRequestBluetooth: () -> Unit) {
 
     val scheme = MaterialTheme.colorScheme
     val found by vm.found.collectAsState()

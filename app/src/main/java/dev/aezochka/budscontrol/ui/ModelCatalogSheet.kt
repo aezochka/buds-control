@@ -20,6 +20,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.outlined.Headphones
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -34,6 +36,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -72,7 +75,13 @@ fun ModelCatalogSheet(
             }
         },
     ) {
-        Column(Modifier.padding(horizontal = 20.dp).navigationBarsPadding()) {
+        // clipToBounds: список шторки не выходит за её края «полосками».
+        Column(
+            Modifier
+                .padding(horizontal = 20.dp)
+                .navigationBarsPadding()
+                .clipToBounds()
+        ) {
             Spacer(Modifier.height(10.dp))
             Text(tr("catalogTitle"), style = MaterialTheme.typography.headlineSmall, color = scheme.onSurface)
             Text(
@@ -171,21 +180,9 @@ private fun ModelRow(spec: ModelSpec, added: Boolean, onToggle: () -> Unit) {
                 )
             }
             Spacer(Modifier.fillMaxWidth(0.1f))
-            // Добавленную модель можно убрать тем же местом: раньше кнопка
-            // всегда добавляла, и удалить её из списка было нельзя.
-            Text(
-                if (added) tr("remove") else tr("add"),
-                style = MaterialTheme.typography.labelMedium,
-                color = if (added) scheme.error else scheme.primary,
-                modifier = Modifier
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(
-                        if (added) scheme.error.copy(alpha = 0.14f)
-                        else scheme.primary.copy(alpha = 0.14f)
-                    )
-                    .pressBounce { onToggle() }
-                    .padding(horizontal = 12.dp, vertical = 7.dp),
-            )
+            // Вместо текстовой кнопки — галочка: тап добавляет, повторный
+            // тап убирает. Состояние читается мгновенно без чтения текста.
+            AddCheck(added, size = 36, onClick = onToggle)
         }
 
         AnimatedVisibility(expanded) {

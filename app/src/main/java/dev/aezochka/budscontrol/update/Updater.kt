@@ -32,6 +32,8 @@ object Updater {
         val notes: String,
         val apkUrl: String,
         val sizeBytes: Long,
+        /** sha256 ассета из GitHub API — для проверки целостности файла. */
+        val digestHex: String? = null,
     )
 
     /** Возвращает релиз, если он новее установленного. */
@@ -57,6 +59,7 @@ object Updater {
                     notes = root.optString("body").take(600),
                     apkUrl = asset.optString("browser_download_url"),
                     sizeBytes = asset.optLong("size"),
+                    digestHex = asset.optString("digest").removePrefix("sha256:").takeIf { it.isNotBlank() },
                 )
                 if (name.contains("release", ignoreCase = true)) {
                     return@runCatching release
@@ -123,15 +126,33 @@ object Updater {
      * Уже скачанный APK этой версии, если он целый.
      *
      * Без этой проверки повторный тап начинал загрузку заново — выглядело
-     * как «качает приложение ещё раз».
+     * как «качает приложение ещё раз». Целость проверяем ДВАЖДЫ:
+     * по размеру и по sha256 из GitHub API: файл побитого кеша с совпавшим
+     * размером раньше считался готовым и убивал установку.
      */
     fun readyFile(context: Context, release: Release): File? {
         val target = File(context.cacheDir, "update_${release.version}.apk")
         if (!target.exists()) return null
         // Размер должен совпасть с релизом, иначе файл недокачан.
         if (release.sizeBytes > 0 && target.length() != release.sizeBytes) return null
+        // sha256, если API его дал: побитый/подменённый файл отбраковываем.
+        val digest = release.digestHex
+        if (digest != null && sha256(target) != digest) return null
         return target
     }
+
+    private fun sha256(file: File): String? = runCatching {
+        val md = java.security.MessageDigest.getInstance("SHA-256")
+        file.inputStream().use { input ->
+            val buffer = ByteArray(64 * 1024)
+            while (true) {
+                val read = input.read(buffer)
+                if (read <= 0) break
+                md.update(buffer, 0, read)
+            }
+        }
+        md.digest().joinToString("") { "%02x".format(it) }
+    }.getOrNull()
 
     /**
      * Удаляет скачанные APK от других версий.

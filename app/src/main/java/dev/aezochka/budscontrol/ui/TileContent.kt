@@ -1,6 +1,7 @@
 package dev.aezochka.budscontrol.ui
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
@@ -12,6 +13,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Bedtime
 import androidx.compose.material.icons.outlined.Inventory2
@@ -34,6 +36,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextAlign
@@ -66,18 +69,45 @@ fun TileContent(
             val fxOn by vm.fxReady.collectAsState()
             val tuned = eqGains.any { it != 0 }
             val presetLabel = when {
+                !fxOn -> tr("noLink")
                 eqGains.isEmpty() -> "—"
-                eqGains.take(3).average() > eqGains.drop(eqGains.size - 3).average() + 2 -> "Басс+"
-                eqGains.drop(eqGains.size - 3).average() > eqGains.take(3).average() + 2 -> "Чётк"
-                else -> "Балнс"
+                eqGains.take(3).average() > eqGains.drop(eqGains.size - 3).average() + 2 -> tr("eqPresetBass")
+                eqGains.drop(eqGains.size - 3).average() > eqGains.take(3).average() + 2 -> tr("eqPresetClear")
+                else -> tr("eqPresetBalanced")
             }
             StatTile(
                 icon = null,
                 label = tr("equalizerTitle"),
-                value = if (!fxOn) "—" else presetLabel,
+                value = presetLabel,
                 active = tuned,
                 onClick = { vm.tick(); onEq() },
                 topContent = null,
+                // Живые полосы кривой: плитка показывает реальную форму EQ,
+                // а не только текст пресета. Полосы анимируются пружиной
+                // при смене пресета — кривая «доезжает» до новой формы.
+                bottomContent = { primary, secondary ->
+                    val bars = eqCurve(eqGains)
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalAlignment = Alignment.Bottom,
+                    ) {
+                        bars.forEach { level ->
+                            val animated by animateFloatAsState(
+                                level, Motion.spatial(), label = "eqBar",
+                            )
+                            Box(
+                                Modifier
+                                    .weight(1f)
+                                    .height((38 * animated).dp)
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .background(
+                                        if (tuned) primary else secondary.copy(alpha = 0.4f)
+                                    ),
+                            )
+                        }
+                    }
+                },
             )
         }
 

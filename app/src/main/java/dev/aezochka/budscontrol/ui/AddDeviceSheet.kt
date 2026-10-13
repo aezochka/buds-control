@@ -12,13 +12,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.outlined.Headphones
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -30,12 +29,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.aezochka.budscontrol.BudsViewModel
@@ -64,7 +61,14 @@ fun AddDeviceSheet(
             }
         },
     ) {
-        Column(Modifier.padding(horizontal = 20.dp).navigationBarsPadding()) {
+        // clipToBounds: список внутри шторки раньше выходил за её границы
+        // «полосками» по бокам и перекрывал соседние элементы.
+        Column(
+            Modifier
+                .padding(horizontal = 20.dp)
+                .navigationBarsPadding()
+                .clipToBounds()
+        ) {
             Spacer(Modifier.height(10.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.fillMaxWidth(0.86f)) {
@@ -126,27 +130,44 @@ fun AddDeviceSheet(
                                     color = if (added) scheme.onPrimary.copy(alpha = 0.8f) else scheme.onSurfaceVariant,
                                 )
                             }
-                            // Добавленное можно снять тем же тапом — раньше
-                            // выбор был необратимым.
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(
-                                    if (added) tr("remove") else tr("add"),
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = if (added) scheme.onPrimary else scheme.primary,
-                                )
-                                if (added) {
-                                    Spacer(Modifier.width(6.dp))
-                                    Icon(
-                                        Icons.Outlined.Close, null,
-                                        tint = scheme.onPrimary, modifier = Modifier.size(16.dp),
-                                    )
-                                }
-                            }
+                            // Вместо текстовой кнопки — галочка: тап добавляет,
+                            // повторный тап убирает. Добавленное отмечено
+                            // галочкой в цвете акцента.
+                            AddCheck(added)
                         }
                     }
                 }
             }
             Spacer(Modifier.height(20.dp))
+        }
+    }
+}
+
+/** Круглая кнопка-галочка: добавлено / не добавлено. */
+@Composable
+fun AddCheck(added: Boolean, size: Int = 34, onClick: (() -> Unit)? = null) {
+    val scheme = MaterialTheme.colorScheme
+    val bg by animateColorAsState(
+        if (added) scheme.onPrimary else scheme.primary.copy(alpha = 0.14f),
+        Motion.effects(), label = "checkBg",
+    )
+    val tint by animateColorAsState(
+        if (added) scheme.primary else scheme.primary,
+        Motion.effects(), label = "checkTint",
+    )
+    Box(
+        Modifier
+            .size(size.dp)
+            .clip(CircleShape)
+            .background(bg)
+            .let { base -> if (onClick != null) base.pressBounce(scaleDown = 0.85f, onClick = onClick) else base },
+        contentAlignment = Alignment.Center,
+    ) {
+        if (added) {
+            Icon(
+                Icons.Filled.Check, null,
+                tint = tint, modifier = Modifier.size((size * 0.55).dp),
+            )
         }
     }
 }

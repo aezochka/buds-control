@@ -443,6 +443,16 @@ class BudsViewModel(app: Application) : AndroidViewModel(app) {
         store.saveSettings(settings.value.copy(hideNameOnScroll = on))
     }
 
+    /** Тема нижнего бара: пилюля или раздельные кнопки-эмодзи. */
+    fun setBarTheme(theme: String) = viewModelScope.launch {
+        store.saveSettings(settings.value.copy(barTheme = theme))
+    }
+
+    /** Плашка «вышло обновление» на главном экране. */
+    fun setUpdateBanner(on: Boolean) = viewModelScope.launch {
+        store.saveSettings(settings.value.copy(updateBanner = on))
+    }
+
     /**
      * Телефон лежит экраном вниз.
      *

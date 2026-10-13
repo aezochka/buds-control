@@ -346,7 +346,15 @@ object PhotoFinder {
 
         // Убираем светлую кайму: пиксели на границе с прозрачностью были
         // сглажены на белом фоне, из-за чего оставался заметный ореол.
+        // Теперь это полноценное вычищение края в три прохода:
+        //  1) альфа-эрозия: убираем ОДИН слой пограничных пикселей, чтобы
+        //     сглаженная на фоне кайма не оставалась вовсе;
+        //  2) на новых границах гасим альфу плавно (0..255 по близости
+        //     к цвету фона) — мягкий край вместо рваной ступеньки;
+        //  3) НЕ выедаем светлое внутри продукта: заливка шла только от
+        //     краёв, поэтому тёмные внутр. границы остаются нетронутыми.
         val cleaned = out.copyOf()
+        // Проход 1: эрозия границы.
         for (y in 1 until h - 1) {
             for (x in 1 until w - 1) {
                 val idx = y * w + x
@@ -354,13 +362,24 @@ object PhotoFinder {
                 val nearTransparent =
                     (out[idx - 1] ushr 24) < 16 || (out[idx + 1] ushr 24) < 16 ||
                         (out[idx - w] ushr 24) < 16 || (out[idx + w] ushr 24) < 16
-                if (!nearTransparent) continue
-                // Край, похожий на фон, гасим до полупрозрачного.
-                if (diff(out[idx], bgR, bgG, bgB) < TOLERANCE * 2) {
+                if (nearTransparent && diff(out[idx], bgR, bgG, bgB) < TOLERANCE * 2) {
                     cleaned[idx] = out[idx] and 0x00FFFFFF
-                } else {
-                    cleaned[idx] = (out[idx] and 0x00FFFFFF) or (0xB0 shl 24)
                 }
+            }
+        }
+        // Проход 2: мягкий край — альфа по расстоянию до цвета фона.
+        // Чем ближе к фону, тем прозрачнее: 2*TOLERANCE → 0, 3.2*TOLERANCE → 255.
+        for (y in 1 until h - 1) {
+            for (x in 1 until w - 1) {
+                val idx = y * w + x
+                if ((cleaned[idx] ushr 24) < 16) continue
+                val nearTransparent =
+                    (cleaned[idx - 1] ushr 24) < 16 || (cleaned[idx + 1] ushr 24) < 16 ||
+                        (cleaned[idx - w] ushr 24) < 16 || (cleaned[idx + w] ushr 24) < 16
+                if (!nearTransparent) continue
+                val d = diff(cleaned[idx], bgR, bgG, bgB)
+                val alpha = if (d < TOLERANCE * 2) 0 else ((d - 2 * TOLERANCE) * 255 / (TOLERANCE * 12 / 10 + 1)).coerceIn(0, 255)
+                cleaned[idx] = (cleaned[idx] and 0x00FFFFFF) or (alpha shl 24)
             }
         }
         return Bitmap.createBitmap(cleaned, w, h, Bitmap.Config.ARGB_8888)

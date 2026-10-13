@@ -51,6 +51,14 @@ data class UserSettings(
     val chipScale: Float = 1f,
     /** Индикаторы L/R поменяны местами (фото с развёрнутой стороны). */
     val chipSwapped: Boolean = false,
+    /**
+     * Тема нижнего бара.
+     *  "classic" — пилюля с подписями (как всегда);
+     *  "split"   — раздельные кнопки-эмодзи, наушники в центре.
+     */
+    val barTheme: String = "classic",
+    /** Показывать плашку «вышло обновление» поверх главного экрана. */
+    val updateBanner: Boolean = true,
 )
 
 val defaultTileOrder = listOf(

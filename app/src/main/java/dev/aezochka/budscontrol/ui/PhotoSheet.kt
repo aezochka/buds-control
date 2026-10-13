@@ -54,6 +54,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
@@ -103,20 +104,16 @@ fun PhotoSheet(
             }
         },
     ) {
-        Column(Modifier.padding(horizontal = 20.dp).navigationBarsPadding()) {
-            Spacer(Modifier.height(10.dp))
+        // clipToBounds: контент шторки раньше выходил за её края «полосками»
+        // и перекрывал элементы под ней.
+        Column(
+            Modifier
+                .padding(horizontal = 20.dp)
+                .navigationBarsPadding()
+                .clipToBounds()
+        ) {
+            Spacer(Modifier.height(4.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.fillMaxWidth(0.72f)) {
-                    Text(tr("picture"), style = MaterialTheme.typography.headlineSmall, color = scheme.onSurface)
-                    Text(
-                        when {
-                            sizing -> tr("sizeHint")
-                            editing -> tr("dragChips")
-                            else -> tr("pictureHint")
-                        },
-                        style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant,
-                    )
-                }
                 Spacer(Modifier.weight(1f))
                 if (editing) {
                     Box(

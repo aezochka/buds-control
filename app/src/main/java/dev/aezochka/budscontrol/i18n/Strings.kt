@@ -166,6 +166,17 @@ class Strings(private val code: String) {
             "clickSoundA" to "Клик 1", "clickSoundB" to "Клик 2",
             "clickSoundC" to "Клик 3",
             "clickSoundSystem" to "Системный", "clickSoundOff" to "Без звука",
+            "eqPresetBass" to "Басы+",
+            "eqPresetClear" to "Чёткость",
+            "eqPresetBalanced" to "Баланс",
+            "barTheme" to "Тема нижнего бара",
+            "barThemeClassic" to "Пилюля: подписи и общий фон",
+            "barThemeSplit" to "Раздельные кнопки: эмодзи, наушники в центре",
+            "updateBanner" to "Плашка «вышло обновление»",
+            "updateBannerHint" to "Появляется на главном экране",
+            "updateBannerTitle" to "Вышло обновление",
+            "updateBannerAction" to "Скачать и установить",
+            "updateBannerLater" to "Позже",
         )
 
         private val EN = mapOf(
@@ -264,6 +275,17 @@ class Strings(private val code: String) {
             "clickSoundA" to "Click 1", "clickSoundB" to "Click 2",
             "clickSoundC" to "Click 3",
             "clickSoundSystem" to "System", "clickSoundOff" to "No sound",
+            "eqPresetBass" to "Bass+",
+            "eqPresetClear" to "Clear",
+            "eqPresetBalanced" to "Balanced",
+            "barTheme" to "Bottom bar theme",
+            "barThemeClassic" to "Pill: labels on shared background",
+            "barThemeSplit" to "Split buttons: emoji, buds in the center",
+            "updateBanner" to "“Update available” banner",
+            "updateBannerHint" to "Shows on the home screen",
+            "updateBannerTitle" to "Update available",
+            "updateBannerAction" to "Download and install",
+            "updateBannerLater" to "Later",
         )
 
         // Остальные языки: переведено главное, остальное падает на английский.
@@ -311,6 +333,17 @@ class Strings(private val code: String) {
             "clickSoundA" to "Клік 1", "clickSoundB" to "Клік 2",
             "clickSoundC" to "Клік 3",
             "clickSoundSystem" to "Системний", "clickSoundOff" to "Без звуку",
+            "eqPresetBass" to "Баси+",
+            "eqPresetClear" to "Чіткість",
+            "eqPresetBalanced" to "Баланс",
+            "barTheme" to "Тема нижнього бару",
+            "barThemeClassic" to "Пілюля: підписи на спільному фоні",
+            "barThemeSplit" to "Окремі кнопки: емодзі, навушники в центрі",
+            "updateBanner" to "Плашка «вийшло оновлення»",
+            "updateBannerHint" to "З'являється на головному екрані",
+            "updateBannerTitle" to "Вийшло оновлення",
+            "updateBannerAction" to "Завантажити і встановити",
+            "updateBannerLater" to "Пізніше",
         )
 
         private val DE = mapOf(
@@ -357,6 +390,17 @@ class Strings(private val code: String) {
             "clickSoundA" to "Klick 1", "clickSoundB" to "Klick 2",
             "clickSoundC" to "Klick 3",
             "clickSoundSystem" to "System", "clickSoundOff" to "Kein Ton",
+            "eqPresetBass" to "Bass+",
+            "eqPresetClear" to "Klarheit",
+            "eqPresetBalanced" to "Ausgeglichen",
+            "barTheme" to "Thema der Leiste",
+            "barThemeClassic" to "Pille: Beschriftung, gemeinsamer Hintergrund",
+            "barThemeSplit" to "Getrennte Buttons: Emojis, Kopfhörer in der Mitte",
+            "updateBanner" to "Banner „Update verfügbar“",
+            "updateBannerHint" to "Erscheint auf dem Startbildschirm",
+            "updateBannerTitle" to "Update verfügbar",
+            "updateBannerAction" to "Laden und installieren",
+            "updateBannerLater" to "Später",
         )
 
         private val ES = mapOf(
@@ -403,6 +447,17 @@ class Strings(private val code: String) {
             "clickSoundA" to "Clic 1", "clickSoundB" to "Clic 2",
             "clickSoundC" to "Clic 3",
             "clickSoundSystem" to "Sistema", "clickSoundOff" to "Sin sonido",
+            "eqPresetBass" to "Graves+",
+            "eqPresetClear" to "Claridad",
+            "eqPresetBalanced" to "Equilibrado",
+            "barTheme" to "Tema de la barra",
+            "barThemeClassic" to "Píldora: etiquetas y fondo común",
+            "barThemeSplit" to "Botones separados: emojis, auriculares al centro",
+            "updateBanner" to "Aviso «hay actualización»",
+            "updateBannerHint" to "Aparece en la pantalla principal",
+            "updateBannerTitle" to "Actualización disponible",
+            "updateBannerAction" to "Descargar e instalar",
+            "updateBannerLater" to "Más tarde",
         )
 
         private val PL = mapOf(
@@ -449,6 +504,17 @@ class Strings(private val code: String) {
             "clickSoundA" to "Klik 1", "clickSoundB" to "Klik 2",
             "clickSoundC" to "Klik 3",
             "clickSoundSystem" to "Systemowy", "clickSoundOff" to "Bez dźwięku",
+            "eqPresetBass" to "Basy+",
+            "eqPresetClear" to "Klarowność",
+            "eqPresetBalanced" to "Balans",
+            "barTheme" to "Motyw dolnego paska",
+            "barThemeClassic" to "Pigułka: podpisy na wspólnym tle",
+            "barThemeSplit" to "Osobne przyciski: emoji, słuchawki w centrum",
+            "updateBanner" to "Plakietka „dostępna aktualizacja”",
+            "updateBannerHint" to "Pokazuje się na ekranie głównym",
+            "updateBannerTitle" to "Dostępna aktualizacja",
+            "updateBannerAction" to "Pobierz i zainstaluj",
+            "updateBannerLater" to "Później",
         )
 
         private val TR = mapOf(
@@ -495,6 +561,17 @@ class Strings(private val code: String) {
             "clickSoundA" to "Tık 1", "clickSoundB" to "Tık 2",
             "clickSoundC" to "Tık 3",
             "clickSoundSystem" to "Sistem", "clickSoundOff" to "Ses yok",
+            "eqPresetBass" to "Bas+",
+            "eqPresetClear" to "Berraklık",
+            "eqPresetBalanced" to "Dengeli",
+            "barTheme" to "Alt çubuk teması",
+            "barThemeClassic" to "Kapsül: etiketler, ortak zemin",
+            "barThemeSplit" to "Ayrı düğmeler: emoji, ortada kulaklık",
+            "updateBanner" to "„Güncelleme var” bandı",
+            "updateBannerHint" to "Ana ekranda görünür",
+            "updateBannerTitle" to "Güncelleme var",
+            "updateBannerAction" to "İndir ve kur",
+            "updateBannerLater" to "Sonra",
         )
 
         private val ZH = mapOf(
@@ -541,6 +618,17 @@ class Strings(private val code: String) {
             "clickSoundA" to "点击音 1", "clickSoundB" to "点击音 2",
             "clickSoundC" to "点击音 3",
             "clickSoundSystem" to "系统", "clickSoundOff" to "无声音",
+            "eqPresetBass" to "低音+",
+            "eqPresetClear" to "清晰",
+            "eqPresetBalanced" to "平衡",
+            "barTheme" to "底部栏主题",
+            "barThemeClassic" to "胶囊：共享背景加文字",
+            "barThemeSplit" to "独立按钮：表情符号，耳机居中",
+            "updateBanner" to "“有更新”横幅",
+            "updateBannerHint" to "显示在主屏幕",
+            "updateBannerTitle" to "有新版本",
+            "updateBannerAction" to "下载并安装",
+            "updateBannerLater" to "稍后",
         )
     }
 }

@@ -22,8 +22,17 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.outlined.Block
 import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.Hearing
+import androidx.compose.material.icons.outlined.Mic
+import androidx.compose.material.icons.outlined.NoiseAware
+import androidx.compose.material.icons.outlined.PlayArrow
+import androidx.compose.material.icons.outlined.SkipNext
+import androidx.compose.material.icons.outlined.SkipPrevious
+import androidx.compose.material.icons.outlined.SportsEsports
+import androidx.compose.material.icons.outlined.VolumeDown
+import androidx.compose.material.icons.outlined.VolumeUp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -37,6 +46,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.aezochka.budscontrol.BudsViewModel
 import dev.aezochka.budscontrol.i18n.tr
@@ -168,31 +178,99 @@ private fun GestureRow(
             enter = expandVertically(Motion.spatial()) + fadeIn(Motion.effects()),
             exit = shrinkVertically(Motion.spatial()) + fadeOut(Motion.effects()),
         ) {
-            Column(Modifier.padding(start = 14.dp, end = 14.dp, bottom = 14.dp)) {
-                pickableActions.forEach { action ->
-                    val selected = action == current
+            // Действия — компактные чипы с иконками вместо текстовых строк:
+            // влезает сетка 2 в ряд, выбирается одним тапом, выбранное
+            // подсвечено цветом акцента с галочкой.
+            Column(Modifier.padding(start = 10.dp, end = 10.dp, bottom = 14.dp)) {
+                pickableActions.chunked(2).forEach { rowActions ->
                     Row(
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 3.dp)
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(if (selected) scheme.primary else scheme.surfaceContainerHigh)
-                            .pressBounce { onPick(action); expanded = false }
-                            .padding(horizontal = 14.dp, vertical = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
+                        Modifier.fillMaxWidth().padding(vertical = 3.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        Text(
-                            actionLabel(action, strings),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = if (selected) scheme.onPrimary else scheme.onSurface,
-                            modifier = Modifier.fillMaxWidth(0.9f),
-                        )
-                        if (selected) Icon(Icons.Filled.Check, null, tint = scheme.onPrimary, modifier = Modifier.size(18.dp))
+                        rowActions.forEach { action ->
+                            val selected = action == current
+                            ActionChip(
+                                action = action,
+                                selected = selected,
+                                strings = strings,
+                                modifier = Modifier.weight(1f),
+                                onPick = {
+                                    onPick(action)
+                                    expanded = false
+                                },
+                            )
+                        }
+                        if (rowActions.size == 1) Spacer(Modifier.weight(1f))
                     }
                 }
             }
         }
     }
+}
+
+/**
+ * Чип действия жеста: иконка + подпись. Пружинная реакция на нажатие,
+ * выбранное — заливка акцентом с галочкой.
+ */
+@Composable
+private fun ActionChip(
+    action: TouchAction,
+    selected: Boolean,
+    strings: dev.aezochka.budscontrol.i18n.Strings,
+    modifier: Modifier = Modifier,
+    onPick: () -> Unit,
+) {
+    val scheme = MaterialTheme.colorScheme
+    val bg by animateColorAsState(
+        if (selected) scheme.primary else scheme.surfaceContainerHigh,
+        Motion.effects(), label = "chipBg",
+    )
+    val tint by animateColorAsState(
+        if (selected) scheme.onPrimary else scheme.onSurfaceVariant,
+        Motion.effects(), label = "chipTint",
+    )
+    Row(
+        modifier
+            .clip(RoundedCornerShape(16.dp))
+            .background(bg)
+            .pressBounce(scaleDown = 0.93f) { onPick() }
+            .padding(horizontal = 12.dp, vertical = 11.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Icon(
+            actionIcon(action), null,
+            tint = tint,
+            modifier = Modifier.size(18.dp),
+        )
+        Text(
+            actionLabel(action, strings),
+            style = MaterialTheme.typography.bodyMedium,
+            color = tint,
+            maxLines = 1, overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
+        )
+        if (selected) {
+            Icon(
+                Icons.Filled.Check, null,
+                tint = scheme.onPrimary,
+                modifier = Modifier.size(16.dp),
+            )
+        }
+    }
+}
+
+/** Иконка действия — как в настройках realme: визуальный якорь. */
+private fun actionIcon(action: TouchAction) = when (action) {
+    TouchAction.PLAY_PAUSE -> Icons.Outlined.PlayArrow
+    TouchAction.NEXT -> Icons.Outlined.SkipNext
+    TouchAction.PREVIOUS -> Icons.Outlined.SkipPrevious
+    TouchAction.VOLUME_UP -> Icons.Outlined.VolumeUp
+    TouchAction.VOLUME_DOWN -> Icons.Outlined.VolumeDown
+    TouchAction.VOICE_ASSISTANT, TouchAction.VOICE_ASSISTANT_REALME -> Icons.Outlined.Mic
+    TouchAction.GAME_MODE -> Icons.Outlined.SportsEsports
+    TouchAction.NOISE_CONTROL -> Icons.Outlined.NoiseAware
+    else -> Icons.Outlined.Block
 }
 
 private val pickableActions = listOf(

@@ -202,19 +202,37 @@ fun SettingsTab(vm: BudsViewModel) {
                     expanded = openSection == "app",
                     onToggle = { vm.tick(); openSection = if (openSection == "app") null else "app" },
                 ) {
-                    UpdateRow(vm, shape = groupShape(1, 5))
+                    UpdateRow(vm, shape = groupShape(1, 6))
                     CrashLogRow()
                     SettingsRow(
                         Icons.Outlined.Language, tr("language"),
                         tr("langCount"),
-                        shape = groupShape(1, 4),
+                        shape = groupShape(1, 5),
                         onClick = { showLang = true },
                     )
                     SettingsRow(
                         Icons.Outlined.Palette, "Тема",
                         "Акцент: ${dev.aezochka.budscontrol.data.Accent.from(settings.accent).title}",
-                        shape = groupShape(2, 4),
+                        shape = groupShape(2, 5),
                         onClick = { showTheme = true },
+                    )
+                    // Тема нижнего бара: пилюля или раздельные кнопки-эмодзи.
+                    SettingsRow(
+                        Icons.Outlined.DashboardCustomize, tr("barTheme"),
+                        if (settings.barTheme == "split") tr("barThemeSplit") else tr("barThemeClassic"),
+                        shape = groupShape(3, 5),
+                        onClick = {
+                            vm.setBarTheme(if (settings.barTheme == "split") "classic" else "split")
+                        },
+                    )
+                    // Плашка «вышло обновление» на главном экране.
+                    SettingsToggle(
+                        icon = Icons.Outlined.Download,
+                        title = tr("updateBanner"),
+                        subtitle = tr("updateBannerHint"),
+                        checked = settings.updateBanner,
+                        shape = groupShape(4, 5),
+                        onToggle = { vm.setUpdateBanner(it) },
                     )
                     AuthorRow(shape = groupShape(4, 5))
                 }

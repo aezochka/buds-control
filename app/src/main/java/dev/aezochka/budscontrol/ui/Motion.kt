@@ -32,6 +32,10 @@ object Motion {
 
     fun <T> slow(): FiniteAnimationSpec<T> =
         spring(dampingRatio = 0.75f, stiffness = Spring.StiffnessVeryLow)
+
+    /** «Пружина-мячик»: заметный перелёт для приколюх — активации, смены. */
+    fun <T> bouncy(): FiniteAnimationSpec<T> =
+        spring(dampingRatio = 0.45f, stiffness = Spring.StiffnessMedium)
 }
 
 /**

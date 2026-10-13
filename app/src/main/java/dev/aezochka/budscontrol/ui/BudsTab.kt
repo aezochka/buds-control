@@ -12,6 +12,8 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
@@ -41,10 +43,12 @@ import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Bedtime
 import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.DashboardCustomize
 import androidx.compose.material.icons.outlined.BluetoothConnected
 import androidx.compose.material.icons.outlined.DashboardCustomize
 import androidx.compose.material.icons.outlined.Devices
+import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Headphones
 import androidx.compose.material.icons.outlined.Hearing
 import androidx.compose.material.icons.outlined.Inventory2
@@ -93,6 +97,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import dev.aezochka.budscontrol.BudsViewModel
 import dev.aezochka.budscontrol.i18n.tr
+import kotlin.math.roundToInt
 
 /** Главная вкладка: фото продукта, живой заряд, bento-плитки. */
 @Composable
@@ -139,6 +144,10 @@ fun BudsTab(vm: BudsViewModel, onDragActive: (Boolean) -> Unit = {}) {
     LaunchedEffect(selected?.address) {
         if (sheet == "photo" && selected == null) sheet = null
     }
+
+    // Плашка «вышло обновление»: проверка идёт один раз на входе в
+    // приложение, плашка появляется поверх контента, не толкая его.
+    val updateState by vm.updateState.collectAsState()
 
     when (sheet) {
         "add" -> AddDeviceSheet(vm = vm, onDismiss = closeSheet)
@@ -202,6 +211,9 @@ fun BudsTab(vm: BudsViewModel, onDragActive: (Boolean) -> Unit = {}) {
     // Отступ под статус-бар — ОДИН, на корне экрана. Раньше он был и на
     // шторке, и отдельным Spacer'ом: при скрытии бара высота менялась дважды
     // и фото прыгало.
+    // Плашка обновления живёт ПОВЕРХ контента в отдельном Box, поэтому
+    // корень — Box, а Column стал его содержимым.
+    Box(Modifier.fillMaxWidth()) {
     Column(Modifier.fillMaxWidth().statusBarsPadding().nestedScroll(scrollConnection)) {
         // Верхний бар анимируется тем же движением, что и нижний: раньше он
         // использовал пружину с перелётом и дёргался на скрытии.
@@ -273,6 +285,108 @@ fun BudsTab(vm: BudsViewModel, onDragActive: (Boolean) -> Unit = {}) {
                 )
             }
             item { BottomSpacer() }
+        }
+    }
+
+        // Плашка «вышло обновление»: влетает сверху с пружиной, не мешает
+        // контенту (перекрывает только визуально, поверх), закрывается
+        // крестиком до конца сессии.
+        var bannerDismissed by remember { mutableStateOf(false) }
+        LaunchedEffect(Unit) { vm.checkUpdateIfIdle() }
+        val showBanner = budsSettings.updateBanner && !bannerDismissed &&
+            updateState.release != null && !updateState.downloading
+        androidx.compose.animation.AnimatedVisibility(
+            visible = showBanner,
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .statusBarsPadding()
+                .padding(top = 8.dp),
+            enter = androidx.compose.animation.slideInVertically(
+                initialOffsetY = { -it }, animationSpec = Motion.spatial(),
+            ) + fadeIn(Motion.effects()),
+            exit = androidx.compose.animation.slideOutVertically(
+                targetOffsetY = { -it }, animationSpec = Motion.spatialFast(),
+            ) + fadeOut(Motion.effects()),
+        ) {
+            UpdateBanner(
+                version = updateState.release?.version ?: "",
+                progress = updateState.progress,
+                downloading = updateState.downloading,
+                onInstall = { vm.downloadAndInstall() },
+                onDismiss = { bannerDismissed = true },
+            )
+        }
+    }
+}
+
+/**
+ * Плашка «вышло обновление» на главном экране. По тапу — скачать и
+ * поставить (докачка продолжается с того же места, если связь рвалась),
+ * крестик прячет до следующего запуска.
+ */
+@Composable
+private fun UpdateBanner(
+    version: String,
+    progress: Float,
+    downloading: Boolean,
+    onInstall: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val scheme = MaterialTheme.colorScheme
+    Row(
+        Modifier
+            .padding(horizontal = 16.dp)
+            .clip(RoundedCornerShape(20.dp))
+            .background(scheme.surfaceContainerHigh)
+            .pressBounce(scaleDown = 0.97f, onClick = onInstall)
+            .padding(start = 15.dp, top = 12.dp, bottom = 12.dp, end = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(11.dp),
+    ) {
+        Box(
+            Modifier
+                .size(38.dp)
+                .clip(CircleShape)
+                .background(scheme.primary.copy(alpha = 0.18f)),
+            contentAlignment = Alignment.Center,
+        ) {
+            if (downloading) {
+                CircularProgressIndicator(
+                    Modifier.size(18.dp), strokeWidth = 2.4.dp, color = scheme.primary,
+                )
+            } else {
+                Icon(
+                    Icons.Outlined.Download, null,
+                    tint = scheme.primary, modifier = Modifier.size(19.dp),
+                )
+            }
+        }
+        Column(Modifier.weight(1f)) {
+            Text(
+                "${tr("updateBannerTitle")} · $version",
+                style = MaterialTheme.typography.bodyMedium,
+                color = scheme.onSurface,
+                maxLines = 1,
+            )
+            Text(
+                if (downloading) "${(progress * 100).roundToInt()}%"
+                else tr("updateBannerAction"),
+                style = MaterialTheme.typography.bodySmall,
+                color = scheme.onSurfaceVariant,
+                maxLines = 1,
+            )
+        }
+        Box(
+            Modifier
+                .size(34.dp)
+                .clip(CircleShape)
+                .pressBounce(scaleDown = 0.85f, onClick = onDismiss),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                Icons.Outlined.Close, tr("reset"),
+                tint = scheme.onSurfaceVariant, modifier = Modifier.size(16.dp),
+            )
         }
     }
 }
@@ -719,10 +833,10 @@ fun ActionSquare(
 @Composable
 fun MorphIcon(active: Boolean, icon: androidx.compose.ui.graphics.vector.ImageVector, tint: Color) {
     val scale by animateFloatAsState(
-        if (active) 1.14f else 1f, Motion.spatial(), label = "iconScale",
+        if (active) 1.14f else 1f, Motion.bouncy(), label = "iconScale",
     )
     val rotation by animateFloatAsState(
-        if (active) -8f else 0f, Motion.spatial(), label = "iconRot",
+        if (active) -8f else 0f, Motion.bouncy(), label = "iconRot",
     )
     Icon(
         icon, null, tint = tint,

@@ -123,6 +123,24 @@ fun ProfileRow(
     val ordered = order.mapNotNull { id -> profiles.firstOrNull { it.id == id } }
 
     Box {
+        // ПЕРЕХВАТЧИК «тап вне» — ПЕРВЫМ ребёнком: он ПОД чипами и меню,
+        // поэтому не крадёт их клики (раньше был последним — рисовался
+        // поверх меню, и пункты не нажимались).
+        if (menuId != null || renamingId != null) {
+            Box(
+                Modifier
+                    .matchParentSize()
+                    .graphicsLayer { alpha = 0f }
+                    .pointerInput(menuId, renamingId) {
+                        awaitPointerEventScope {
+                            awaitFirstDown(requireUnconsumed = false)
+                            menuId = null
+                            renamingId = null
+                        }
+                    },
+            )
+        }
+
         Row(verticalAlignment = Alignment.CenterVertically) {
             Row(
                 Modifier
@@ -133,6 +151,7 @@ fun ProfileRow(
                 ordered.forEachIndexed { index, profile ->
                     val active = profile.isSelected
                     val dragging = dragId == profile.id
+                    val menuOpen = menuId == profile.id || renamingId == profile.id
                     val chipStep = stepFor(profile.id)
 
                     val targetShift = when {
@@ -169,10 +188,15 @@ fun ProfileRow(
                         Motion.effects(), label = "chipBg",
                     )
 
-                    Box {
+                    // Обёртка чипа: zIndex ПОДНИМАЕТСЯ, когда открыто меню или
+                    // поле переименования, или идёт перенос — иначе соседние
+                    // чипы (они позже в Row) рисуются ПОВЕРХ меню и съедают
+                    // его клики. Это и было «меню на заднем фоне».
+                    Box(
+                        Modifier.zIndex(if (dragging || menuOpen) 10f else 0f),
+                    ) {
                         Row(
                             Modifier
-                                .zIndex(if (dragging) 1f else 0f)
                                 .onSizeChanged { size -> chipWidths[profile.id] = size.width.toFloat() }
                                 .graphicsLayer {
                                     scaleX = lift
@@ -198,6 +222,8 @@ fun ProfileRow(
                                             // Двигали ли палец после long press.
                                             var movedAfterHold = false
                                             var menuShown = false
+                                            // Меню уже открылось по паузе зажатия (палец ещё на экране).
+                                            var menuShownEarly = false
 
                                             var settleFrom: Float? = null
                                             val hold = gestureScope.launch {
@@ -211,9 +237,17 @@ fun ProfileRow(
                                                 justReordered = false
                                                 onDragActive(true)
                                                 view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
-                                                // Пока НЕ двигаем: чип «подхватили», но перенос
-                                                // начнётся с первого движения (touch slop).
                                                 dragId = profile.id
+                                                // Зажали и НЕ двигаемся ещё немного — меню
+                                                // появляется сразу, палец можно не отпускать.
+                                                delay(260)
+                                                if (dragId == profile.id && dragOffset == 0f) {
+                                                    menuShownEarly = true
+                                                    dragId = null
+                                                    menuId = profile.id
+                                                    onDragActive(false)
+                                                    view.performHapticFeedback(HapticFeedbackConstants.CONTEXT_CLICK)
+                                                }
                                             }
 
                                             var finished = false
@@ -237,11 +271,20 @@ fun ProfileRow(
                                                 if (longPressed) {
                                                     if (change.pressed) {
                                                         if (!movedAfterHold && abs(change.position.x - start.x) > touchSlop) {
-                                                            // Первое движение после удержания —
-                                                            // включаем перенос (меню уже не покажем).
                                                             movedAfterHold = true
+                                                            // Двинули ПОСЛЕ того, как меню успело открыться —
+                                                            // закрываем его и возобновляем перенос прямо
+                                                            // из-под пальца.
+                                                            if (menuShownEarly || menuId == profile.id) {
+                                                                menuShownEarly = false
+                                                                menuId = null
+                                                                dragId = profile.id
+                                                                onDragActive(true)
+                                                                startIndex = order.indexOf(profile.id).coerceAtLeast(0)
+                                                                dragOffset = 0f
+                                                            }
                                                         }
-                                                        if (movedAfterHold) {
+                                                        if (movedAfterHold && dragId == profile.id) {
                                                             dragOffset += change.position.x - change.previousPosition.x
                                                             val moved = (dragOffset / chipStep).roundToInt()
                                                             val limited = moved.coerceIn(
@@ -254,8 +297,10 @@ fun ProfileRow(
                                                     } else {
                                                         // Отпустили.
                                                         if (!movedAfterHold) {
-                                                            // Удержали, НЕ двигали — это меню.
-                                                            menuShown = true
+                                                            // Отпустили, не двигая: меню уже открыто
+                                                            // по паузе зажатия — оставляем; если нет
+                                                            // (отпустили раньше) — открываем.
+                                                            if (!menuShownEarly) menuShown = true
                                                         }
                                                         if (movedAfterHold) {
                                                             val from = order.indexOf(profile.id)
@@ -298,23 +343,27 @@ fun ProfileRow(
                                                     onDragActive(false)
                                                     val startFrom = settleFrom
                                                         ?: if (movedAfterHold) dragOffset else 0f
-                                                    // Доезд ОДНОЙ пружиной от точки, где палец
-                                                    // отпустил чип: snapTo ставит старт мгновенно
-                                                    // (это и есть позиция пальца — скачка нет,
-                                                    // чип УЖЕ там), дальше только пружина до слота.
-                                                    gestureScope.launch {
-                                                        chipShift.snapTo(startFrom)
-                                                        chipShift.animateTo(
-                                                            0f,
-                                                            spring(
-                                                                dampingRatio = 0.8f,
-                                                                stiffness = Spring.StiffnessMedium,
-                                                            ),
-                                                        )
+                                                    if (startFrom != 0f) {
+                                                        // Доезд ОДНОЙ пружиной от точки, где палец
+                                                        // отпустил чип: snapTo ставит старт мгновенно
+                                                        // (это и есть позиция пальца — скачка нет,
+                                                        // чип УЖЕ там), дальше только пружина до слота.
+                                                        gestureScope.launch {
+                                                            chipShift.snapTo(startFrom)
+                                                            chipShift.animateTo(
+                                                                0f,
+                                                                spring(
+                                                                    dampingRatio = 0.8f,
+                                                                    stiffness = Spring.StiffnessMedium,
+                                                                ),
+                                                            )
+                                                        }
                                                     }
                                                 }
                                                 dragOffset = 0f
                                             }
+                                            // Чужое меню закрывается касанием любого чипа.
+                                            if (menuId != null && menuId != profile.id) menuId = null
                                         }
                                     }
                                 }
@@ -340,9 +389,8 @@ fun ProfileRow(
                         androidx.compose.animation.AnimatedVisibility(
                             visible = menuId == profile.id,
                             modifier = Modifier
-                                .zIndex(2f)
                                 .align(Alignment.TopStart)
-                                .graphicsLayer { translationY = 52.dp.toPx() },
+                                .graphicsLayer { translationY = 50.dp.toPx() },
                             enter = androidx.compose.animation.expandVertically(Motion.spatial()) +
                                 androidx.compose.animation.fadeIn(Motion.effects()),
                             exit = androidx.compose.animation.shrinkVertically(Motion.spatialFast()) +
@@ -351,22 +399,21 @@ fun ProfileRow(
                             ChipMenu(
                                 onRename = { menuId = null; renamingId = profile.id },
                                 onDelete = { menuId = null; onDelete(profile.id) },
-                                onDismiss = { menuId = null },
                             )
                         }
 
                         // Переименование: инлайн-поле прямо в чипе.
                         if (renamingId == profile.id) {
                             var text by remember(profile.id) { mutableStateOf(profile.displayName) }
-                            Box(
+                            Row(
                                 Modifier
-                                    .zIndex(3f)
-                                    .graphicsLayer { translationY = 52.dp.toPx() }
+                                    .graphicsLayer { translationY = 50.dp.toPx() }
                                     .clip(RoundedCornerShape(18.dp))
                                     .background(scheme.surfaceContainerHighest)
                                     .padding(horizontal = 12.dp, vertical = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
                             ) {
-                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                     BasicTextField(
                                         value = text,
                                         onValueChange = { if (it.length <= 24) text = it },
@@ -387,7 +434,6 @@ fun ProfileRow(
                                                 if (text.isNotBlank()) onRename(profile.id, text.trim())
                                             },
                                     )
-                                }
                             }
                         }
                     }
@@ -405,20 +451,6 @@ fun ProfileRow(
                 Icon(Icons.Outlined.Add, tr("addBuds"), tint = scheme.primary, modifier = Modifier.size(21.dp))
             }
         }
-
-        // Закрываем меню при тапе вне — фон-перехватчик внутри корневого Box.
-        if (menuId != null || renamingId != null) {
-            Box(
-                Modifier
-                    .matchParentSize()
-                    .graphicsLayer { alpha = 0f }
-                    .pointerInput(Unit) {
-                        awaitPointerEventScope {
-                            awaitFirstDown(requireUnconsumed = false)
-                        }
-                    },
-            )
-        }
     }
 }
 
@@ -426,7 +458,6 @@ fun ProfileRow(
 private fun ChipMenu(
     onRename: () -> Unit,
     onDelete: () -> Unit,
-    onDismiss: () -> Unit,
 ) {
     val scheme = MaterialTheme.colorScheme
     androidx.compose.foundation.layout.Column(

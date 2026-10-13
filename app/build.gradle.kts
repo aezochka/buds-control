@@ -37,7 +37,7 @@ android {
         // CI передаёт номер через -PversionCode (1000 + run_number),
         // локальная сборка берёт значение отсюда.
         versionCode = (project.findProperty("versionCode") as String?)?.toInt() ?: 36
-        versionName = (project.findProperty("versionName") as String?) ?: "8.0"
+        versionName = (project.findProperty("versionName") as String?) ?: "8.1"
     }
 
     signingConfigs {

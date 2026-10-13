@@ -43,18 +43,27 @@ object Updater {
             if (tag.isBlank() || !isNewer(tag, currentVersion)) return@runCatching null
 
             val assets = root.optJSONArray("assets") ?: return@runCatching null
+            // Сначала ищем release-APK: в списке ассетов первым стоит debug
+            // (20 МБ, debug-подпись Android Debug) — его установка поверх
+            // релизной версии закончится «приложение не установлено».
+            // Если release-актива нет (старые релизы), возьмём любой apk.
+            var fallback: Release? = null
             for (i in 0 until assets.length()) {
                 val asset = assets.optJSONObject(i) ?: continue
                 val name = asset.optString("name")
                 if (!name.endsWith(".apk")) continue
-                return@runCatching Release(
+                val release = Release(
                     version = tag,
                     notes = root.optString("body").take(600),
                     apkUrl = asset.optString("browser_download_url"),
                     sizeBytes = asset.optLong("size"),
                 )
+                if (name.contains("release", ignoreCase = true)) {
+                    return@runCatching release
+                }
+                if (fallback == null) fallback = release
             }
-            null
+            fallback
         }.getOrElse {
             Log.i(TAG, "Проверка обновления не удалась: ${it.message}")
             null

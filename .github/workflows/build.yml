@@ -130,10 +130,14 @@ jobs:
           https://github.com/aezochka/buds-control/commits/$TAG
           NOTES
           fi
+          # В релиз кладём ТОЛЬКО release-APK. Встроенный апдейтер старых
+          # версий берёт первый .apk из списка ассетов: если первым лежит
+          # debug (подписан ключом Android Debug), установка поверх релиза
+          # падает с «приложение не установлено». Debug остаётся в артефактах.
           if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release upload "$TAG" out/*.apk --clobber
+            gh release upload "$TAG" out/BudsControl-release.apk --clobber
           else
-            gh release create "$TAG" out/*.apk \
+            gh release create "$TAG" out/BudsControl-release.apk \
               --title "EBuds $VERSION" \
               --notes-file notes.md
           fi

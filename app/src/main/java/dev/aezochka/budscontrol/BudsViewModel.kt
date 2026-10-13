@@ -384,7 +384,11 @@ class BudsViewModel(app: Application) : AndroidViewModel(app) {
         app.packageManager.getPackageInfo(app.packageName, 0).versionName ?: "0"
     }.getOrDefault("0")
 
+    /** Время последней проверки — для повтора через 15 минут. */
+    private var lastUpdateCheckAt = 0L
+
     fun checkUpdate() = viewModelScope.launch {
+        lastUpdateCheckAt = System.currentTimeMillis()
         val current = installedVersion()
         _updateState.value = UpdateState(checking = true, currentVersion = current)
         val release = Updater.check(current)
@@ -405,7 +409,14 @@ class BudsViewModel(app: Application) : AndroidViewModel(app) {
 
     fun checkUpdateIfIdle() {
         val s = _updateState.value
-        if (s.checking || s.downloading || s.release != null) return
+        if (s.checking || s.downloading) return
+        // Уже нашли апдейт — заново не ищем.
+        if (s.release != null) return
+        // Повтор через 15 минут: релиз мог быть опубликован, пока
+        // приложение открыто — раньше до перезапуска строка показывала
+        // «последняя версия», хотя апдейт уже вышел.
+        val stale = System.currentTimeMillis() - lastUpdateCheckAt > 15 * 60_000L
+        if (lastUpdateCheckAt > 0 && !stale) return
         checkUpdate()
     }
 

@@ -31,7 +31,6 @@ import androidx.compose.material.icons.outlined.TouchApp
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -172,7 +171,8 @@ private fun FloatingTabBar(
 }
 
 /**
- * Тема «пилюля»: как всегда — Material-иконки с подписями в общем контейнере.
+ * Тема «пилюля»: общий контейнер, Material-иконки без подписей.
+ * Кнопки одинакового квадратного размера — бар компактный и ровный.
  */
 @Composable
 private fun ClassicTabBar(current: Int, order: List<Tab>, onSelect: (Tab) -> Unit, modifier: Modifier = Modifier) {
@@ -196,21 +196,19 @@ private fun ClassicTabBar(current: Int, order: List<Tab>, onSelect: (Tab) -> Uni
             val corner by animateDpAsState(if (selected) 19.dp else 28.dp, Motion.spatial(), label = "tabCorner")
             val iconScale by animateFloatAsState(if (selected) 1.12f else 1f, Motion.spatial(), label = "tabIcon")
 
-            Column(
+            Box(
                 Modifier
+                    .size(width = 56.dp, height = 46.dp)
                     .clip(RoundedCornerShape(corner))
                     .background(bg)
-                    .pressBounce(scaleDown = 0.93f) { onSelect(tab) }
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
+                    .pressBounce(scaleDown = 0.93f) { onSelect(tab) },
+                contentAlignment = Alignment.Center,
             ) {
                 Icon(
                     tab.icon, contentDescription = tab.label(),
                     tint = tint,
-                    modifier = Modifier.size(21.dp).graphicsLayer { scaleX = iconScale; scaleY = iconScale },
+                    modifier = Modifier.size(22.dp).graphicsLayer { scaleX = iconScale; scaleY = iconScale },
                 )
-                Spacer(Modifier.height(3.dp))
-                Text(tab.label(), style = MaterialTheme.typography.labelMedium, color = tint)
             }
         }
     }

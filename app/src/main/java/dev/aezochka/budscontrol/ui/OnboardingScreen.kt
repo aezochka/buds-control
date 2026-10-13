@@ -23,6 +23,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -31,11 +33,14 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.outlined.Bluetooth
+import androidx.compose.material.icons.outlined.DashboardCustomize
 import androidx.compose.material.icons.outlined.Circle
 import androidx.compose.material.icons.outlined.DirectionsWalk
 import androidx.compose.material.icons.outlined.Headphones
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.MusicNote
+import androidx.compose.material.icons.outlined.TouchApp
+import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -61,7 +66,7 @@ import dev.aezochka.budscontrol.device.BluetoothScanner
  * Начальный экран: язык → поиск наушников по Bluetooth → доступы.
  * Профили добавляются только из результатов реального скана.
  */
-private const val LAST_STEP = 1
+private const val LAST_STEP = 2
 
 @Composable
 fun OnboardingScreen(
@@ -84,7 +89,7 @@ fun OnboardingScreen(
             Modifier.fillMaxWidth().padding(vertical = 18.dp),
             horizontalArrangement = Arrangement.Center,
         ) {
-            repeat(2) { index ->
+            repeat(3) { index ->
                 val active = index == step
                 val width by animateDpAsState(if (active) 26.dp else 8.dp, Motion.spatial(), label = "dotW")
                 val color by animateColorAsState(
@@ -116,6 +121,7 @@ fun OnboardingScreen(
         ) { current ->
             when (current) {
                 0 -> LanguageStep(language) { vm.setLanguage(it) }
+                1 -> GuideStep()
                 else -> DevicesStep(vm, onRequestBluetooth)
             }
         }
@@ -131,12 +137,12 @@ fun OnboardingScreen(
             // Кнопка блокируется только там, где действительно нельзя идти дальше:
             // на шаге выбора наушников. На «Доступах» она всегда активна.
             val canContinue = when (step) {
-                1 -> profiles.isNotEmpty()
+                2 -> profiles.isNotEmpty()
                 else -> true
             }
             // Короткая подпись: длинная строка ломалась переносом в узкой кнопке.
             val label = when {
-                step == 1 && profiles.isEmpty() -> s.pickBudsFirst
+                step == 2 && profiles.isEmpty() -> s.pickBudsFirst
                 step == LAST_STEP -> s.go
                 else -> s.next
             }
@@ -233,8 +239,69 @@ private fun LanguageStep(selected: String, onSelect: (String) -> Unit) {
     }
 }
 
+guide = '''
 @Composable
-private fun DevicesStep(vm: BudsViewModel, onRequestBluetooth: () -> Unit) {
+private fun GuideStep() {
+    val scheme = MaterialTheme.colorScheme
+    Column(Modifier.verticalScroll(rememberScrollState())) {
+        Text(tr("guideTitle"), style = MaterialTheme.typography.displayMedium, color = scheme.onSurface)
+        Spacer(Modifier.height(6.dp))
+        Text(tr("guideHint"), style = MaterialTheme.typography.bodyMedium, color = scheme.onSurfaceVariant)
+        Spacer(Modifier.height(20.dp))
+        GuideCard(
+            icon = Icons.Outlined.Headphones,
+            title = tr("guideBudsTitle"),
+            text = tr("guideBudsText"),
+        )
+        GuideCard(
+            icon = Icons.Outlined.DashboardCustomize,
+            title = tr("guideTilesTitle"),
+            text = tr("guideTilesText"),
+        )
+        GuideCard(
+            icon = Icons.Outlined.TouchApp,
+            title = tr("guideGesturesTitle"),
+            text = tr("guideGesturesText"),
+        )
+        GuideCard(
+            icon = Icons.Outlined.Tune,
+            title = tr("guideMoreTitle"),
+            text = tr("guideMoreText"),
+        )
+    }
+}
+
+@Composable
+private fun GuideCard(icon: androidx.compose.ui.graphics.vector.ImageVector, title: String, text: String) {
+    val scheme = MaterialTheme.colorScheme
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(bottom = 10.dp)
+            .clip(RoundedCornerShape(22.dp))
+            .background(scheme.surfaceContainer)
+            .padding(16.dp),
+        verticalAlignment = Alignment.Top,
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        Box(
+            Modifier.size(42.dp).clip(RoundedCornerShape(15.dp))
+                .background(scheme.primary.copy(alpha = 0.16f)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(icon, null, tint = scheme.primary, modifier = Modifier.size(21.dp))
+        }
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.titleSmall, color = scheme.onSurface)
+            Spacer(Modifier.height(3.dp))
+            Text(text, style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant)
+        }
+    }
+}
+
+@Composable
+private fun DevicesStep(vm: BudsViewModel, onRequestBluetooth: () -> Unit) {'''
+
     val scheme = MaterialTheme.colorScheme
     val found by vm.found.collectAsState()
     val scanning by vm.scanning.collectAsState()

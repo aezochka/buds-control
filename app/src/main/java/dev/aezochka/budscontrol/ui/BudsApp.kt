@@ -1,14 +1,10 @@
 package dev.aezochka.budscontrol.ui
 
-import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.LocalOverscrollConfiguration
 import androidx.compose.foundation.background
@@ -54,7 +50,6 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import dev.aezochka.budscontrol.BudsViewModel
 import dev.aezochka.budscontrol.i18n.tr
 import kotlinx.coroutines.launch
@@ -73,13 +68,6 @@ private enum class Tab(val labelKey: String, val icon: ImageVector) {
     Settings("tabMore", Icons.Outlined.Tune);
 }
 
-/** Эмодзи для раздельной темы: меняются при каждом заходе на вкладку. */
-private val tabEmojis = mapOf(
-    Tab.Buds to listOf("🎧", "🎵", "🎶", "🔊", "🎤"),
-    Tab.Gestures to listOf("👆", "✌️", "👌", "🤙", "👋"),
-    Tab.Settings to listOf("⚙️", "🛠️", "✨", "🧰", "🪄"),
-)
-
 /**
  * Каркас.
  *
@@ -93,15 +81,10 @@ fun BudsApp(vm: BudsViewModel) {
     val settings by vm.settings.collectAsState()
     val scope = rememberCoroutineScope()
 
-    // Порядок вкладок зависит от темы бара. В раздельной теме наушники
-    // стоят в ЦЕНТРЕ бара, поэтому порядок страниц: жесты — наушники — ещё.
-    // Тогда свайп согласован с кнопками: кнопка слева — страница приходит
-    // слева, кнопка справа — справа.
-    val order = if (settings.barTheme == "split") {
-        listOf(Tab.Gestures, Tab.Buds, Tab.Settings)
-    } else {
-        listOf(Tab.Buds, Tab.Gestures, Tab.Settings)
-    }
+    // Порядок вкладок: наушники В ЦЕНТРЕ в обеих темах (жесты — наушники —
+    // ещё). Тогда кнопка наушников стоит по центру бара и в пилюле, и в
+    // раздельной теме, а свайп согласован с кнопками в обеих темах.
+    val order = listOf(Tab.Gestures, Tab.Buds, Tab.Settings)
 
     // Пока пользователь тащит чип профиля, свайп между вкладками выключен.
     var dragLock by remember { mutableStateOf(false) }
@@ -119,17 +102,6 @@ fun BudsApp(vm: BudsViewModel) {
         snapshotFlow { pager.currentPage }.collect { page ->
             currentTab = order.getOrNull(page) ?: Tab.Buds
         }
-    }
-
-    // Эмодзи раздельной темы: смена страницы подкидывает новый.
-    var emoji by remember {
-        mutableStateOf(Tab.entries.associateWith { tabEmojis.getValue(it).first() })
-    }
-    LaunchedEffect(pager.currentPage) {
-        val tab = order.getOrNull(pager.currentPage) ?: return@LaunchedEffect
-        val set = tabEmojis.getValue(tab)
-        val current = emoji[tab] ?: set.first()
-        emoji = emoji + (tab to set.filter { it != current }.random())
     }
 
     fun select(tab: Tab) {
@@ -178,7 +150,6 @@ fun BudsApp(vm: BudsViewModel) {
                 current = pager.currentPage,
                 order = order,
                 theme = settings.barTheme,
-                emoji = emoji,
                 onSelect = ::select,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
@@ -193,11 +164,10 @@ private fun FloatingTabBar(
     current: Int,
     order: List<Tab>,
     theme: String,
-    emoji: Map<Tab, String>,
     onSelect: (Tab) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    if (theme == "split") SplitTabBar(current, order, emoji, onSelect, modifier)
+    if (theme == "split") SplitTabBar(current, order, onSelect, modifier)
     else ClassicTabBar(current, order, onSelect, modifier)
 }
 
@@ -249,13 +219,13 @@ private fun ClassicTabBar(current: Int, order: List<Tab>, onSelect: (Tab) -> Uni
 /**
  * Тема «раздельные кнопки»: три отдельные квадратные кнопки с полукруглыми
  * углами, наушники — в центре и вытянуты по ширине, по бокам жесты и «ещё».
- * Только эмодзи, без текста.
+ * Material-иконки, без текста.
  *
  * Порядок кнопок совпадает с порядком страниц: свайп и тап согласованы —
  * кнопка слева открывает страницу, которая приезжает слева.
  */
 @Composable
-private fun SplitTabBar(current: Int, order: List<Tab>, emoji: Map<Tab, String>, onSelect: (Tab) -> Unit, modifier: Modifier = Modifier) {
+private fun SplitTabBar(current: Int, order: List<Tab>, onSelect: (Tab) -> Unit, modifier: Modifier = Modifier) {
     val scheme = MaterialTheme.colorScheme
     Row(
         modifier.padding(horizontal = 26.dp),
@@ -272,47 +242,30 @@ private fun SplitTabBar(current: Int, order: List<Tab>, emoji: Map<Tab, String>,
             val width = if (tab == Tab.Buds) 104.dp else 56.dp
             val height = 46.dp
             val corner = 23.dp
-            val scale by animateFloatAsState(if (selected) 1.06f else 1f, Motion.spatial(), label = "splitScale")
+            val tint by animateColorAsState(
+                if (selected) scheme.onPrimary else scheme.onSurfaceVariant, Motion.effects(), label = "splitTint",
+            )
+            val iconScale by animateFloatAsState(if (selected) 1.12f else 1f, Motion.spatial(), label = "splitScale")
+            val iconSize = if (tab == Tab.Buds) 26.dp else 22.dp
 
             Box(
                 Modifier
-                    .graphicsLayer { scaleX = scale; scaleY = scale }
                     .size(width = width, height = height)
                     .clip(RoundedCornerShape(corner))
                     .background(bg)
                     .pressBounce(scaleDown = 0.88f) { onSelect(tab) },
                 contentAlignment = Alignment.Center,
             ) {
-                EmojiSlot(
-                    emoji = emoji[tab] ?: "🎧",
-                    selected = selected,
-                    fontSize = if (tab == Tab.Buds) 26 else 22,
+                Icon(
+                    tab.icon,
+                    contentDescription = tab.label(),
+                    tint = tint,
+                    modifier = Modifier
+                        .size(iconSize)
+                        .graphicsLayer { scaleX = iconScale; scaleY = iconScale },
                 )
             }
         }
-    }
-}
-
-/**
- * Эмодзи со сменой «прыжком»: новое появляется с пружинным увеличением,
- * старое сжимается. Именно это делает смену эмодзи заметной приколюхой.
- */
-@Composable
-private fun EmojiSlot(emoji: String, selected: Boolean, fontSize: Int) {
-    val scale by animateFloatAsState(if (selected) 1.1f else 1f, Motion.spatial(), label = "emojiScale")
-    AnimatedContent(
-        targetState = emoji,
-        transitionSpec = {
-            (scaleIn(initialScale = 0.3f, animationSpec = Motion.spatial()) + fadeIn(Motion.effects())) togetherWith
-                (scaleOut(targetScale = 0.3f, animationSpec = Motion.effects()) + fadeOut(Motion.effects()))
-        },
-        label = "emojiSwap",
-    ) { e ->
-        Text(
-            e,
-            fontSize = fontSize.sp,
-            modifier = Modifier.graphicsLayer { scaleX = scale; scaleY = scale },
-        )
     }
 }
 

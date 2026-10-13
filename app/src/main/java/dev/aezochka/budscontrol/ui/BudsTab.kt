@@ -239,6 +239,8 @@ fun BudsTab(vm: BudsViewModel, onDragActive: (Boolean) -> Unit = {}) {
                     onSelect = { vm.selectProfile(it) },
                     onReorder = { vm.reorderProfiles(it) },
                     onAdd = { sheet = "add" },
+                    onRename = { id, name -> vm.renameProfile(id, name) },
+                    onDelete = { vm.deleteProfile(it) },
                     onDragActive = onDragActive,
                     // Название скрывается и здесь: иначе блюр под фото есть,
                     // а в баре сверху модель по-прежнему читается.
@@ -292,7 +294,15 @@ fun BudsTab(vm: BudsViewModel, onDragActive: (Boolean) -> Unit = {}) {
         // контенту (перекрывает только визуально, поверх), закрывается
         // крестиком до конца сессии.
         var bannerDismissed by remember { mutableStateOf(false) }
-        LaunchedEffect(Unit) { vm.checkUpdateIfIdle() }
+        LaunchedEffect(Unit) {
+            vm.checkUpdateIfIdle()
+            // Пока приложение открыто и апдейт не найден — проверяем раз в
+            // минуту: плашка появляется сама вскоре после выхода релиза.
+            while (true) {
+                kotlinx.coroutines.delay(60_000L)
+                vm.checkUpdateIfIdle()
+            }
+        }
         val showBanner = budsSettings.updateBanner && !bannerDismissed &&
             updateState.release != null && !updateState.downloading
         androidx.compose.animation.AnimatedVisibility(

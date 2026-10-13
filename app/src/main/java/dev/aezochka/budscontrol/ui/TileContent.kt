@@ -84,35 +84,31 @@ fun TileContent(
                 icon = Icons.Outlined.GraphicEq,
                 label = tr("equalizerTitle"),
                 value = presetLabel,
-                active = tuned,
+                // Никогда НЕ подсвечиваем: тап открывает шторку настроек EQ,
+                // «включённость» тут ни к чему — раньше плитка после тапа
+                // заливалась акцентом и выглядела как залипший переключатель.
+                active = false,
                 onClick = { vm.tick(); onEq() },
-                topContent = { primary ->
-                    // Иконка слева + живая кривая справа в ТОЙ ЖЕ верхней
-                    // зоне 30dp, что у остальных плиток: высота EQ-плитки
-                    // совпадает с соседями по ряду. Полосы без подложки.
+                // Кривая — ПОД значением, на всю ширину плитки, тонкие полосы
+                // без подложки. Высота зоны фиксированная — плитка ровная.
+                bottomContent = { primary, _ ->
+                    val bars = eqCurve(eqGains)
                     Row(
-                        Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween,
+                        Modifier.fillMaxWidth().height(28.dp),
+                        horizontalArrangement = Arrangement.spacedBy(5.dp),
+                        verticalAlignment = Alignment.Bottom,
                     ) {
-                        Icon(Icons.Outlined.GraphicEq, null, tint = primary, modifier = Modifier.size(24.dp))
-                        Row(
-                            Modifier.height(24.dp),
-                            horizontalArrangement = Arrangement.spacedBy(3.dp),
-                            verticalAlignment = Alignment.Bottom,
-                        ) {
-                            val bars = eqCurve(eqGains)
-                            bars.forEach { level ->
-                                val animated by animateFloatAsState(
-                                    level, Motion.spatial(), label = "eqBar",
-                                )
-                                Box(
-                                    Modifier
-                                        .size(width = 7.dp, height = (24 * animated).dp)
-                                        .clip(RoundedCornerShape(topStart = 3.dp, topEnd = 3.dp))
-                                        .background(primary.copy(alpha = if (tuned) 1f else 0.5f)),
-                                )
-                            }
+                        bars.forEach { level ->
+                            val animated by animateFloatAsState(
+                                level, Motion.spatial(), label = "eqBar",
+                            )
+                            Box(
+                                Modifier
+                                    .weight(1f)
+                                    .height((28 * animated).dp)
+                                    .clip(RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp))
+                                    .background(primary.copy(alpha = if (tuned) 0.9f else 0.45f)),
+                            )
                         }
                     }
                 },

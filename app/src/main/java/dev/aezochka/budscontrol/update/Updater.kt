@@ -155,6 +155,16 @@ object Updater {
     }.getOrNull()
 
     /**
+     * Доля уже скачанного файла этой версии (0..1) — для старта прогресса
+     * докачки не с нуля.
+     */
+    fun partialBytes(context: Context, release: Release): Float {
+        val target = File(context.cacheDir, "update_${release.version}.apk")
+        if (!target.exists() || release.sizeBytes <= 0) return 0f
+        return (target.length().toFloat() / release.sizeBytes).coerceIn(0f, 1f)
+    }
+
+    /**
      * Удаляет скачанные APK от других версий.
      *
      * Файл текущего релиза не трогаем: он может быть недокачан, и его

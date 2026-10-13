@@ -194,7 +194,25 @@ class BudsViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun removeProfile(id: String) = viewModelScope.launch {
-        store.saveProfiles(store.profiles.first().filterNot { it.id == id })
+        val list = store.profiles.first().filterNot { it.id == id }
+        // Если сняли активный — активируем первый оставшийся.
+        val fixed = if (list.none { it.isSelected } && list.isNotEmpty()) {
+            list.mapIndexed { i, p -> p.copy(isSelected = i == 0) }
+        } else list
+        store.saveProfiles(fixed)
+    }
+
+    /** Переименование профиля из контекстного меню чипа. */
+    fun renameProfile(id: String, name: String) = viewModelScope.launch {
+        val list = store.profiles.first().map {
+            if (it.id == id) it.copy(displayName = name) else it
+        }
+        store.saveProfiles(list)
+    }
+
+    /** Удаление профиля из контекстного меню чипа. */
+    fun deleteProfile(id: String) = viewModelScope.launch {
+        removeProfile(id)
     }
 
     /**
@@ -412,10 +430,10 @@ class BudsViewModel(app: Application) : AndroidViewModel(app) {
         if (s.checking || s.downloading) return
         // Уже нашли апдейт — заново не ищем.
         if (s.release != null) return
-        // Повтор через 15 минут: релиз мог быть опубликован, пока
-        // приложение открыто — раньше до перезапуска строка показывала
-        // «последняя версия», хотя апдейт уже вышел.
-        val stale = System.currentTimeMillis() - lastUpdateCheckAt > 15 * 60_000L
+        // Релиз может быть опубликован, пока приложение открыто, поэтому
+        // перепроверяем часто — раз в минуту, а не только при входе в экран:
+        // плашка должна появляться сама, без перезапуска приложения.
+        val stale = System.currentTimeMillis() - lastUpdateCheckAt > 60_000L
         if (lastUpdateCheckAt > 0 && !stale) return
         checkUpdate()
     }
@@ -434,6 +452,12 @@ class BudsViewModel(app: Application) : AndroidViewModel(app) {
         }
 
         _updateState.value = state.copy(downloading = true, error = null)
+        // Докачка: прогресс начинается с ДОКАЧАННОЙ части, а не с 0% —
+        // иначе обрыв и повторный тап выглядели как «качает заново».
+        val already = withContext(Dispatchers.IO) {
+            dev.aezochka.budscontrol.update.Updater.partialBytes(getApplication(), release)
+        }
+        _updateState.value = _updateState.value.copy(progress = already)
         val file = Updater.download(getApplication(), release) { p ->
             _updateState.value = _updateState.value.copy(progress = p)
         }

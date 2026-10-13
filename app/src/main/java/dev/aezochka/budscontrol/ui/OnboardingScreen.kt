@@ -361,7 +361,7 @@ private fun DemoGestureRow() {
                 listOf(
                     Icons.Outlined.PlayArrow to "actPlay",
                     Icons.Outlined.SkipNext to "actNext",
-                    Icons.Outlined.VolumeUp to "actVolUp",
+                    Icons.Outlined.MusicNote to "actVolUp",
                 ).chunked(2).forEach { row ->
                     Row(
                         Modifier.fillMaxWidth().padding(vertical = 3.dp),

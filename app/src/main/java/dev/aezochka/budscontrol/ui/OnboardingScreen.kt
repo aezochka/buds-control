@@ -32,6 +32,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.material.icons.outlined.Bluetooth
 import androidx.compose.material.icons.outlined.DashboardCustomize
 import androidx.compose.material.icons.outlined.Circle
@@ -41,6 +45,11 @@ import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.MusicNote
 import androidx.compose.material.icons.outlined.TouchApp
 import androidx.compose.material.icons.outlined.Tune
+import androidx.compose.material.icons.outlined.SportsEsports
+import androidx.compose.material.icons.outlined.SkipNext
+import androidx.compose.material.icons.outlined.PlayArrow
+import androidx.compose.material.icons.outlined.NoiseAware
+import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -55,6 +64,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.aezochka.budscontrol.BudsViewModel
@@ -148,9 +158,10 @@ fun OnboardingScreen(
             }
             PillButton(
                 text = label,
-                // Заблокированная кнопка больше не притворяется активной:
-                // она и выглядит выключенной, и не реагирует на тап.
-                filled = canContinue,
+                // «Далее» всегда залита акцентом — серая выглядела выключенной,
+                // хотя кликалась (это и выглядело как баг). Серой остаётся
+                // только реально заблокированная кнопка.
+                filled = canContinue || step < LAST_STEP,
                 enabled = canContinue,
                 modifier = Modifier.weight(1f),
             ) {
@@ -247,59 +258,180 @@ private fun GuideStep() {
         Spacer(Modifier.height(6.dp))
         Text(tr("guideHint"), style = MaterialTheme.typography.bodyMedium, color = scheme.onSurfaceVariant)
         Spacer(Modifier.height(20.dp))
-        GuideCard(
-            icon = Icons.Outlined.Headphones,
-            title = tr("guideBudsTitle"),
-            text = tr("guideBudsText"),
-        )
-        GuideCard(
-            icon = Icons.Outlined.DashboardCustomize,
-            title = tr("guideTilesTitle"),
-            text = tr("guideTilesText"),
-        )
-        GuideCard(
-            icon = Icons.Outlined.TouchApp,
-            title = tr("guideGesturesTitle"),
-            text = tr("guideGesturesText"),
-        )
-        GuideCard(
-            icon = Icons.Outlined.Tune,
-            title = tr("guideMoreTitle"),
-            text = tr("guideMoreText"),
-        )
+
+        // ===== Демка 1: плитки — тапни, они включаются =====
+        Text(tr("guideTilesTitle"), style = MaterialTheme.typography.titleMedium, color = scheme.onSurface)
+        Text(tr("guideTilesText"), style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant)
+        Spacer(Modifier.height(10.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            DemoToggleTile(icon = Icons.Outlined.NoiseAware, label = tr("noiseControl"))
+            DemoToggleTile(icon = Icons.Outlined.SportsEsports, label = tr("actGame"))
+        }
+        Spacer(Modifier.height(18.dp))
+
+        // ===== Демка 2: жесты — раскрой строку, тапни действие =====
+        Text(tr("guideGesturesTitle"), style = MaterialTheme.typography.titleMedium, color = scheme.onSurface)
+        Text(tr("guideGesturesText"), style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant)
+        Spacer(Modifier.height(10.dp))
+        DemoGestureRow()
+        Spacer(Modifier.height(18.dp))
+
+        // ===== Демка 3: зарядные чипы у фото =====
+        Text(tr("guideBudsTitle"), style = MaterialTheme.typography.titleMedium, color = scheme.onSurface)
+        Text(tr("guideBudsText"), style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant)
+        Spacer(Modifier.height(10.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            DemoBatteryChip(percent = 87, side = "L")
+            DemoBatteryChip(percent = 64, side = "R")
+        }
+        Spacer(Modifier.height(18.dp))
+
+        // ===== «Ещё» — кратко, списком =====
+        Text(tr("guideMoreTitle"), style = MaterialTheme.typography.titleMedium, color = scheme.onSurface)
+        Text(tr("guideMoreText"), style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant)
     }
 }
 
+/** Плитка-демка: настоящая логика вкл/выкл, как на главном экране. */
 @Composable
-private fun GuideCard(icon: androidx.compose.ui.graphics.vector.ImageVector, title: String, text: String) {
+private fun androidx.compose.foundation.layout.RowScope.DemoToggleTile(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+) {
+    val scheme = MaterialTheme.colorScheme
+    var on by remember { mutableStateOf(false) }
+    BentoTile(
+        Modifier.weight(1f),
+        active = on,
+        minHeight = 96.dp,
+        onClick = { on = !on },
+    ) { primary, secondary ->
+        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                MorphIcon(active = on, icon = icon, tint = primary)
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    if (on) tr("on") else tr("off"),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = secondary,
+                )
+            }
+        }
+    }
+}
+
+/** Строка жеста-демка: раскрывается, действие выбирается тапом по чипу. */
+@Composable
+private fun DemoGestureRow() {
+    val scheme = MaterialTheme.colorScheme
+    var expanded by remember { mutableStateOf(false) }
+    var picked by remember { mutableStateOf<String?>(null) }
+    val rotation by animateFloatAsState(if (expanded) 180f else 0f, Motion.spatial(), label = "demoChev")
+
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(22.dp))
+            .background(scheme.surfaceContainer),
+    ) {
+        Row(
+            Modifier.pressBounce { expanded = !expanded }.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text(tr("tap2"), style = MaterialTheme.typography.bodyLarge, color = scheme.onSurface)
+                Text(
+                    picked ?: tr("guidePickHint"),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (picked == null) scheme.outline else scheme.primary,
+                )
+            }
+            Icon(
+                Icons.Outlined.ExpandMore, null, tint = scheme.outline,
+                modifier = Modifier.size(20.dp).rotate(rotation),
+            )
+        }
+
+        AnimatedVisibility(
+            visible = expanded,
+            enter = expandVertically(Motion.spatial()) + fadeIn(Motion.effects()),
+            exit = shrinkVertically(Motion.spatial()) + fadeOut(Motion.effects()),
+        ) {
+            Column(Modifier.padding(start = 10.dp, end = 10.dp, bottom = 14.dp)) {
+                listOf(
+                    Icons.Outlined.PlayArrow to "actPlay",
+                    Icons.Outlined.SkipNext to "actNext",
+                    Icons.Outlined.VolumeUp to "actVolUp",
+                ).chunked(2).forEach { row ->
+                    Row(
+                        Modifier.fillMaxWidth().padding(vertical = 3.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        row.forEach { (icon, key) ->
+                            val selected = picked == key
+                            val bg by animateColorAsState(
+                                if (selected) scheme.primary else scheme.surfaceContainerHigh,
+                                Motion.effects(), label = "demoChipBg",
+                            )
+                            val tint by animateColorAsState(
+                                if (selected) scheme.onPrimary else scheme.onSurfaceVariant,
+                                Motion.effects(), label = "demoChipTint",
+                            )
+                            Row(
+                                Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(16.dp))
+                                    .background(bg)
+                                    .pressBounce(scaleDown = 0.93f) { picked = key }
+                                    .padding(horizontal = 12.dp, vertical = 11.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                Icon(icon, null, tint = tint, modifier = Modifier.size(18.dp))
+                                Text(
+                                    tr(key),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = tint,
+                                    maxLines = 1,
+                                )
+                            }
+                        }
+                        if (row.size == 1) Spacer(Modifier.weight(1f))
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** Зарядный чип-демка: как индикаторы возле фото наушников. */
+@Composable
+private fun DemoBatteryChip(percent: Int, side: String) {
     val scheme = MaterialTheme.colorScheme
     Row(
         Modifier
-            .fillMaxWidth()
-            .padding(bottom = 10.dp)
-            .clip(RoundedCornerShape(22.dp))
-            .background(scheme.surfaceContainer)
-            .padding(16.dp),
-        verticalAlignment = Alignment.Top,
-        horizontalArrangement = Arrangement.spacedBy(14.dp),
+            .clip(CircleShape)
+            .background(scheme.surfaceContainerHigh)
+            .padding(horizontal = 14.dp, vertical = 9.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        Box(
-            Modifier.size(42.dp).clip(RoundedCornerShape(15.dp))
-                .background(scheme.primary.copy(alpha = 0.16f)),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(icon, null, tint = scheme.primary, modifier = Modifier.size(21.dp))
-        }
-        Column(Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.titleSmall, color = scheme.onSurface)
-            Spacer(Modifier.height(3.dp))
-            Text(text, style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant)
-        }
+        Text(
+            "$percent%",
+            style = MaterialTheme.typography.titleSmall,
+            color = scheme.onSurface,
+        )
+        Text(
+            side,
+            style = MaterialTheme.typography.labelSmall,
+            color = scheme.onSurfaceVariant,
+        )
     }
 }
 
 @Composable
 private fun DevicesStep(vm: BudsViewModel, onRequestBluetooth: () -> Unit) {
+
 
     val scheme = MaterialTheme.colorScheme
     val found by vm.found.collectAsState()

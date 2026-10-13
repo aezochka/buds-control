@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Bedtime
+import androidx.compose.material.icons.outlined.GraphicEq
 import androidx.compose.material.icons.outlined.Inventory2
 import androidx.compose.material.icons.outlined.Memory
 import androidx.compose.material.icons.outlined.NoiseAware
@@ -77,19 +78,20 @@ fun TileContent(
                 else -> tr("eqPresetBalanced")
             }
             StatTile(
-                icon = null,
+                icon = Icons.Outlined.GraphicEq,
                 label = tr("equalizerTitle"),
                 value = presetLabel,
                 active = tuned,
                 onClick = { vm.tick(); onEq() },
                 topContent = null,
-                // Живые полосы кривой: плитка показывает реальную форму EQ,
-                // а не только текст пресета. Полосы анимируются пружиной
-                // при смене пресета — кривая «доезжает» до новой формы.
+                // Живые полосы кривой: плитка показывает реальную форму EQ.
+                // Зона полос ФИКСИРОВАННОЙ высоты (36dp), полосы растут от
+                // низа — как настоящий эквалайзер. Иконка EQ осталась сверху
+                // на общей линии с иконками остальных плиток.
                 bottomContent = { primary, secondary ->
                     val bars = eqCurve(eqGains)
                     Row(
-                        Modifier.fillMaxWidth(),
+                        Modifier.fillMaxWidth().height(36.dp),
                         horizontalArrangement = Arrangement.spacedBy(4.dp),
                         verticalAlignment = Alignment.Bottom,
                     ) {
@@ -100,8 +102,8 @@ fun TileContent(
                             Box(
                                 Modifier
                                     .weight(1f)
-                                    .height((38 * animated).dp)
-                                    .clip(RoundedCornerShape(4.dp))
+                                    .height((36 * animated).dp)
+                                    .clip(RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp))
                                     .background(
                                         if (tuned) primary else secondary.copy(alpha = 0.4f)
                                     ),

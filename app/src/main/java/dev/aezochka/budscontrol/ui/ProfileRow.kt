@@ -429,7 +429,7 @@ private fun ChipMenu(
     onDismiss: () -> Unit,
 ) {
     val scheme = MaterialTheme.colorScheme
-    Column(
+    androidx.compose.foundation.layout.Column(
         Modifier
             .clip(RoundedCornerShape(18.dp))
             .background(scheme.surfaceContainerHighest)

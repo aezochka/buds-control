@@ -405,20 +405,20 @@ fun ProfileRow(
                 Icon(Icons.Outlined.Add, tr("addBuds"), tint = scheme.primary, modifier = Modifier.size(21.dp))
             }
         }
-    }
 
-    // Закрываем меню при тапе вне — фон-перехватчик.
-    if (menuId != null || renamingId != null) {
-        Box(
-            Modifier
-                .matchParentSize()
-                .graphicsLayer { alpha = 0f }
-                .pointerInput(Unit) {
-                    awaitPointerEventScope {
-                        awaitFirstDown(requireUnconsumed = false)
-                    }
-                },
-        )
+        // Закрываем меню при тапе вне — фон-перехватчик внутри корневого Box.
+        if (menuId != null || renamingId != null) {
+            Box(
+                Modifier
+                    .matchParentSize()
+                    .graphicsLayer { alpha = 0f }
+                    .pointerInput(Unit) {
+                        awaitPointerEventScope {
+                            awaitFirstDown(requireUnconsumed = false)
+                        }
+                    },
+            )
+        }
     }
 }
 

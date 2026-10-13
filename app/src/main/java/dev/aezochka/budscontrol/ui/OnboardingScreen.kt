@@ -239,7 +239,6 @@ private fun LanguageStep(selected: String, onSelect: (String) -> Unit) {
     }
 }
 
-guide = '''
 @Composable
 private fun GuideStep() {
     val scheme = MaterialTheme.colorScheme

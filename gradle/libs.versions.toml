@@ -1,9 +1,10 @@
 [versions]
-agp = "8.13.2"
+agp = "9.1.1"
 kotlin = "2.2.20"
 ksp = "2.2.20-2.0.4"
 composeBom = "2026.06.01"
-material3 = "1.4.0"
+material3 = "1.5.0-beta01"
+m3eCompose = "0.1.0"
 coreKtx = "1.17.0"
 lifecycle = "2.9.4"
 activityCompose = "1.11.0"
@@ -27,6 +28,7 @@ androidx-graphics-shapes = { group = "androidx.graphics", name = "graphics-shape
 kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "serialization" }
 coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil" }
+m3e-compose = { group = "dev.aezochka", name = "m3e-compose", version.ref = "m3eCompose" }
 play-services-location = { group = "com.google.android.gms", name = "play-services-location", version.ref = "playLocation" }
 androidx-fragment = { group = "androidx.fragment", name = "fragment-ktx", version.ref = "fragment" }
 compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }

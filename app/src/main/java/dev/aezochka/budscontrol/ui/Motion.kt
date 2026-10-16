@@ -15,20 +15,19 @@ import androidx.compose.ui.composed
 import androidx.compose.ui.draw.scale
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.clickable
+import dev.aezochka.m3e.M3EMotion
 
 /**
  * Пружинная физика Expressive: заметный, но короткий перелёт.
- * Держим в одном месте, чтобы движение по всему приложению было одинаковым.
+ * Базовые кривые — делегаты в общий M3E-порт (m3e-compose),
+ * свои — только специфичные для buds.
  */
 object Motion {
-    fun <T> spatial(): FiniteAnimationSpec<T> =
-        spring(dampingRatio = 0.62f, stiffness = Spring.StiffnessMediumLow)
+    fun <T> spatial(): FiniteAnimationSpec<T> = M3EMotion.spatial()
 
-    fun <T> spatialFast(): FiniteAnimationSpec<T> =
-        spring(dampingRatio = 0.55f, stiffness = Spring.StiffnessMedium)
+    fun <T> spatialFast(): FiniteAnimationSpec<T> = M3EMotion.spatialFast()
 
-    fun <T> effects(): FiniteAnimationSpec<T> =
-        tween(durationMillis = 190, easing = CubicBezierEasing(0.2f, 0f, 0f, 1f))
+    fun <T> effects(): FiniteAnimationSpec<T> = M3EMotion.effects()
 
     fun <T> slow(): FiniteAnimationSpec<T> =
         spring(dampingRatio = 0.75f, stiffness = Spring.StiffnessVeryLow)

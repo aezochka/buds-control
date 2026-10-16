@@ -18,10 +18,16 @@ on:
 # Права выдаются точечно: только job release получает contents: write
 # (запись тега и релиза). Релизы создаются по тегу v* или вручную,
 # а не на каждый пуш в main.
+permissions:
+  contents: read
+  packages: read
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      ORG_GRADLE_PROJECT_gprUser: aezochka
+      ORG_GRADLE_PROJECT_gprToken: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v4
 
@@ -33,6 +39,9 @@ jobs:
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
+
+      - name: Install Android platform 37
+        run: yes | sdkmanager "platforms;android-37" > /dev/null || true
 
       - name: Unit tests
         run: ./gradlew :app:testReleaseUnitTest --no-daemon --stacktrace

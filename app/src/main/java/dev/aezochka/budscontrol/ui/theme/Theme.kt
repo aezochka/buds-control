@@ -1,6 +1,5 @@
 package dev.aezochka.budscontrol.ui.theme
 
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
@@ -11,6 +10,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import dev.aezochka.budscontrol.data.Accent
+import dev.aezochka.m3e.M3ETheme
 
 private fun w(size: Int, line: Int, weight: FontWeight, tracking: Double = 0.0) = TextStyle(
     fontFamily = FontFamily.Default, fontWeight = weight,
@@ -76,7 +76,7 @@ fun BudsControlTheme(
     customAccent: Long = 0L,
     content: @Composable () -> Unit,
 ) {
-    MaterialTheme(
+    M3ETheme(
         colorScheme = schemeFor(Accent.from(accentKey), customAccent),
         typography = BudsType,
         content = content,
